@@ -1,0 +1,57 @@
+{
+  "name": "worko-job-app",
+  "version": "1.0.0",
+  "description": "Job Related APIs.",
+  "main": "",
+  "scripts": {
+    "build": "rimraf dist && tsc",
+    "deploy-offline": "npm run build && npx sls offline",
+    "build-webpack": "webpack",
+    "serve": "webpack-dev-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://codecatalyst.aws/spaces/worko/projects/worko-api/source-repositories/worko-job-app/branch/refs/heads/dev/view"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@serverless/typescript": "^3.38.0",
+    "@types/aws-lambda": "^8.10.147",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/html-to-text": "^9.0.4",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/luxon": "^3.4.2",
+    "aws-sdk": "^2.1692.0",
+    "rimraf": "^6.0.1",
+    "serverless-dotenv-plugin": "^6.0.0",
+    "serverless-offline": "^12.0.4",
+    "serverless-webpack": "^5.15.0",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-scheduler": "^3.744.0",
+    "@aws-sdk/credential-provider-node": "^3.744.0",
+    "@opensearch-project/opensearch": "^3.2.0",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dynamoose": "^4.0.3",
+    "express": "^4.21.2",
+    "html-to-text": "^9.0.5",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.5.0",
+    "serverless": "^3.40.0",
+    "serverless-http": "^3.2.0",
+    "ulidx": "^2.4.1",
+    "winston": "^3.17.0"
+  }
+}

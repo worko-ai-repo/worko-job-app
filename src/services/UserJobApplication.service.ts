@@ -1,0 +1,1430 @@
+
+// import dynamoose types
+import { QueryResponse } from "dynamoose/dist/ItemRetriever";
+import { ObjectType } from "dynamoose/dist/General";
+
+// import luxon
+import { DateTime } from "luxon";
+
+// import constants
+import APP_CONSTANTS from "../configs/constants.config";
+
+// import daos
+import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
+
+// import dtos
+import { UserJobApplicationBulkUploadDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
+import { PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
+import { EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
+import { ScheduleJobCreateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
+import { UserMatchingScoreJobUpdateDto } from "../dtos/UserMatchingScoreJob.dto";
+
+// import enums
+import { JobApplicationStatus } from "../enums/UserJobApplication.enum";
+import { EmailTemplateEnum } from "../enums/EmailTemplate.enum";
+import { UserType } from "../enums/User.enum";
+import { JobStatusEnum } from "../enums/Job.enum";
+import { ScheduleJobStatus, ScheduleJobType } from "../enums/ScheduleJob.enum";
+import { UserMatchingScoreJobStatusEnum } from "../enums/UserMatchingScoreJob.enum";
+import { MatchingScoreEntityEnum } from "../enums/Common.enum";
+
+// import helpers
+import { injectCompanyJobDetails } from "../helpers/injectCompanyJobDetails.helper";
+
+// import libraries
+import { emailLibrary, EmailSourceDestinationAddress } from "../libraries/email.library";
+
+// import models
+import { DbUserJobApplicationDto } from "../db/models/UserJobApplication.model";
+import { DbUserDetailDto } from "../db/models/UserDetail.model";
+import { DbCorporateUserDto } from "../db/models/CorporateUser.model";
+import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
+import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchUserMatchingScoreJob.model";
+import { DbScheduleJobDto } from "../db/models/ScheduleJob.model";
+
+// import services
+import UserDetailService from "./UserDetail.service";
+import userDetailServiceObj from "../services/UserDetail.service";
+import { corporateUserServiceObj } from "./CorporateUser.service";
+import { companyJobServiceObj } from "./CompanyJob.service";
+import { userMatchingScoreJobServiceObj } from "./UserMatchingScoreJob.service";
+import ScheduleJobService from "./ScheduleJob.service";
+import InvokeLambdaService from "./InvokeLambda.service";
+
+// import types
+import { UserDetailProfileInfoType } from "../types/UserDetail.type";
+import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
+import { EmailPlaceholderDetailsToJobPosterType } from "../types/EmailTemplatePlaceholder.type";
+
+// import utils
+import { BaseError } from "../utils/errors.util";
+import HttpStatusCode from "../utils/http-codes.util";
+
+/**
+ * UserJobApplicationService
+ * 
+ * Service for handling user job application-related operations
+ */
+class UserJobApplicationService {
+  /**
+   * scheduleUserJobApplicationStatusUpdateToRejected
+   *
+   * Schedules a delayed job to update the status of a user's job application.
+   *
+   * This function logs the attempt to schedule a job application status update
+   * and calculates the time delay based on predefined constants. It prepares
+   * the necessary input details and payload for the scheduled job, which will
+   * update the job application status to REJECTED after a specified number of
+   * hours. It then attempts to create the scheduled job and logs the outcome.
+   *
+   * @param {string} userJobApplicationId - The unique identifier of the user's job application.
+   * @param {string} userEmail - The email address of the user associated with the job application.
+   * @param {string} userId - The unique identifier of the user.
+   * @returns {Promise<boolean>} A promise that resolves to `true` if the scheduled job
+   *   was successfully created, or `false` if the creation failed.
+   */
+  async scheduleUserJobApplicationStatusUpdateToRejected(
+    userJobApplicationId: string,
+    userEmail: string,
+    userId: string
+  ): Promise<boolean> {
+    // Log
+    global.logger.info(
+      `Attempting to create delay for job application status update`,
+      {
+        filePath: __filename,
+        methodName: this.scheduleUserJobApplicationStatusUpdateToRejected.name,
+      }
+    );
+
+    // Calculate the schedule time based on the delay hours constant
+    const delayHours: number =
+      APP_CONSTANTS.USER_JOB_APPLICATION_UPDATE_AFTER_X_HOURS;
+
+    // Prepare input details
+    let scheduleUserJobApplicationRejectedStatusUpdateInput: ScheduleUserJobApplicationStatusUpdateToRejectedInputDto =
+      {
+        userJobApplicationId,
+        userEmail,
+        userId,
+      };
+
+    // Prepare the payload for the scheduled job
+    const scheduleJobPayload: ScheduleJobCreateDto = {
+      type: ScheduleJobType.USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED,
+      scheduleTime: DateTime.now()
+        .plus({ hours: delayHours })
+        .toUTC()
+        .toFormat("yyyy-MM-dd'T'HH:mm:ss"),
+      input: scheduleUserJobApplicationRejectedStatusUpdateInput,
+      desc: `Scheduled job to update job application status to REJECTED after ${delayHours} hours`,
+      status: ScheduleJobStatus.SCHEDULED,
+    };
+    global.logger.info(`scheduleJobPayload`, {
+      scheduleJobPayload,
+    });
+
+    // Create the scheduled job
+    let scheduleJobCreated: DbScheduleJobDto =
+      await ScheduleJobService.createScheduleJob(scheduleJobPayload);
+
+    // Log the result of the scheduled job creation
+    if (scheduleJobCreated) {
+      logger.info(`Scheduled job for job application rejected status update.`, {
+        filePath: __filename,
+        methodName: this.scheduleUserJobApplicationStatusUpdateToRejected.name,
+      });
+      return true;
+    } else {
+      global.logger.error(
+        `Failed to create scheduled job for job application rejected status update.`
+      );
+      return false;
+    }
+  }
+
+  /**
+   * validateUserJobApplicationMatchingScore
+   *
+   * Validates the matching score of a job application and performs the appropriate action.
+   *
+   * If the matching score is less than the minimum matching score, then schedules a job
+   * to update the job application status to REJECTED after a given delay. Otherwise, sends
+   * an email notification to all corporate users who is currently working on that particular
+   * company about the new job application.
+   *
+   * @param {string} userJobApplicationId - The ID of the job application to be validated.
+   * @param {string} userEmail - The email of the user who applied for the job.
+   * @param {string} userId - The ID of the user who applied for the job.
+   *
+   * @returns {Promise<boolean>} A promise that resolves to `true` if the validation is successful, or `false` if the validation fails.
+   */
+  async validateUserJobApplicationMatchingScore(
+    userJobApplicationId: string,
+    userEmail: string,
+    userId: string
+  ): Promise<boolean> {
+    global.logger.debug(`Validated User matching score`, {
+      userJobApplicationId,
+      userEmail,
+      userId,
+    });
+
+    // Get the job application details
+    const jobApplicationDetails: DbUserJobApplicationDto =
+      await this.getJobApplicationById(userJobApplicationId);
+
+    // Check if the job application has a matching score less than the minimum matching score and perform the appropriate action
+    if (
+      jobApplicationDetails.matchingScore! <
+      APP_CONSTANTS.MATCHING_SCORES.JOB_APPLICATION_MINIMUM_MATCHING_SCORE
+    ) {
+      await this.scheduleUserJobApplicationStatusUpdateToRejected(
+        userJobApplicationId,
+        userEmail,
+        userId
+      );
+    } else {
+      // Fetch candidate details using user ID
+      const candidateDetails: DbUserDetailDto =
+        await UserDetailService.getUserByIdOne(userId);
+
+      // Send email notification to all corporate users who is currently working on that particular company about the new job application
+      await this.sendEmailToCorporateUsersOnNewJobApplication(
+        jobApplicationDetails,
+        candidateDetails
+      );
+    }
+
+    return true;
+  }
+
+  /**
+   * createJobApplication
+   *
+   * Creates a new job application for a candidate.
+   *
+   * @param {string} userId - The ID of the user applying for the job.
+   * @param {string} emailId - The email ID of the user applying for the job.
+   * @param {UserJobApplicationCreateApiDTO} jobApplicationRequestBody - The data required to create a new job application.
+   *
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to an object representing the created job application.
+   */
+  async createJobApplication(
+    userId: string,
+    emailId: string,
+    jobApplicationRequestBody: UserJobApplicationCreateApiDTO
+  ): Promise<DbUserJobApplicationDto> {
+    // Logger
+    global.logger.info("Create Job Application [Service]", {
+      filePath: __filename,
+      methodName: this.createJobApplication.name,
+      userId,
+      emailId,
+    });
+
+    // Fetch job details based on job ID
+    const jobDetails: DbCompanyJobDto = (
+      await companyJobServiceObj.getJobById(jobApplicationRequestBody.jobId)
+    )[0];
+
+    // Throw an error if job is not published
+    if (jobDetails.status !== JobStatusEnum.PUBLISHED || jobDetails.isDeleted) {
+      throw new BaseError(
+        `The new job applications for this job are currently closed.`,
+        HttpStatusCode.FORBIDDEN_403
+      );
+    }
+
+    // Check if the user has already applied for the job and throw error if already applied for the job
+    let existingUserJobApplicationQueryResponse: QueryResponse<DbUserJobApplicationDto> =
+      await userJobApplicationDao.getJobApplicationByjobId(
+        emailId,
+        jobDetails.id
+      );
+
+    // Check if user has already applied for the job
+    if (existingUserJobApplicationQueryResponse.count) {
+      // Throw error if user has already applied for the job.
+      throw new BaseError(
+        `You have already applied for this job. Check your dashboard for reference.`,
+        HttpStatusCode.FORBIDDEN_403
+      );
+    }
+
+    // Get matching score details by `userId` and `jobId` from `worko-user-matching-score-job` index in aws opensearch
+    const userMatchingScoreJobDetails: DbUserMatchingScoreJobAwsOpensearchDto | undefined =
+      await userMatchingScoreJobServiceObj.getUserMatchingScoreJobByUserIdAndJobId(
+        userId,
+        jobApplicationRequestBody.jobId
+      );
+    if (!userMatchingScoreJobDetails) {
+      global.logger.debug(
+        `User matching score job details not found for userId: ${userId} and jobId: ${jobApplicationRequestBody.jobId} in aws opensearch [SERVICE].`,
+        {
+          methodName: this.createJobApplication.name,
+        }
+      );
+    }
+
+    // Prepare the data required to create a new job application
+    const userJobApplicationDto: UserJobApplicationCreateDto = {
+      ...jobApplicationRequestBody,
+      companyId: jobDetails.companyId,
+      status: JobApplicationStatus.APPLIED,
+      statusTracker: [
+        {
+          oldStatus: JobApplicationStatus.APPLIED,
+          newStatus: JobApplicationStatus.APPLIED,
+          actionDate: DateTime.now().toISO(),
+          userId: userId,
+          userType: UserType.CAND,
+        },
+      ],
+      jdMatchErrorCode:
+        userMatchingScoreJobDetails?.jdMatchErrorCode ?? undefined,
+      jdMatchErrorDesc:
+        userMatchingScoreJobDetails?.jdMatchErrorDesc ?? undefined,
+      scoreDetails: userMatchingScoreJobDetails?.scoreDetails ?? undefined,
+      matchingScore: userMatchingScoreJobDetails?.matchingScore ?? undefined,
+    };
+
+    // Create a new job application
+    const jobApplicationDetails: DbUserJobApplicationDto =
+      await userJobApplicationDao.createJobApplication(
+        userId, // user id of the candidate
+        emailId, // email id of the candidate applying for the job
+        userJobApplicationDto // job application request body
+      );
+
+    // Prepare update UserMatchingScoreJob DTO
+    const updateUserMatchingScoreJob: UserMatchingScoreJobUpdateDto = {
+      status: UserMatchingScoreJobStatusEnum.APPLIED,
+      updatedAt: DateTime.now().toISO(),
+    };
+
+    // If user matching score job details is not undefined then update it.
+    if (userMatchingScoreJobDetails !== undefined) {
+      // Update the `status` in aws opensearch in `worko-user-matching-score-job` index
+      await userMatchingScoreJobServiceObj.updateUserMatchingScoreJobById(
+        userMatchingScoreJobDetails.id,
+        updateUserMatchingScoreJob
+      );
+    }
+
+    // Fetch candidate details using user ID
+    const candidateDetails: DbUserDetailDto =
+      await UserDetailService.getUserByIdOne(userId);
+
+    // Send email notification to the candidate about the new job application
+    const sendEmailResponse: boolean =
+      await this.sendEmailToCandidateOnNewJobApplication(
+        jobApplicationDetails,
+        candidateDetails,
+        jobDetails.jobTitle
+      );
+    global.logger.debug({
+      sendEmailResponse,
+      email: emailId,
+      userId: userId,
+    });
+
+    // Prepare the job application SK for the job application to Pass to calculate matching score Lambda
+    const jobApplicationSK: string =
+      userJobApplicationDao.sortKeys.SK_JOB_APP_ID.strtr({
+        "{id}": jobApplicationDetails.id,
+      });
+
+    // Invoke a lambda function to calculate matching scores for this job application
+    await InvokeLambdaService.triggerMatchingScoreCalculation(
+      emailId,
+      MatchingScoreEntityEnum.JOB_APP,
+      jobApplicationSK
+    );
+
+    /**
+     * 1. In matching score calculation lambda(python language) code `sqs` will be triggerred
+     * 2. After triggering `sqs` you need to Perform actions according to matching score calculation
+     *    1. If updated matching score is less than threshold
+     *       1. Then schedule job to 24 hours,
+     *          1. After 24 hours update the `status` to `REJECTED`
+     *    2. If updated matching score is greater than threshold
+     *       1. Then send email to all corporates regarding the application
+     */
+
+    // Return created job application details
+    return jobApplicationDetails;
+  }
+
+  /**
+   * getJobApplicationById
+   *
+   * Retrieves and parses the job application details by job application ID.
+   *
+   * This method fetches the job application details using the provided ID,
+   * parses the details, and returns the parsed job application data. If the
+   * job application details are not found, it throws a `BaseError`.
+   *
+   * @param {string} jobApplicationId - The job application ID.
+   * @throws {BaseError} If the job application details are not found.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the parsed job application data.
+   */
+  async getJobApplicationById(
+    jobApplicationId: string
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(
+      "Get Job Application By Id with Parsing Details and throw error if not found [Service]",
+      {
+        filePath: __filename,
+        methodName: this.getJobApplicationById.name,
+        jobApplicationId,
+      }
+    );
+
+    // Fetch job application details using job application ID
+    const jobAppliactionDetails: QueryResponse<DbUserJobApplicationDto> =
+      await userJobApplicationDao.getJobApplicationById(jobApplicationId);
+
+    // If job application details are not found, throw an error
+    if (!jobAppliactionDetails.count) {
+      throw new BaseError(
+        `The job application details not found".`,
+        HttpStatusCode.NOT_FOUND_404
+      );
+    }
+
+    return jobAppliactionDetails[0];
+  }
+
+  /**
+   * getJobApplicationScore
+   *
+   * Retrieves the matching score for the job application with the specified
+   * job application ID.
+   *
+   * @param {string} jobApplicationId - The job application ID.
+   * @returns {Promise<QueryResponse<DbUserJobApplicationDto>>} A promise that resolves to the matching score of the job application
+   */
+  async getJobApplicationScore(
+    jobApplicationId: string
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info("Get Job Application Score [Service]", {
+      filePath: __filename,
+      methodName: this.getJobApplicationScore.name,
+    });
+
+    // Fetch job application details using job application ID
+    const jobAppliactionDetails: QueryResponse<DbUserJobApplicationDto> =
+      await userJobApplicationDao.getJobApplicationScore(jobApplicationId);
+
+    // If job application details are not found, throw an error
+    if (!jobAppliactionDetails.count) {
+      throw new BaseError(
+        `The job application details not found".`,
+        HttpStatusCode.NOT_FOUND_404
+      );
+    }
+
+    return jobAppliactionDetails[0];
+  }
+
+  /**
+   * deleteUserJobApplicationById
+   *
+   * Deletes the job application in the database identified by the given job application ID.
+   *
+   * This method deletes the job application in the database identified by the given job application ID.
+   * It logs the deletion action and returns a promise that resolves to `void`.
+   *
+   * @param {string} id - The job application ID to be deleted.
+   * @returns {Promise<void>} A promise that resolves to `void`.
+   */
+  async deleteUserJobApplicationById(id: string): Promise<void> {
+    // logger
+    global.logger.info(`Delete User Job Application [DAO]`, {
+      filePath: __filename,
+      methodName: this.deleteUserJobApplicationById.name,
+    });
+
+    // Fetch job application details
+    const userJobApplicationDetails: DbUserJobApplicationDto = (
+      await userJobApplicationDao.getJobApplicationById(id)
+    )[0];
+
+    // delete job application
+    return userJobApplicationDao.deleteUserJobApplication(
+      userJobApplicationDetails
+    );
+  }
+
+  /**
+   * prepareUserJobApplicationUpdateDtoToRejectAfterXHours
+   *
+   * Prepares a user job application update dto after a certain number of hours.
+   *
+   * This method fetches the job application details using the provided job application ID and
+   * logs an error if the job application details are not found. It then prepares a user job
+   * application update dto by setting the status to `REJECTED` and adding the current date and time
+   * to the status tracker. Finally, it updates the job application using the prepared update
+   * dto and returns a promise that resolves to `true` if the update was successful, or `false` if
+   * the update failed.
+   *
+   * @param {string} userJobApplicationId - The ID of the job application to be updated.
+   * @param {string} userEmail - The email address of the user who applied for the job.
+   * @returns {Promise<boolean>} A promise that resolves to `true` if the update was successful, or `false` if the update failed.
+   */
+  async prepareUserJobApplicationUpdateDtoToRejectAfterXHours(
+    userJobApplicationId: string,
+    userEmail: string
+  ): Promise<boolean> {
+    // logger
+    global.logger.info("Prepare User Job Application Update Dto [Service]", {
+      methodName: this.prepareJobApplicationsWithUserDetails.name,
+    });
+
+    // Fetch job application details using job application ID and log error if not found
+    const userJobApplicationDetailsQueryResponse: QueryResponse<DbUserJobApplicationDto> =
+      await userJobApplicationDao.getJobApplicationById(userJobApplicationId);
+    if (!userJobApplicationDetailsQueryResponse.count) {
+      global.logger.error("User job application not found", {
+        methodName: this.prepareJobApplicationsWithUserDetails.name,
+        userEmail,
+        userJobApplicationId,
+      });
+    }
+
+    // Fetch job application details
+    const userJobApplicationDetails: DbUserJobApplicationDto =
+      userJobApplicationDetailsQueryResponse[0];
+
+    // Prepare user job application update dto
+    const updateUserJobApplicationDto: UserJobApplicationInternalUpdateDto = {
+      status: JobApplicationStatus.REJECTED,
+      statusTracker: [
+        ...userJobApplicationDetails.statusTracker,
+        {
+          oldStatus: userJobApplicationDetails.status,
+          newStatus: JobApplicationStatus.REJECTED,
+          actionDate: DateTime.now().toISO(),
+          userId: undefined,
+          userType: undefined,
+        },
+      ],
+    };
+
+    const updatedUserJobApplicationDetails: DbUserJobApplicationDto =
+      await this.updateUserJobApplicationByIdAndEmail(
+        userJobApplicationId,
+        userEmail,
+        updateUserJobApplicationDto
+      );
+
+    if (!updatedUserJobApplicationDetails) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * updateUserJobApplicationByIdAndEmail
+   *
+   * Updates a job application by its ID and user email.
+   *
+   * This method updates a job application with the provided update data.
+   *
+   * @param {string} userJobApplicationId - The ID of the job application to be updated.
+   * @param {string} userEmail - The email of the user who applied for the job.
+   * @param {UserJobApplicationInternalUpdateDto} userJobApplicationUpdateDto - The update data for the job application.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated job application data.
+   */
+  async updateUserJobApplicationByIdAndEmail(
+    userJobApplicationId: string,
+    userEmail: string,
+    userJobApplicationUpdateDto: UserJobApplicationInternalUpdateDto
+  ): Promise<DbUserJobApplicationDto> {
+    // Update user job application
+    global.logger.info("Update User Job Application By Id [Service]", {
+      filePath: __filename,
+      methodName: this.updateUserJobApplicationByIdAndEmail.name,
+      userJobApplicationId,
+    });
+
+    // Update user job application
+    return userJobApplicationDao.updateUserJobApplicationByIdAndEmail(
+      userJobApplicationId,
+      userEmail,
+      userJobApplicationUpdateDto
+    );
+  }
+
+  /**
+   * prepareJobApplicationsWithUserDetails
+   *
+   * Prepares job applications with user details.
+   *
+   * This method takes an array of job applications and returns an array of job applications
+   * with user details. It first gets the unique user email ids from the job applications
+   * array and then fetches the user details for those email ids. It then converts the
+   * user details to a map for easy access and finally attaches the user details to each
+   * job application.
+   *
+   * @param {DbUserJobApplicationDto & { jobUrl: string | undefined; jobTitle: string | undefined; jdExtracted: string | undefined; }[]} jobApplicationsArray - An array of job applications.
+   * @returns {Promise<JobApplicationWithUserDetailsType[]>} A promise that resolves to an array of job applications with user details.
+   */
+  async prepareJobApplicationsWithUserDetails(
+    jobApplicationsArray: (DbUserJobApplicationDto & {
+      jobUrl: string | undefined;
+      jobTitle: string | undefined;
+      jdExtracted: string | undefined;
+    })[]
+  ): Promise<JobApplicationWithUserDetailsType[]> {
+    // logger
+    global.logger.info("Prepare job applications with user details [Service]", {
+      filePath: __filename,
+      methodName: this.prepareJobApplicationsWithUserDetails.name,
+    });
+
+    // get unique user email ids
+    const uniqueUserEmailIds: string[] = Array.from(
+      new Set(
+        jobApplicationsArray.map(
+          (
+            item: DbUserJobApplicationDto & {
+              jobUrl: string | undefined;
+              jobTitle: string | undefined;
+              jdExtracted: string | undefined;
+            }
+          ) => item.PK.split("#")[2]
+        )
+      )
+    );
+
+    // get user details by unique user email ids
+    const userDetailsArray: UserDetailProfileInfoType[] =
+      await userDetailServiceObj.getUserDetailsByEmailIds(uniqueUserEmailIds);
+
+    // Covert user details to map for easy access
+    const userDetailsMap: Map<string, UserDetailProfileInfoType> = new Map(
+      userDetailsArray.map((userProfileDetail: UserDetailProfileInfoType) => [
+        userProfileDetail.userDetails.PK.split("#")[2],
+        userProfileDetail,
+      ])
+    );
+
+    // attach user details to job applications
+    const jobApplicationsWithUserDetails: JobApplicationWithUserDetailsType[] =
+      await Promise.all(
+        jobApplicationsArray.map(
+          async (
+            eachJobApplication: DbUserJobApplicationDto & {
+              jobUrl: string | undefined;
+              jobTitle: string | undefined;
+              jdExtracted: string | undefined;
+            }
+          ) => {
+            // get user details for each job application
+            const userDetails: UserDetailProfileInfoType | undefined =
+              userDetailsMap.get(eachJobApplication.PK.split("#")[2]);
+
+            // if user details not found, return job application without applicant details
+            if (!userDetails) {
+              return {
+                ...eachJobApplication,
+                applicantDetails: undefined,
+              };
+            }
+
+            const jobAppliactionDetailWithUserDetail: JobApplicationWithUserDetailsType =
+              {
+                ...eachJobApplication,
+                applicantDetails: {
+                  ...userDetails.userDetails,
+                  profileImageAwsS3SignedUrl:
+                    userDetails.profileImageAwsS3SignedUrl,
+                  cvAwsS3SignedUrl: userDetails.cvAwsS3SignedUrl,
+                },
+              };
+
+            return jobAppliactionDetailWithUserDetail;
+          }
+        )
+      );
+
+    return jobApplicationsWithUserDetails;
+  }
+
+  /**
+   * getJobApplicationsByFilterOptions
+   *
+   * Retrieves job applications based on the provided filter options.
+   *
+   * This method allows for the querying of job applications using various
+   * filter criteria such as company ID, user email, status, and job ID.
+   * The results are sorted according to the specified sort order and
+   * paginated using the provided pagination helper.
+   *
+   * @param {UserJobApplicationListingFilterOptions} jobApplicationRequestBody - The filter options for querying job applications.
+   * @returns {Promise<
+   *   | PaginatedResultsWithMatchingConditionsInternalResponse<
+   *       JobApplicationWithUserDetailsType[]
+   *     >
+   *   | PaginatedResultsWithMatchingConditionsInternalResponse<
+   *       (DbUserJobApplicationDto & {
+   *         jobUrl: string | undefined;
+   *         jobTitle: string | undefined;
+   *         jdExtracted: string | undefined;
+   *       })[]
+   *     >
+   * >} A promise that resolves to the paginated results of job applications matching the filter conditions.
+   */
+  async getJobApplicationsByFilterOptions(
+    jobApplicationRequestBody: UserJobApplicationListingFilterOptions
+  ): Promise<
+    | PaginatedResultsWithMatchingConditionsInternalResponse<
+        JobApplicationWithUserDetailsType[]
+      >
+    | PaginatedResultsWithMatchingConditionsInternalResponse<
+        (DbUserJobApplicationDto & {
+          jobUrl: string | undefined;
+          jobTitle: string | undefined;
+          jdExtracted: string | undefined;
+        })[]
+      >
+  > {
+    // logger
+    global.logger.info("Get Job Applications By filter options [Service]", {
+      filePath: __filename,
+      methodName: this.getJobApplicationsByFilterOptions.name,
+    });
+
+    // Fetch job applications
+    const jobApplicationsDetails: PaginatedResultsWithMatchingConditionsResponse<DbUserJobApplicationDto> =
+      await userJobApplicationDao.getJobApplicationsByFilterOptions(
+        jobApplicationRequestBody
+      );
+
+    // Extract job applications
+    const {
+      lastKey,
+      count,
+      timesQueried,
+      queriedCount,
+      ...userJobApplicationsData
+    } = jobApplicationsDetails;
+
+    // Convert to array
+    const userJobApplicationArray: DbUserJobApplicationDto[] = Object.values(
+      userJobApplicationsData
+    );
+
+    // Enrich the data with company job details
+    const userJobApplicationArrayWithCompanyJobDetails: (DbUserJobApplicationDto & {
+      jobUrl: string | undefined;
+      jobTitle: string | undefined;
+      jdExtracted: string | undefined;
+    })[] = await injectCompanyJobDetails<DbUserJobApplicationDto>(
+      userJobApplicationArray
+    );
+
+    // If the user is a candidate then return job applications without attaching user details
+    if (jobApplicationRequestBody.userType === UserType.CAND) {
+      const jobApplicationsWithoutUserDetails: PaginatedResultsWithMatchingConditionsInternalResponse<
+        (DbUserJobApplicationDto & {
+          jobUrl: string | undefined;
+          jobTitle: string | undefined;
+          jdExtracted: string | undefined;
+        })[]
+      > = {
+        data: userJobApplicationArrayWithCompanyJobDetails,
+        lastKey,
+        count,
+        timesQueried,
+        queriedCount,
+      };
+
+      return jobApplicationsWithoutUserDetails;
+    }
+
+    // Prepare job applications
+    const jobApplicationsWithUserDetails: JobApplicationWithUserDetailsType[] =
+      await this.prepareJobApplicationsWithUserDetails(
+        userJobApplicationArrayWithCompanyJobDetails
+      );
+
+    const paginatedJobApplicationsWithUserDetails: PaginatedResultsWithMatchingConditionsInternalResponse<
+      JobApplicationWithUserDetailsType[]
+    > = {
+      data: jobApplicationsWithUserDetails,
+      lastKey,
+      count,
+      timesQueried,
+      queriedCount,
+    };
+
+    return paginatedJobApplicationsWithUserDetails;
+  }
+
+  /**
+   * sendEmailToCandidateOnJobApplicationUpdate
+   *
+   * Sends an email to the candidate when their job application status is updated.
+   *
+   * @param {DbUserJobApplicationDto} updatedJobApplication - The updated job application data.
+   * @param {DbUserDetailDto} candidateDetails - The parsed candidate details.
+   * @returns {Promise<boolean>} A promise that resolves to true if the email was sent successfully.
+   */
+  async sendEmailToCandidateOnJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    candidateDetails: DbUserDetailDto
+  ): Promise<boolean> {
+    const toAddress: EmailSourceDestinationAddress = {
+      email: updatedJobApplication.PK.split("#")[2],
+      fullName: candidateDetails.name,
+    };
+
+    // Get company job details query response
+    const companyJobDetailsQueryResponse: QueryResponse<DbCompanyJobDto> =
+      await companyJobServiceObj.getJobById(updatedJobApplication.jobId);
+
+    // Get company job details from query response
+    const companyJobDetails: DbCompanyJobDto =
+      companyJobDetailsQueryResponse[0];
+
+    switch (updatedJobApplication.status) {
+      case JobApplicationStatus.CV_DOWNLOADED: {
+        // Construct the email placeholders object
+        const cvDownloadedEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE =
+          {
+            candName: candidateDetails.name.toTitleCase(),
+            companyName: updatedJobApplication.companyName.toTitleCase(),
+            jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+            workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
+            guidanceEmail: APP_CONSTANTS.GUIDANCE_EMAIL,
+          };
+
+        // Send email to the corporate user
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE,
+          toAddress,
+          cvDownloadedEmailPlaceholders
+        );
+        break;
+      }
+      case JobApplicationStatus.UNDER_EVALUATION: {
+        // Construct the email placeholders object
+        const underEvaluationEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE =
+          {
+            candName: candidateDetails.name.toTitleCase(),
+            companyName: updatedJobApplication.companyName.toTitleCase(),
+            jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+            workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
+            guidanceEmail: APP_CONSTANTS.GUIDANCE_EMAIL,
+          };
+
+        // Send email to the corporate user
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE,
+          toAddress,
+          underEvaluationEmailPlaceholders
+        );
+        break;
+      }
+      case JobApplicationStatus.HIRED: {
+        // Construct the email placeholders object
+        const hiredEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE =
+          {
+            candName: candidateDetails.name.toTitleCase(),
+            companyName: updatedJobApplication.companyName.toTitleCase(),
+            jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+            workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
+          };
+
+        // Send email to the corporate user
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE,
+          toAddress,
+          hiredEmailPlaceholders
+        );
+        break;
+      }
+      case JobApplicationStatus.REJECTED: {
+        // Construct the email placeholders object
+        const rejectedEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE =
+          {
+            candName: candidateDetails.name.toTitleCase(),
+            companyName: updatedJobApplication.companyName.toTitleCase(),
+            jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+            hrFeedback:
+              updatedJobApplication.rejectedByUserId?.reason ??
+              "Hiring manager has not provided any feedback",
+            workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
+          };
+
+        // Send email to the corporate user
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE,
+          toAddress,
+          rejectedEmailPlaceholders
+        );
+        break;
+      }
+      default:
+        return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * formatJobApplicationStatus
+   *
+   * Formats the job application status to a human-readable string.
+   * As of now we are formatting to send emails to the end users.
+   *
+   * @param {JobApplicationStatusType} status - The job application status.
+   * @returns {string} The formatted job application status.
+   */
+  formatJobApplicationStatus(status: JobApplicationStatusType): string {
+    global.logger.info("Format Job Application Status [Service]", {
+      filePath: __filename,
+      methodName: this.formatJobApplicationStatus.name,
+      status,
+    });
+
+    /**
+     * Record<JobApplicationStatus, string> creates an object type where:
+     *    1. The keys must be one of the JobApplicationStatus enum values ("APPLIED", "REJECTED", etc.).
+     *    2. The values must be strings.
+     */
+    const formattedStatuses: Record<JobApplicationStatus, string> = {
+      [JobApplicationStatus.APPLIED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.APPLIED,
+      [JobApplicationStatus.REJECTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.REJECTED,
+      [JobApplicationStatus.CV_DOWNLOADED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.CV_DOWNLOADED,
+      [JobApplicationStatus.UNDER_EVALUATION]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.UNDER_EVALUATION,
+      [JobApplicationStatus.PROCESSING_INTERVIEW]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.PROCESSING_INTERVIEW,
+      [JobApplicationStatus.INTERVIEW_DONE]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.INTERVIEW_DONE,
+      [JobApplicationStatus.HIRED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.HIRED,
+    };
+
+    // Return the formatted status or default to "Applied"
+    return (
+      formattedStatuses[status] ||
+      formattedStatuses[JobApplicationStatus.APPLIED]
+    );
+  }
+
+  /**
+   * sendEmailToJobPosterOnJobApplicationUpdate
+   *
+   * Sends an email to the job poster when a candidate's job application status is updated.
+   *
+   * @param {DbUserJobApplicationDto} updatedJobApplication - The updated job application data.
+   * @returns {Promise<boolean>} A promise that resolves to true if the email was sent successfully.
+   */
+  async sendEmailToJobPosterOnJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto
+  ): Promise<boolean> {
+    global.logger.info(
+      "Send Email To Job Poster On Job Application Update [Service]",
+      {
+        filePath: __filename,
+        methodName: this.sendEmailToJobPosterOnJobApplicationUpdate.name,
+        updatedJobApplicationId: updatedJobApplication.id,
+      }
+    );
+
+    // Send email to the job poster placeholder details
+    const sendEmailPlaceholderDetailsToJobPoster: EmailPlaceholderDetailsToJobPosterType =
+      await this.preparePlaceholdersToSendEmailToJobPoster(
+        updatedJobApplication
+      );
+
+    const {
+      jobPosterName,
+      jobTitle,
+      candidateName,
+      status,
+      jobPosterSendingEmail,
+    } = sendEmailPlaceholderDetailsToJobPoster;
+
+    const toAddress: EmailSourceDestinationAddress = {
+      email: jobPosterSendingEmail,
+      fullName: jobPosterName,
+    };
+
+    // Construct the email placeholders object
+    const emailPlaceholders: EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION =
+      {
+        jobPosterName,
+        jobTitle,
+        candidateName,
+        updatedStatus: this.formatJobApplicationStatus(
+          status as JobApplicationStatusType
+        ),
+      };
+
+    // Send email to the corporate user
+    await emailLibrary.sendEmail(
+      EmailTemplateEnum.CORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION,
+      toAddress,
+      emailPlaceholders
+    );
+
+    return true;
+  }
+
+  /**
+   * preparePlaceholdersToSendEmailToJobPoster
+   *
+   * Sends job application status update email to job poster. If job poster is a corporate user,
+   * send email to the corporate user's email address. Otherwise, send email to the user's email address.
+   *
+   * @param {DbUserJobApplicationDto} parsedJobApplicationDetails - The parsed job application details.
+   * @returns {Promise<EmailPlaceholderDetailsToJobPosterType>} - A promise that resolves to the placeholders for the email template.
+   */
+  async preparePlaceholdersToSendEmailToJobPoster(
+    parsedJobApplicationDetails: DbUserJobApplicationDto
+  ): Promise<EmailPlaceholderDetailsToJobPosterType> {
+    // get candidate details by email
+    const candidateDetails: DbUserDetailDto =
+      await userDetailServiceObj.getUserDetailsByEmail(
+        parsedJobApplicationDetails.PK.split("#")[2]
+      );
+
+    // get job id from jobApplicationDetails
+    const jobId: string = parsedJobApplicationDetails.jobId;
+
+    // get posted job details by jobId
+    const postedJobDetails: DbCompanyJobDto = (
+      await companyJobServiceObj.getJobById(jobId)
+    )[0];
+
+    let jobPosterSendingEmail: string;
+    let jobPosterName: string;
+
+    // check if job poster is a corporate user
+    if (postedJobDetails.createdByCorporateUserId) {
+      // get job poster details by userId
+      const jobPosterDetails: DbCorporateUserDto =
+        await corporateUserServiceObj.getCorpUserByIdWithParsing(
+          postedJobDetails.createdByCorporateUserId
+        );
+
+      // assign job poster sending email
+      jobPosterSendingEmail = jobPosterDetails.email;
+
+      // assign job poster name
+      jobPosterName = `${jobPosterDetails.firstName.toTitleCase()} ${jobPosterDetails.lastName.toTitleCase()}`;
+    } else {
+      // get job poster details by userId
+      const jobPosterDetails: DbUserDetailDto =
+        await userDetailServiceObj.getUserByIdOne(
+          postedJobDetails.createdByUserId as string
+        );
+
+      // assign job poster sending email
+      jobPosterSendingEmail = jobPosterDetails.PK.split("#")[2];
+
+      // assign job poster name
+      jobPosterName = jobPosterDetails.name.toTitleCase();
+    }
+
+    const placeholderDetails: EmailPlaceholderDetailsToJobPosterType = {
+      jobPosterSendingEmail,
+      jobPosterName,
+      jobTitle: postedJobDetails.jobTitle.toTitleCase(),
+      status: parsedJobApplicationDetails.status,
+      candidateName: candidateDetails.name.toTitleCase(),
+      candidateEmailId: candidateDetails.PK.split("#")[2],
+    };
+
+    global.logger.debug(
+      `placeholder details to job poster - jobPosterSendingEmail:`,
+      {
+        filePath: __filename,
+        methodName: this.preparePlaceholdersToSendEmailToJobPoster.name,
+        placeholderDetails,
+      }
+    );
+
+    return placeholderDetails;
+  }
+
+  /**
+   * updateJobApplicationByCorpUser
+   *
+   * Updates a job application by corporate user.
+   *
+   * This method updates a job application with the provided status and
+   * reason. It also sends an email notification to the candidate of the
+   * job application status update.
+   *
+   * @param {string} jobApplicationId - The ID of the job application to be updated.
+   * @param {UserJobApplicationUpdateApiDTO} jobApplicationRequestBody - The update data for the job application.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated job application data.
+   */
+  async updateJobApplicationByCorpUser(
+    jobApplicationId: string,
+    jobApplicationRequestBody: UserJobApplicationUpdateApiDTO
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(`Update Job Application By Corp User [Service]`, {
+      filePath: __filename,
+      methodName: this.updateJobApplicationByCorpUser.name,
+      jobApplicationId,
+      jobApplicationRequestBody,
+    });
+
+    // Fetch job application details
+    const parsedJobApplication: DbUserJobApplicationDto =
+      await this.getJobApplicationById(jobApplicationId);
+
+    // Prepare update data
+    let updateData: UserJobApplicationInternalUpdateDto;
+
+    // Prepare update data based on job application status
+    if (jobApplicationRequestBody.status === JobApplicationStatus.REJECTED) {
+      const statusTrackerData: JobApplicationStatusTrackerType = [
+        ...parsedJobApplication.statusTracker,
+        {
+          oldStatus: parsedJobApplication.status,
+          newStatus: jobApplicationRequestBody.status,
+          actionDate: DateTime.now().toISO(),
+          userId: jobApplicationRequestBody.userId,
+          userType: jobApplicationRequestBody.userType,
+        },
+      ];
+
+      updateData = {
+        status: jobApplicationRequestBody.status,
+        rejectedByUserId: {
+          userId: jobApplicationRequestBody.userId,
+          actionDate: DateTime.now().toISO(),
+          reason:
+            jobApplicationRequestBody.reason ?? "Reason not provided by User",
+          userComment:
+            jobApplicationRequestBody.userComment ??
+            "Comment not provided by User",
+        },
+        statusTracker: statusTrackerData,
+      };
+    } else {
+      const statusTrackerData: JobApplicationStatusTrackerType = [
+        ...parsedJobApplication.statusTracker,
+        {
+          oldStatus: parsedJobApplication.status,
+          newStatus: jobApplicationRequestBody.status,
+          actionDate: DateTime.now().toISO(),
+          userId: jobApplicationRequestBody.userId,
+          userType: jobApplicationRequestBody.userType,
+        },
+      ];
+
+      updateData = {
+        status: jobApplicationRequestBody.status,
+        statusTracker: statusTrackerData,
+      };
+    }
+
+    // Update job application by corp user
+    let updatedJobApplication: DbUserJobApplicationDto =
+      await userJobApplicationDao.updateJobApplicationStatus(
+        parsedJobApplication.PK,
+        parsedJobApplication.SK,
+        updateData
+      );
+
+    // Send email to candidate on job application update
+    if (updatedJobApplication) {
+      const candidateEmail: string = updatedJobApplication.PK.split("#")[2];
+
+      // parse candidate details
+      const candidateDetails: DbUserDetailDto =
+        await userDetailServiceObj.getUserDetailsByEmail(candidateEmail);
+
+      // send email to candidate
+      const sendEmailToCandidateOnJobApplicationUpdate: boolean =
+        await this.sendEmailToCandidateOnJobApplicationUpdate(
+          updatedJobApplication,
+          candidateDetails
+        );
+      global.logger.debug(`Send Email To Candidate On Job Application Update`, {
+        filePath: __filename,
+        methodName: this.updateJobApplicationByCorpUser.name,
+        status: updatedJobApplication.status,
+        sendEmailToCandidateOnJobApplicationUpdate:
+          sendEmailToCandidateOnJobApplicationUpdate,
+        email: candidateEmail,
+      });
+
+      // send email to job poster on job application update
+      const sendEmailToJobPosterOnJobApplicationUpdate: boolean =
+        await this.sendEmailToJobPosterOnJobApplicationUpdate(
+          updatedJobApplication
+        );
+      global.logger.debug(
+        `Send Email To Job Poster On Job Application Update`,
+        {
+          filePath: __filename,
+          methodName: this.updateJobApplicationByCorpUser.name,
+          status: updatedJobApplication.status,
+          sendEmailToJobPosterOnJobApplicationUpdate:
+            sendEmailToJobPosterOnJobApplicationUpdate,
+        }
+      );
+    }
+
+    return updatedJobApplication;
+  }
+
+  /**
+   * sendEmailToCorporateUsersOnNewJobApplication
+   *
+   * Sends an email to all corporate users for a company when a job application is created.
+   *
+   * @param {DbUserJobApplicationDto} parsedJobApplication - The parsed job application data.
+   * @param {DbUserDetailDto} candidateDetails - The parsed candidate details.
+   * @returns {Promise<boolean>} A promise that resolves to true if the email was sent successfully.
+   */
+  async sendEmailToCorporateUsersOnNewJobApplication(
+    parsedJobApplication: DbUserJobApplicationDto,
+    candidateDetails: DbUserDetailDto
+  ): Promise<boolean> {
+    global.logger.info(
+      `Send Email To Corporate Users On New Job Application [Service]`,
+      {
+        filePath: __filename,
+        methodName: this.sendEmailToCorporateUsersOnNewJobApplication.name,
+        jobApplicationId: parsedJobApplication.id,
+        candidateEmail: candidateDetails.PK.split("#")[2],
+      }
+    );
+
+    // Get all corporate users without pagination
+    const corporateUsersData: DbCorporateUserDto[] =
+      await corporateUserServiceObj.getAllCorporateUsersWithoutPagination(
+        parsedJobApplication.companyId
+      );
+
+    // Check if there are any corporate users and if not return false
+    if (corporateUsersData.length === 0) {
+      return false;
+    }
+
+    // Get company job details query response
+    const companyJobDetailsQueryResponse: QueryResponse<DbCompanyJobDto> =
+      await companyJobServiceObj.getJobById(parsedJobApplication.jobId);
+
+    // Get company job details from query response
+    const companyJobDetails: DbCompanyJobDto =
+      companyJobDetailsQueryResponse[0];
+
+    // Send email to each corporate user
+    const corporateUsersEmailPromises = Object.values(corporateUsersData).map(
+      (corporateUser: DbCorporateUserDto) => {
+        // Retrieve email and first name from the corporate user
+        const { email, firstName, lastName } = corporateUser;
+
+        // Construct the corporate user full name
+        const corporateUserFullName: string =
+          `${firstName} ${lastName}`.toTitleCase();
+
+        // Construct the email address object
+        const toAddress: EmailSourceDestinationAddress = {
+          email,
+          fullName: corporateUserFullName,
+        };
+
+        // Construct the email placeholders object
+        const emailPlaceholders: EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION =
+          {
+            corporateUserFullName: corporateUserFullName,
+            candidateName: candidateDetails.name.toTitleCase(),
+            jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+            matchingScore: parsedJobApplication.matchingScore!,
+            scoreDetails:
+              parsedJobApplication.scoreDetails ??
+              `Overall Matching Score: ${parsedJobApplication.matchingScore}`,
+          };
+
+        // Send email to the corporate user
+        return emailLibrary.sendEmail(
+          EmailTemplateEnum.CORP_RECEIVED_JOB_APPLICATION_NOTIFICATION,
+          toAddress,
+          emailPlaceholders
+        );
+      }
+    );
+
+    // Wait for all send email promises to resolve
+    await Promise.all(corporateUsersEmailPromises);
+
+    return true;
+  }
+
+  /**
+   * sendEmailToCandidateOnNewJobApplication
+   *
+   * Sends an email notification to the candidate upon the creation of their job application.
+   *
+   * @param {DbUserJobApplicationDto} parsedJobApplication - The parsed job application details.
+   * @param {DbUserDetailDto} candidateDetails - The details of the candidate.
+   * @returns {Promise<boolean>} A promise that resolves to true if the email was sent successfully.
+   */
+  async sendEmailToCandidateOnNewJobApplication(
+    parsedJobApplication: DbUserJobApplicationDto,
+    candidateDetails: DbUserDetailDto,
+    jobTitle: string
+  ): Promise<boolean> {
+    global.logger.info(
+      `Send Email To Candidate On Job Application Creation [Service]`,
+      {
+        filePath: __filename,
+        methodName: this.sendEmailToCandidateOnNewJobApplication.name,
+      }
+    );
+
+    // Construct the email address object
+    const toAddress: EmailSourceDestinationAddress = {
+      email: candidateDetails.PK.split("#")[2],
+      fullName: candidateDetails.name,
+    };
+
+    // Construct the email placeholders object
+    const emailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION =
+      {
+        candidateName: candidateDetails.name.toTitleCase(),
+        jobTitle: jobTitle.toTitleCase(),
+        companyName: parsedJobApplication.companyName,
+      };
+
+    const { awsMessageId } = await emailLibrary.sendEmail(
+      EmailTemplateEnum.CAND_RECEIVED_JOB_APPLICATION_NOTIFICATION,
+      toAddress,
+      emailPlaceholders
+    );
+
+    // If awsMessageId is null, return false because email was not sent
+    if (!awsMessageId) {
+      return false;
+    }
+
+    // If awsMessageId is not null, return true because email was sent
+    return true;
+  }
+
+  /**
+   * updateJobApplicationRequestFeedback
+   *
+   * @param {UserJobApplicationRequestFeedbackApiDTO} requestBody - The request body containing the application date and additional comments.
+   * @param {string} jobApplicationId - The ID of the job application to be updated.
+   * @returns {Promise<boolean>} A promise that resolves to true if the job application request feedback was updated successfully.
+   */
+  async updateJobApplicationRequestFeedback(
+    requestBody: UserJobApplicationRequestFeedbackApiDTO,
+    jobApplicationId: string
+  ): Promise<boolean> {
+    // get job application details by jobApplicationId
+    const jobApplicationDetails: DbUserJobApplicationDto =
+      await this.getJobApplicationById(jobApplicationId);
+
+    const sendEmailPlaceholderDetailsToJobPoster: EmailPlaceholderDetailsToJobPosterType =
+      await this.preparePlaceholdersToSendEmailToJobPoster(
+        jobApplicationDetails
+      );
+
+    const {
+      jobPosterName,
+      jobTitle,
+      candidateName,
+      status,
+      jobPosterSendingEmail,
+    } = sendEmailPlaceholderDetailsToJobPoster;
+
+    // Construct the email address object
+    const toAddress: EmailSourceDestinationAddress = {
+      email: jobPosterSendingEmail,
+      fullName: jobPosterName,
+    };
+
+    // Construct the email placeholders object
+    const emailPlaceholders: EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION =
+      {
+        jobPosterName: jobPosterName.toTitleCase(),
+        candidateName: candidateName.toTitleCase(),
+        jobTitle: jobTitle.toTitleCase(),
+
+        /**
+         * Convert application date to required format
+         *
+         * If `requestBody.applicationDate` is `2024-12-09T05:19:11.312Z`
+         * then `formattedDate` will be `9th December 2024`
+         */
+        applicationDate: DateTime.fromISO(requestBody.applicationDate).toFormat(
+          "d'th' MMMM yyyy"
+        ),
+
+        status: this.formatJobApplicationStatus(
+          status as JobApplicationStatusType
+        ),
+      };
+
+    // Send email to the corporate user
+    const sendEmailDetails: {
+      awsMessageId: string | null;
+      systemLogId: string | null;
+    } = await emailLibrary.sendEmail(
+      EmailTemplateEnum.CORP_REQUEST_FEEDBACK_NOTIFICATION,
+      toAddress,
+      emailPlaceholders
+    );
+
+    if (!sendEmailDetails.awsMessageId) {
+      return false;
+    }
+
+    // Update the job application request feedback
+    await userJobApplicationDao.updateJobApplicationRequestFeedback(
+      jobApplicationDetails.PK.split("#")[2], // email
+      jobApplicationDetails.id // job Application Id
+    );
+
+    return true;
+  }
+
+  /**
+   * scriptBatchCreateUserJobApplications
+   *
+   * The script to create user job applications in batches.
+   *
+   * This method is used to migrate the `user job applications` from 
+   * `worko` dynamodb table to `worko-job-app` dynamodb table
+   *
+   * @see https://dynamoosejs.com/guide/Model#modelbatchputitems-settings-callback
+   * @see https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchWriteItem.html#:~:text=The%20BatchWriteItem%20operation%20puts%20or,item%20put%20or%20delete%20operations.
+   *
+   * @param {UserJobApplicationBulkUploadDto[]} formattedJobListingArray - An array of formatted job applications to be created in the database.
+   *
+   * @returns {Promise<{unprocessedItems: ObjectType[]}>} - A promise that resolves to an object containing an array of unprocessed items that failed to be created in the database.
+   */
+  async scriptBatchCreateUserJobApplications(
+    formattedJobListingArray: UserJobApplicationBulkUploadDto[]
+  ): Promise<{
+      unprocessedItems: ObjectType[];
+    }> {
+    return userJobApplicationDao.scriptBatchCreateUserJobApplications(
+      formattedJobListingArray
+    );
+  }
+}
+
+// Create an instance of the UserJobApplicationService class and export it
+const userJobApplicationServiceObj = new UserJobApplicationService();
+export { userJobApplicationServiceObj, UserJobApplicationService };

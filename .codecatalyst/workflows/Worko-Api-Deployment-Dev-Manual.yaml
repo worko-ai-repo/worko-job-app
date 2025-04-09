@@ -1,0 +1,39 @@
+Name: Worko-Job-App-Deployment-Dev-Manual
+SchemaVersion: "1.0"
+
+
+# Required - Define action configurations.
+Actions:
+  worko-job-app-build-stage:
+    # Identifies the action. Do not modify this value.
+    Identifier: aws/build@v1.0.0
+    # Specifies the source and/or artifacts to pass to the action as input.
+    Inputs:
+      # Optional
+      Sources:
+        - WorkflowSource # This specifies that the action requires this Workflow as a source
+    Outputs:
+      # Optional; Automatically discover reports for popular test frameworks
+      AutoDiscoverReports:
+        Enabled: true
+        # Use as prefix for the report files
+        ReportNamePrefix: rpt
+    # Defines the action's properties.
+    Configuration:
+      # Required - Steps are sequential instructions that run shell commands
+      Steps:
+        - Run: npm install -g n
+        - Run: npm i -g serverless@3.40.0
+        - Run: npm i
+        - Run: npm run build
+        - Run: export AWS_REGION=ap-south-1
+        - Run: cp environments/.env.dev .env
+        - Run: sls deploy --stage=dev
+      Container:
+        Registry: CODECATALYST
+        Image: CodeCatalystLinuxLambda_Arm64:2024_03
+    Compute:
+      Type: Lambda
+      Fleet: Linux.Arm64.Large
+    Environment:
+      Name: dev
