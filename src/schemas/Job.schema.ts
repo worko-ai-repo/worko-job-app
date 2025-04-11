@@ -390,6 +390,7 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
     status: Joi
       .string()
       .optional()
+      .default(JobStatusEnum.PUBLISHED)
       .valid(...Object.values(JobStatusEnum))
       .messages({
         "any.only": `The status field must be one of the allowed values i.e. ${Object.values(JobStatusEnum).join(", ")}.`,
