@@ -47,6 +47,13 @@ UserJobApplicationRouter.patch("/:id/corp-action", userJobApplicationController.
 UserJobApplicationRouter.patch("/:id/request-feedback", userJobApplicationController.updateJobApplicationRequestFeedback);
 
 /**
+ * Update job application based on the provided parameters in route
+ * 
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ */
+UserJobApplicationRouter.put("/:id/hired-from-other-portal", userJobApplicationController.updateUserJobApplicationHiredFromOtherPortalDetails);
+
+/**
  * Delete job application by id
  * @authorisedRoles ["admin"]
  */

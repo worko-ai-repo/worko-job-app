@@ -13,7 +13,7 @@ import APP_CONSTANTS from "../configs/constants.config";
 import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 
 // import dtos
-import { UserJobApplicationBulkUploadDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
+import { UserJobApplicationBulkUploadDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
 import { PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
 import { EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
 import { ScheduleJobCreateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
@@ -1397,6 +1397,37 @@ class UserJobApplicationService {
     );
 
     return true;
+  }
+
+  /**
+   * updateUserJobApplicationHiredFromOtherPortalDetails
+   *
+   * Service for when a corporate recruiter/admin hires a candidate
+   * from a different job portal and updates the duplicacy details while viewing the application on Worko.ai.
+   * 
+   * @param {string} jobApplicationId - The ID of the job application to be updated.
+   * @param {string} emailId - The email ID of the candidate who had applied for the job.
+   * @param {UserJobApplicationHiredFromOtherPortalDTO} hiredFromOtherPortalDetails - The updated CV duplicacy details of the job application.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated job application data.
+   */
+  async updateUserJobApplicationHiredFromOtherPortalDetails(
+    jobApplicationId: string,
+    emailId: string,
+    hiredFromOtherPortalDetails: UserJobApplicationHiredFromOtherPortalDTO
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(
+      `Update User Job Application Hired From Other Portal Details [Service]`,
+      {
+        filePath: __filename,
+        methodName: this.updateUserJobApplicationHiredFromOtherPortalDetails.name,
+      }
+    );
+
+    return userJobApplicationDao.updateUserJobApplicationHiredFromOtherPortalDetails(
+      jobApplicationId,
+      emailId,
+      hiredFromOtherPortalDetails
+    );
   }
 
   /**

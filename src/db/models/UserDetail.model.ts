@@ -35,6 +35,48 @@ class DbUserDetailDto extends BaseDbDto {
   noticePeriod?: number;
   YOE?: number;
   CV?: string;
+  cvExtract?: string;
+
+  /* Sample Value for "cvExtractParsed":-
+  "cvExtractParsed": {
+    "educations": [
+        {
+            "degree": "B.Tech",
+            "institution": "CMR Technical Campus",
+            "year": "2024"
+        }
+    ],
+    "responsibilities": [
+        "Built backend for website: https://worko.ai/",
+        "MERN Website Built By Me: https://www.neobrim.com/"
+    ],
+    "achievements": [],
+    "personalDetails": {
+        "name": "Rohith Appala",
+        "phone": "+91 9666308100",
+        "email": "rohithpatelappala888placement@gmail.com"
+    },
+    "industryExperiences": [
+        {
+            "industryType": "B2B",
+            "industryDomain": "Technology"
+        }
+    ],
+    "teamHandlingExperiences": [],
+    "certifications": [
+        {
+            "name": "Full Stack Web Development",
+            "year": "2023",
+            "issuer": "NxtWave"
+        },
+        {
+            "name": "MERN stack development",
+            "year": "2023",
+            "issuer": "NxtWave"
+        }
+    ]
+  }, */
+  cvExtractParsed?: object;
   coverLetter?: string;
   lastAccessedDash!: string;
   profileImage?: string;
@@ -141,6 +183,14 @@ const UserDetailSchema = new dynamoose.Schema(
     },
     CV: {
       type: String,
+      required: false,
+    },
+    cvExtract: {
+      type: String,
+      required: false,
+    },
+    cvExtractParsed: {
+      type: Object,
       required: false,
     },
     coverLetter: {

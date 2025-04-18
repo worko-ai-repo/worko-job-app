@@ -12,7 +12,7 @@ import APP_CONSTANTS from "../configs/constants.config";
 import BaseDao from "./Base.dao";
 
 // import dtos
-import { UserJobApplicationBulkUploadDto, UserJobApplicationCreateDto, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions } from "../dtos/UserJobApplication.dto";
+import { UserJobApplicationBulkUploadDto, UserJobApplicationCreateDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions } from "../dtos/UserJobApplication.dto";
 import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
 
 // import enums
@@ -41,6 +41,33 @@ class UserJobApplicationDao implements BaseDao {
   GSI1SK = "ID#{id}"; // `id` is the `job application id` which is generated when a job application is created
   GSI2PK = "JOB#APP#";
   GSI2SK = "ID#{id}"; // `id` is the `job application id` which is generated when a job application is created
+
+  /**
+   * preparePKAndSKForQuery
+   *
+   * Prepares the partition key and sort key for a query.
+   *
+   * @param {string} primaryEmail - The primary email of the user.
+   * @param {string} id - The id of the refer and earn.
+   *
+   * @returns {{PK: string, SK: string}} - An object containing the partition key and sort key.
+   */
+  preparePKAndSKForQuery(
+    primaryEmail: string,
+    id: string
+  ): {
+    PK: string;
+    SK: string;
+  } {
+    return {
+      PK: this.partitianKey.strtr({
+        "{primaryEmail}": primaryEmail,
+      }),
+      SK: this.sortKeys.SK_JOB_APP_ID.strtr({
+        "{id}": id,
+      }),
+    };
+  }
 
   /**
    * createJobApplication
@@ -402,6 +429,45 @@ class UserJobApplicationDao implements BaseDao {
           },
         ],
       }
+    );
+  }
+
+  /**
+   * updateUserJobApplicationHiredFromOtherPortalDetails
+   *
+   * Updates the Hired From Other Portal details of a user's job application.
+   *
+   * @param {string} jobApplicationId - The ID of the job application to be updated.
+   * @param {string} emailId - The email ID of the user associated with the job application.
+   * @param {UserJobApplicationHiredFromOtherPortalDTO} hiredFromOtherPortalDetails - The Hired From Other Portal details to update.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated job application data.
+   */
+  async updateUserJobApplicationHiredFromOtherPortalDetails(
+    jobApplicationId: string,
+    emailId: string,
+    hiredFromOtherPortalDetails: UserJobApplicationHiredFromOtherPortalDTO
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(
+      `Update User Job Application Hired From Other Portal Details [DAO]`,
+      {
+        filePath: __filename,
+        methodName:
+          this.updateUserJobApplicationHiredFromOtherPortalDetails.name,
+        jobApplicationId,
+        emailId,
+      }
+    );
+
+    // Prepare PK and SK for query
+    const { PK, SK } = this.preparePKAndSKForQuery(emailId, jobApplicationId);
+
+    // Update the job application details with externally hired information
+    return UserJobApplicationModel.update(
+      {
+        PK: PK,
+        SK: SK,
+      },
+      hiredFromOtherPortalDetails
     );
   }
 

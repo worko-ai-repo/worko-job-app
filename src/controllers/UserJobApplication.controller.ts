@@ -4,6 +4,8 @@ import { Request, Response, NextFunction } from "express";
 // import dtos
 import {
   UserJobApplicationCreateApiDTO,
+  UserJobApplicationHiredFromOtherPortalApiDTO,
+  UserJobApplicationHiredFromOtherPortalDTO,
   UserJobApplicationListingFilterOptions,
   UserJobApplicationListingFilterRequestDTO,
   UserJobApplicationRequestFeedbackApiDTO,
@@ -20,6 +22,7 @@ import { UserType } from "../enums/User.enum";
 // import helpers
 import { RequestHelper } from "../helpers/request.helper";
 import { paginationResponseHelperObj } from "../helpers/pagination-response.helper";
+import { getActionByUserId, getEmailFromPK } from "../helpers/user.helper";
 
 // import models
 import { DbUserJobApplicationDto } from "../db/models/UserJobApplication.model";
@@ -32,6 +35,7 @@ import userDetailServiceObj from "../services/UserDetail.service";
 // import schemas
 import {
   UserCreateJobApplicationDTOValidation,
+  userJobApplicationHiredFromOtherPortalValidationApiDto,
   userJobApplicationFilterDtoValidation,
   userJobApplicationRequestFeedbackValidation,
   userJobApplicationUpdateValidation,
@@ -428,6 +432,79 @@ class UserJobApplicationController {
       res.status(HttpStatusCode.OK_200).json({
         isNotficationSent: jobApplicationFeedbackRequestDetails,
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * updateUserJobApplicationHiredFromOtherPortalDetails
+   *
+   * Controller for when a corporate recruiter/admin hires a candidate
+   * from a different job portal and updates the duplicacy details while viewing the application on Worko.ai.
+   *
+   * @param {Request} req - Express request object:
+   * @param {Response} res - Express response object used to send back the API response.
+   * @param {NextFunction} next - Express next function for error handling.
+   */
+  updateUserJobApplicationHiredFromOtherPortalDetails = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Update User Job Application Hired From Other Portal Details [Controller]`,
+        {
+          filePath: __filename,
+          methodName: this.updateUserJobApplicationHiredFromOtherPortalDetails.name,
+          reqParams: req.params,
+        }
+      );
+
+      // Get job application id
+      const jobApplicationId: string = req.params.id;
+
+      // Get job application details from the request body and validate it, if not valid throw error
+      const reqBody: UserJobApplicationHiredFromOtherPortalApiDTO = req.body;
+      const { error: reqBodyError, value: validatedRequestBody } =
+        userJobApplicationHiredFromOtherPortalValidationApiDto.validate(reqBody, {
+          abortEarly: false,
+        });
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+
+      // Get existing user job application details
+      const existingUserJobApplicationDetails: DbUserJobApplicationDto = await userJobApplicationServiceObj.getJobApplicationById(jobApplicationId);
+
+      // Get email id from PK of existingUserJobApplicationDetails;
+      const emailId: string = getEmailFromPK(existingUserJobApplicationDetails.PK); 
+
+      // Get actionByUserId and actionByCorporateUserId using the helper function
+      const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
+
+      // Prepare the details required to be updated
+      let userJobApplicationHiredFromOtherPortalDetails: UserJobApplicationHiredFromOtherPortalDTO = {
+        ...validatedRequestBody,
+      };
+
+      if (actionByUserId) {
+        userJobApplicationHiredFromOtherPortalDetails.updatedByUserId = actionByUserId;
+      }
+
+      if (actionByCorporateUserId) {
+        userJobApplicationHiredFromOtherPortalDetails.updatedByCorporateUserId = actionByCorporateUserId;
+      }
+
+      const userJobApplicationDetails: DbUserJobApplicationDto =
+        await userJobApplicationServiceObj.updateUserJobApplicationHiredFromOtherPortalDetails(
+          jobApplicationId,
+          emailId,
+          userJobApplicationHiredFromOtherPortalDetails
+        );
+
+      res.status(HttpStatusCode.OK_200).json(userJobApplicationDetails);
     } catch (error) {
       next(error);
     }

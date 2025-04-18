@@ -7,6 +7,9 @@ import { Schema } from "dynamoose/dist/Schema";
 import { DB_CONSTANTS } from "../DB.constants";
 import { BaseDbDto } from "./Base.model";
 
+// Import dtos
+import { UserJobApplicationHiredFromOtherPortal } from "../../dtos/UserJobApplication.dto";
+
 // import Enums
 import { JobApplicationStatus } from "../../enums/UserJobApplication.enum";
 
@@ -50,6 +53,21 @@ class DbUserJobApplicationDto extends BaseDbDto {
    * When candidate request follow up then this attribute will be set
    */
   followUpRequest?: JobApplicationFollowUpRequestType;
+
+  /**
+   * hiredFromOtherPortal
+   *
+   * This attribute is used to track the actual source of hiring (if any) 
+   * from external portal by the corporate user.
+   * 
+   * For example:
+   * - "Rohith" is a recruiter at Amazon who has registered on both "Worko.ai" and "LinkedIn" job portals.
+   * - A candidate "Ashutosh" applies for a job at Amazon through both "Worko.ai" and "LinkedIn" job portals.
+   * - Rohith views and hires Ashutosh via "LinkedIn" job portal first.
+   * - Later, when Rohith views the same application on Worko.ai, he submits the
+   *   information indicating that Ashutosh was already hired from another portal.
+   */
+  hiredFromOtherPortal?: UserJobApplicationHiredFromOtherPortal;
 
   /**
    * Attributes Being set after comparing `Job description` and `CV`
@@ -197,6 +215,20 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
           },
         },
       ],
+    },
+    hiredFromOtherPortal: {
+      type: Object,
+      required: false,
+      schema: {
+        portal: {
+          type: String,
+          required: true,
+        },
+        date: {
+          type: String,
+          required: true,
+        },
+      },
     },
     cvExtract: {
       type: String,

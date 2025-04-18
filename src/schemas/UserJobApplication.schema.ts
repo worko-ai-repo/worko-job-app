@@ -158,3 +158,37 @@ export const userJobApplicationRequestFeedbackValidation = Joi.object({
     "string.isoDate": "Application date must be a valid date in ISO format",
   }),
 });
+
+/**
+ * userJobApplicationHiredFromOtherPortalValidationApiDto
+ */
+export const userJobApplicationHiredFromOtherPortalValidationApiDto = Joi.object({
+  hiredFromOtherPortal: Joi
+    .object({
+      portal: Joi
+        .string()
+        .required()
+        .messages({
+          "any.required": "The Portal field is required.",
+          "string.empty": "The Portal field should not be empty.",
+          "string.base": "The Portal field must be a string.",
+        }),
+
+      date: Joi
+        .string()
+        .required()
+        .isoDate()
+        .messages({
+          "any.required": "The Date field is required.",
+          "string.empty": "The Date field should not be empty.",
+          "string.base": "The Date field must be a string.",
+          "string.isoDate": "The Date field must be a valid ISO 8601 date-time string.",
+        }),
+    })
+    .required()
+    .messages({
+      "any.required": "The Hired from Other Portal field is required.",
+      "object.base": "The Hired from Other Portal field must be an object.",
+      "object.empty": "The Hired from Other Portal field should not be empty.",
+    }),
+});

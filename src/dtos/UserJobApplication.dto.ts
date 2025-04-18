@@ -158,3 +158,43 @@ export interface UserJobApplicationBulkUploadDto {
   scoreDetails?: string;
   scoreFetchedDate?: string;
 }
+
+/**
+ * UserJobApplicationHiredFromOtherPortalApiDTO
+ */
+export interface UserJobApplicationHiredFromOtherPortalApiDTO {
+  hiredFromOtherPortal: UserJobApplicationHiredFromOtherPortal;
+}
+
+/**
+ * UserJobApplicationHiredFromOtherPortalDTO
+ */
+export interface UserJobApplicationHiredFromOtherPortalDTO extends UserJobApplicationHiredFromOtherPortalApiDTO {
+  updatedByUserId?: string;
+  updatedByCorporateUserId?: string;
+}
+
+/**
+ * UserJobApplicationHiredFromOtherPortal
+ * 
+ * @reference "UserJobApplicationModel . hiredFromOtherPortal"
+ */
+export interface UserJobApplicationHiredFromOtherPortal {
+  /**
+   * portal
+   *
+   * Name of the external portal from which the candidate was hired.
+   *
+   * @example "LinkedIn"
+   */
+  portal: string;
+
+  /**
+   * date
+   *
+   * The date and time when the candidate was hired or recruitement process started from the external portal.
+   *
+   * @example "2024-12-17T11:36:46.753"
+   */
+  date: string;
+}

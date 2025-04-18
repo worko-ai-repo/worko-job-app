@@ -249,7 +249,7 @@ class JobService {
       createdAt: DateTime.now().toISO(),
       updatedAt: DateTime.now().toISO(),
       jobTitle: externalJob.title.toLowerCase(),
-      typeofEmployment: externalJob.employment_type
+      typeofEmployment: (Array.isArray(externalJob.employment_type) && externalJob.employment_type.length)
         ? externalJob.employment_type.join(", ").toUpperCase()
         : undefined,
       location: {
