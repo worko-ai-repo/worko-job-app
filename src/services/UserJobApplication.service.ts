@@ -946,6 +946,10 @@ class UserJobApplicationService {
       await this.preparePlaceholdersToSendEmailToJobPoster(
         updatedJobApplication
       );
+    
+    if(!sendEmailPlaceholderDetailsToJobPoster) {
+      return false;
+    }
 
     const {
       jobPosterName,
@@ -982,13 +986,14 @@ class UserJobApplicationService {
   }
 
   /**
-   * preparePlaceholdersToSendEmailToJobPoster
+   * Prepares placeholders to send email to job poster.
    *
-   * Sends job application status update email to job poster. If job poster is a corporate user,
-   * send email to the corporate user's email address. Otherwise, send email to the user's email address.
+   * This method takes a job application object and returns an object containing the placeholders
+   * for the email template used when an email is sent to the job poster. The placeholders include
+   * the job poster's email address, name, job title, job application status, candidate name, and candidate email id.
    *
-   * @param {DbUserJobApplicationDto} parsedJobApplicationDetails - The parsed job application details.
-   * @returns {Promise<EmailPlaceholderDetailsToJobPosterType>} - A promise that resolves to the placeholders for the email template.
+   * @param {DbUserJobApplicationDto} parsedJobApplicationDetails - The parsed job application data.
+   * @returns {Promise<EmailPlaceholderDetailsToJobPosterType>} A promise that resolves to an object containing the placeholders for the email template.
    */
   async preparePlaceholdersToSendEmailToJobPoster(
     parsedJobApplicationDetails: DbUserJobApplicationDto
@@ -1007,35 +1012,56 @@ class UserJobApplicationService {
       await companyJobServiceObj.getJobById(jobId)
     )[0];
 
-    let jobPosterSendingEmail: string;
-    let jobPosterName: string;
+    /**
+     * 1. First we will initialize the jobPosterSendingEmail and jobPosterName with the default source email address
+     * 2. If the job poster is a corporate user, we will get the job poster details by userId and assign the job poster sending email and name
+     * 3. If the job poster is a user, we will get the job poster details by userId and assign the job poster sending email and name
+     * 4. If the job poster is not a user or a corporate user, we will assign the job poster sending email and name with the default source email address,
+     *    so we can send the email to the default source email address to not break the system.
+     */
+    let jobPosterSendingEmail: string = APP_CONSTANTS.SOURCE_EMAIL_ADDRESS.WORKO_DEFAULT.email;
+    let jobPosterName: string = APP_CONSTANTS.SOURCE_EMAIL_ADDRESS.WORKO_DEFAULT.fullName
 
     // check if job poster is a corporate user
     if (postedJobDetails.createdByCorporateUserId) {
       // get job poster details by userId
-      const jobPosterDetails: DbCorporateUserDto =
-        await corporateUserServiceObj.getCorpUserByIdWithParsing(
+      const jobPosterQueryResponseDetails: QueryResponse<DbCorporateUserDto> =
+        await corporateUserServiceObj.getCorpUserById(
           postedJobDetails.createdByCorporateUserId
         );
 
-      // assign job poster sending email
-      jobPosterSendingEmail = jobPosterDetails.email;
+      // check if job poster exists and assign job poster details
+      // If the count doesn't exist, it means the corporate user doesn't exist
+      if(jobPosterQueryResponseDetails.count) {
+        // Retrieve job poster details from the query response
+        const jobPosterDetails: DbCorporateUserDto = jobPosterQueryResponseDetails[0];
 
-      // assign job poster name
-      jobPosterName = `${jobPosterDetails.firstName.toTitleCase()} ${jobPosterDetails.lastName.toTitleCase()}`;
-    } else {
+        // assign job poster sending email
+        jobPosterSendingEmail = jobPosterDetails.email;
+  
+        // assign job poster name
+        jobPosterName = `${jobPosterDetails.firstName.toTitleCase()} ${jobPosterDetails.lastName.toTitleCase()}`;
+      }
+    } else if(postedJobDetails.createdByUserId) {
       // get job poster details by userId
-      const jobPosterDetails: DbUserDetailDto =
-        await userDetailServiceObj.getUserByIdOne(
-          postedJobDetails.createdByUserId as string
+      const jobPosterQueryResponseDetails: QueryResponse<DbUserDetailDto> =
+        await userDetailServiceObj.getUserById(
+          postedJobDetails.createdByUserId
         );
 
-      // assign job poster sending email
-      jobPosterSendingEmail = jobPosterDetails.PK.split("#")[2];
+      // check if job poster exists and assign job poster details
+      if(jobPosterQueryResponseDetails.count) {
+        // Retrieve job poster details from the query response
+        const jobPosterDetails: DbUserDetailDto =
+          jobPosterQueryResponseDetails[0];
 
-      // assign job poster name
-      jobPosterName = jobPosterDetails.name.toTitleCase();
-    }
+        // assign job poster sending email
+        jobPosterSendingEmail = jobPosterDetails.PK.split("#")[2];
+
+        // assign job poster name
+        jobPosterName = jobPosterDetails.name.toTitleCase();
+      }
+    } 
 
     const placeholderDetails: EmailPlaceholderDetailsToJobPosterType = {
       jobPosterSendingEmail,
@@ -1106,6 +1132,7 @@ class UserJobApplicationService {
         status: jobApplicationRequestBody.status,
         rejectedByUserId: {
           userId: jobApplicationRequestBody.userId,
+          userType: jobApplicationRequestBody.userType,
           actionDate: DateTime.now().toISO(),
           reason:
             jobApplicationRequestBody.reason ?? "Reason not provided by User",
@@ -1340,6 +1367,12 @@ class UserJobApplicationService {
         jobApplicationDetails
       );
 
+    // If sendEmailPlaceholderDetailsToJobPoster is undefined, return false
+    if(!sendEmailPlaceholderDetailsToJobPoster) {
+      return false;
+    }
+
+    // Destructure sendEmailPlaceholderDetailsToJobPoster
     const {
       jobPosterName,
       jobTitle,

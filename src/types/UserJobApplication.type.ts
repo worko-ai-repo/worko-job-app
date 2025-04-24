@@ -48,7 +48,7 @@ export type JobApplicationStatusTrackerType = Array<{
  */
 export type JobApplicationRejectedByUserIdType = {
   userId: string;
-  userType?: CorporateUserTypeEnum;
+  userType?: JobApplicationUserTypeWithAdmin;
 
   /**
    * Sample value of `actionDate`: 2024-12-17T11:36:46.753+00:00
