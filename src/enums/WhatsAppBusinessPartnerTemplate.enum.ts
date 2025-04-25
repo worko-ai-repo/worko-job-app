@@ -169,4 +169,18 @@ export enum WhatsAppBusinessPartnerTemplateNameEnum {
    * It sends a WhatsApp notification to the candidate via the WhatsAppBusinessPartner platform.
    */
   CAND_CORPORATE_BULK_JD_RESUME_LOW_MATCHING_SCORE = "cand_corporate_bulk_jd_resume_low_matching_score",
+
+  /**
+   * RECIPIENT_REFER_AND_EARN
+   *
+   * The template name used to send notification to `recipient` whenever a `referrer` sends a `refer and earn` to a `recipient`.
+   */
+  RECIPIENT_REFER_AND_EARN = "recipient_refer_and_earn_active",
+
+  /**
+   * REFERRER_REFER_AND_EARN
+   *
+   * The template name used to send notification to `referrer` whenever a `referrer` sends a `refer and earn` to a `recipient`.
+   */
+  REFERRER_REFER_AND_EARN = "referrer_refer_and_earn",
 }

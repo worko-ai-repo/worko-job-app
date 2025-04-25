@@ -216,6 +216,39 @@ class UserJobApplicationDao implements BaseDao {
   }
 
   /**
+   * getUserJobApplicationByEmailIdAndJobId
+   *
+   * Retrieves a job application by email ID and job ID.
+   *
+   * @param {string} emailId - The email of the user.
+   * @param {string} jobId - The job ID.
+   * @return {Promise<QueryResponse<DbUserJobApplicationDto>>} A promise that resolves to the job application data.
+   */
+  async getUserJobApplicationByEmailIdAndJobId(
+    emailId: string,
+    jobId: string
+  ): Promise<QueryResponse<DbUserJobApplicationDto>> {
+    global.logger.info(
+      `Get User Job Application By emailId and jobId [DAO]`,
+      {
+        filePath: __filename,
+        methodName: this.getUserJobApplicationByEmailIdAndJobId.name,
+        emailId,
+        jobId,
+      }
+    );
+
+    // return user job application by emailId and jobId
+    return UserJobApplicationModel.query("PK")
+      .eq(this.partitianKey.strtr({ "{primaryEmail}": emailId }))
+      .where("SK")
+      .beginsWith(this.sortKeys.SK_JOB_APP_ID.strtr({ "{id}": "" }))
+      .where("jobId")
+      .eq(jobId)
+      .exec();
+  }
+
+  /**
    * getJobApplicationsByFilterOptions
    *
    * Retrieves job applications based on the provided filter options.
@@ -342,7 +375,7 @@ class UserJobApplicationDao implements BaseDao {
       The parenthesis() method allows grouping of conditions for complex queries.
       */
       query = query.and().parenthesis((condition) => {
-        condition
+        return condition
           .where("status")
           .contains(searchTextValue.toUpperCase())
           .or()
@@ -353,9 +386,6 @@ class UserJobApplicationDao implements BaseDao {
           // if the `companyName` is changed in `CompanyDetail` model, then the `companyName` will not be updated in `UserJobApplication` model
           .where("companyName")
           .contains(searchTextValue.toUpperCase());
-
-        // Return the built condition
-        return condition;
       });
     }
 

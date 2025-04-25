@@ -15,12 +15,31 @@ import { JobApplicationFollowUpRequestType, JobApplicationRejectedByUserIdType, 
  * Focuses on the essentials needed to initiate the request.
  */
 export interface UserJobApplicationCreateApiDTO {
+  /**
+   * jobId
+   * 
+   * @reference `id` attribute of `CompanyJob.model.ts`
+   */
   jobId: string;
+
+  /**
+   * companyName
+   */
   companyName: string;
+
+  /**
+   * jobPortal
+   */
   jobPortal?: string;
+
+  /**
+   * matchingScore
+   */
   matchingScore?: number;
 
   /**
+   * referAndEarnId
+   * 
    * @reference `id` attribute of `ReferAndEarn.model.ts`
    */
   referAndEarnId?: string;

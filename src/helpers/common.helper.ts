@@ -50,3 +50,24 @@ export function isFalsyOrEmpty(value: any): boolean {
     // If it passes all checks, it's not empty
     return false;
 }
+
+/**
+ * formatCurrency
+ *
+ * Formats a given amount of currency according to the locale's rules for formatting currency.
+ * The amount can be a number or a string.
+ *
+ * @param {number | string} amount - The amount of currency to format.
+ * @param {string} currency - The currency code to use for formatting. Example: 'USD'.
+ * @param {string} locale - The locale to use for formatting. Example: 'en-US'.
+ * @param {number} [fractionDigits=0] - The number of fractional digits to display. If not specified, it will be 0.
+ * @return {string} The formatted currency string.
+ */
+export const formatCurrency = (amount: number | string, currency: string, locale: string, fractionDigits: number = 0): string => {
+  return Number(amount).toLocaleString(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+}

@@ -143,20 +143,23 @@ class UserDetailDao implements BaseDao {
   }
 
   /**
-   * Fetches user details based on the provided email.
-   * @param email - Email address of the user
-   * @returns User details corresponding to the email
+   * get
+   *
+   * Retrieves user details based on the provided email.
+   *
+   * @param {string} email - Email of the user
+   * @returns {Promise<QueryResponse<DbUserDetailDto>>} A promise that resolves with the query response containing the user's details.
    */
-  async get(email: string) {
-    global.logger.info("Get user experience by id [DAO]");
+  async get(email: string): Promise<QueryResponse<DbUserDetailDto>> {
+    global.logger.info("Get user detail by email [DAO]");
     const PK = this.partitianKey.strtr({
       "{primaryEmail}": email,
     });
-    const [skBegins] = this.sortKeys.SK_ID.split("#", 1);
+
     return UserDetailModel.query("PK")
       .eq(PK)
       .where("SK")
-      .beginsWith(skBegins)
+      .beginsWith(this.sortKeys.SK_ID.strtr({ "{userId}": "" }))
       .exec();
   }
 

@@ -297,3 +297,24 @@ export interface WhatsAppBusinessPartnerTemplatePlaceholderCAND_CORPORATE_BULK_J
   companyName: string;
   jobTitle: string;
 }
+
+/**
+ * WhatsAppBusinessPartnerTemplatePlaceholderRECIPIENT_REFER_AND_EARN
+ */
+export interface WhatsAppBusinessPartnerTemplatePlaceholderRECIPIENT_REFER_AND_EARN {
+  recipientName: string;
+  referrerName: string;
+  jobTitle: string;
+  companyName: string;
+  jobUrl: string;
+}
+
+/**
+ * WhatsAppBusinessPartnerTemplatePlaceholderREFERRER_REFER_AND_EARN
+ */
+export interface WhatsAppBusinessPartnerTemplatePlaceholderREFERRER_REFER_AND_EARN {
+  referrerName: string;
+  recipientName: string;
+  jobTitle: string;
+  companyName: string;
+}

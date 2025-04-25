@@ -23,6 +23,7 @@ import { CorporateUserModel } from "./models/CorporateUser.model";
 import { UserModel } from "./models/User.model";
 import { UserDetailModel } from "./models/UserDetail.model";
 import { ScheduleJobModel } from "./models/ScheduleJob.model";
+import { ReferAndEarnModel } from "./models/ReferAndEarn.model";
 
 /**
  * DBConfig
@@ -78,14 +79,14 @@ class DBConfig {
   }
 
   /**
-   * registerDynamooseWorkoModels
+   * registerDynamooseWorkoJobAppModels
    *
    * Register all the worko related models to the dynamoose
    * The models registered here will be used to interact with the
-   * "worko" DynamoDB table.
+   * "worko-job-app" DynamoDB table.
    */
-  registerDynamooseWorkoModels() {
-    global.logger.info(`Registering all available models for "worko" dynamodb table.`);
+  registerDynamooseWorkoJobAppModels() {
+    global.logger.info(`Registering all available models for "worko-job-app" dynamodb table.`);
     const workoJobAppTable = new dynamoose.Table(
       DB_CONSTANTS.WORKO_TABLE_NAMES.workoJobAppTableName,
       [
@@ -93,18 +94,19 @@ class DBConfig {
         CompanyJobModel,
         ExternalJobModel,
         UserExternalJobApplicationModel,
+        ReferAndEarnModel,
       ]
     );
   }
 
   /**
-   * registerDynamooseWorkoJobAppModels
+   * registerDynamooseWorkoModels
    *
-   * Register all the dynamoose models that interact with the "worko-job-app" table
-   * These models are used to interact with the "worko-job-app" dynamodb table
+   * Register all the dynamoose models that interact with the "worko" table
+   * These models are used to interact with the "worko" dynamodb table
    */
-  registerDynamooseWorkoJobAppModels() {
-    global.logger.info(`Registering all available models for "worko-job-app" dynamodb table.`);
+  registerDynamooseWorkoModels() {
+    global.logger.info(`Registering all available models for "worko" dynamodb table.`);
     const workoTable = new dynamoose.Table(
       DB_CONSTANTS.WORKO_TABLE_NAMES.workoTableName,
       [

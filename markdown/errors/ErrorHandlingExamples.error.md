@@ -193,7 +193,7 @@ connect ETIMEDOUT 10.0.0.36:443
 10. 
 ```ts
 /**
- * -> Tip-1: 
+ * -> Tip-1: check whether the `opensearch` dashboard is opening or not
  */
 ```
 ```json
@@ -564,4 +564,9 @@ ERROR	Uncaught Exception
 ```sh
 Error:
 Stack:arn:aws:cloudformation:ap-south-1:211125353899:stack/worko-job-app-dev/9312d820-e878-11ef-97a2-020ab519482b is in UPDATE_IN_PROGRESS state and can not be updated.
+```
+
+24. 
+```sh
+ERROR	TypeError: Cannot read properties of undefined (reading 'includes')
 ```

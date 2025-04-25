@@ -46,7 +46,10 @@ class AwsOpensearchRequestHelper {
 
     // lastKey
     let lastKey = undefined;
-    if (filterOptions?.lastKey) {
+    if (filterOptions?.lastKey && filterOptions.lastKey !== "undefined") {
+      global.logger.info(`LastKey exists: `, {
+        filterOptionsLastKey: filterOptions.lastKey,
+      });
       let decodedNumber: any[] | undefined = awsOpensearchBase64EncodeStrToLastKey(
         filterOptions.lastKey
       ); // decoding base64 string to original value(possibly array of values)

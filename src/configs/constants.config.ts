@@ -129,6 +129,44 @@ const APP_CONSTANTS = {
   },
 
   /**
+   * REFER_AND_EARN_COMMISION_AMOUNT
+   * 
+   * These are the refer and earn commission amounts for different user types.
+   * Whenever a user refers another user, the referer will receive a commission if 
+   * the referred user joins the company which was referred by the referer.
+   */
+  REFER_AND_EARN_COMMISION_AMOUNT: {
+    DEFAULT: 5000, // INR
+    CANDIDATE: 5000, // INR
+    EMPLOYEE: 5000, // INR
+  },
+
+  /**
+   * CURRENCY_FORMAT_CONFIG
+   */
+  CURRENCY_FORMAT_CONFIG: {
+    INR: {
+      locale: "en-IN",
+      symbol: "₹",
+      currency: "INR",
+      displayName: "Indian Rupee",
+    },
+    USD: {
+      locale: "en-US",
+      symbol: "$",
+      currency: "USD",
+      displayName: "US Dollar",
+    },
+    EUR: {
+      locale: "de-DE",
+      symbol: "€",
+      currency: "EUR",
+      displayName: "Euro",
+    },
+    // Add more currencies as needed
+  },
+
+  /**
    * FRONTEND_URLS
    */
   FRONTEND_URLS: {

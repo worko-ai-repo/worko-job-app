@@ -65,4 +65,38 @@ export const getActionByUserId = (): {
  */
 export const getEmailFromPK = (PK: string): string => {
   return PK.split("#")[2];
-}
+};
+
+/**
+ * getPhoneCountryCodeAndNumber
+ * 
+ * Extracts the country code and phone number from a full phone number string.
+ *
+ * This function takes a full phone number string that starts with a '+' followed by the country code
+ * and the actual phone number. It removes the '+' sign, splits the string to separate the country code 
+ * (first two digits) and the phone number, and returns both as numbers.
+ *
+ * @param {string} fullPhoneNumber - The full phone number string, e.g., "+919666xxx100".
+ * @returns {{ phoneCountryCode: number; phoneNumber: number; }} An object containing the country code and phone number as numbers.
+ *
+ * @note This function is currently designed to work with phone numbers where the country code is two digits long.
+ *       If the application is used outside of India or with different country code lengths, this function should be updated accordingly.
+ */
+export const getPhoneCountryCodeAndNumber = (
+  fullPhoneNumber: string // "+919666xxx100"
+): {
+  phoneCountryCode: number;
+  phoneNumber: number;
+} => {
+  const fullPhoneNumberWithoutPlusSign: string = fullPhoneNumber.strtr({
+    "+": "",
+  });
+
+  const phoneCountryCode: string = fullPhoneNumberWithoutPlusSign.slice(0, 2);
+  const phoneNumber: string = fullPhoneNumberWithoutPlusSign.slice(2);
+
+  return {
+    phoneCountryCode: parseInt(phoneCountryCode),
+    phoneNumber: parseInt(phoneNumber),
+  };
+};

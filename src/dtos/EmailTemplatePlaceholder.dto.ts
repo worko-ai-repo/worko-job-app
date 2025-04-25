@@ -223,3 +223,61 @@ export interface EmailTemplatePlaceholderCAND_CORPORATE_BULK_JD_RESUME_LOW_MATCH
   companyName: string;
   jobTitle: string;
 }
+
+/**
+ * EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN
+ */
+export interface EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN {
+  referrerName: string,
+  recipientName: string,
+  companyName: string,
+  jobTitle: string,
+  jobUrl: string
+}
+  
+/**
+ * EmailTemplatePlaceholderREFERRER_REFER_AND_EARN
+ */
+export interface EmailTemplatePlaceholderREFERRER_REFER_AND_EARN {
+  referrerName: string;
+  recipientName: string;
+  jobTitle: string;
+  companyName: string;
+}
+
+/**
+ * EmailTemplatePlaceholderWORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED
+ */
+export interface EmailTemplatePlaceholderWORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED {
+  referrerName: string;
+  referrerEmailId: string;
+  referrerPhoneNumber: string;
+  recipientName: string;
+  jobUrl: string;
+  jobTitle: string;
+  appliedDate: string;
+  referAndEarnJobApplicationStatus: string;
+  commissionAmount: string;
+
+  // Bank details
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  branchName: string;
+}
+
+/**
+ * EmailTemplatePlaceholderREFERRER_REFER_AND_EARN_PAYMENT_COMPLETED
+ */
+export interface EmailTemplatePlaceholderREFERRER_REFER_AND_EARN_PAYMENT_COMPLETED {
+  referrerName: string;
+  amountPaid: string;
+  recipientName: string;
+  jobTitle: string;
+  companyName: string;
+  jobAppliedDate: string;
+  referrerUniqueTransactionReference: string;
+  referrerAccountNumber: string;
+  referrerIfscCode: string;
+  paymentDate: string;
+}

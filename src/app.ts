@@ -12,7 +12,6 @@ import "./libraries/logger.library";
 
 // Import configs
 import DBConfig from "./db/DB.config";
-import APP_CONSTANTS from "./configs/constants.config";
 
 // Import middlewares
 import { getAuthorizerContext } from "./middlewares/authorizer-context.middleware";

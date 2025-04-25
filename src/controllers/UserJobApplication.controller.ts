@@ -100,6 +100,7 @@ class UserJobApplicationController {
         await userJobApplicationServiceObj.createJobApplication(
           cognitoUserId,
           email,
+          userDetails.number, // Sample phone number: "+919666xxx100"
           jobApplicationRequestBody
         );
 

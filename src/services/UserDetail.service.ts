@@ -30,11 +30,18 @@ class UserDetailService {
   /**
    * Retrieves user details by email id.
    *
-   * @param email - Email of the user
-   * @returns {Promise<any>} - Details of the user
+   * @param {string} email - Email of the user
+   * @returns {Promise<QueryResponse<DbUserDetailDto>>} - Details of the user
    */
-  async get(email: string) {
-    console.log("Get user detail by email [service]");
+  async get(email: string): Promise<QueryResponse<DbUserDetailDto>> {
+    // logger
+    global.logger.info("Get user detail by email [service]", {
+      filePath: __filename,
+      methodName: this.get.name,
+      email
+    });
+    
+    // Return the user details
     return userDetailDao.get(email);
   }
 

@@ -3,6 +3,7 @@ import { Router } from "express";
 
 // Import the routes
 import JobRouter from "./routers/Job.router";
+import ReferAndEarnRouter from "./routers/ReferAndEarn.router";
 import ScriptRouter from "./routers/Script.router";
 import UserExternalJobApplicationRouter from "./routers/UserExternalJobApplication.router";
 import UserJobApplicationRouter from "./routers/UserJobApplication.router";
@@ -32,6 +33,15 @@ const router = Router();
  * @authorisedRoles ["public", "loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
  */
 router.use("/job", JobRouter);
+
+/**
+ * REFER AND EARN ROUTES
+ * 
+ * Register the 'ReferAndEarn' routers
+ * 
+ * @authorisedRoles ["loggedInUser", "admin"]
+ */
+router.use('/refer-and-earn', ReferAndEarnRouter);
 
 /**
  * SCRIPT ROUTERS

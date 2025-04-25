@@ -4,9 +4,6 @@ import * as dynamoose from "dynamoose";
 // Load the constants
 import { DB_CONSTANTS } from "../DB.constants";
 
-// Load the enums
-import { UserType } from "../../enums/User.enum";
-
 // Load the local base model functionalities
 import { BaseDbDto } from "./Base.model";
 
@@ -21,6 +18,10 @@ class DbUserDetailDto extends BaseDbDto {
   GSI1SK!: string;
   name!: string;
   emailList!: { [key: string]: string }; // @todo we should consider removing this. And make the fields are always upto date. Instead use the "UserEmail" SK.
+
+  /**
+   * @example "+919666xxx100"
+   */
   number!: string;
   userType!: string[];
   isEmailVerified!: boolean;

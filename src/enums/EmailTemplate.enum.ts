@@ -102,4 +102,32 @@ export enum EmailTemplateEnum {
    * The template name used whenever a corporate user screens a job description for bulk resumes of candidates for low matching scores.
    */
   CAND_CORPORATE_BULK_JD_RESUME_LOW_MATCHING_SCORE = "CAND_CORPORATE_BULK_JD_RESUME_LOW_MATCHING_SCORE",
+
+  /**
+   * RECIPIENT_REFER_AND_EARN
+   * 
+   * The template name used to send notification to `recipient` whenever a `referrer` sends a `refer and earn` to a `recipient`.
+   */
+  RECIPIENT_REFER_AND_EARN = "RECIPIENT_REFER_AND_EARN",
+
+  /**
+   * REFERRER_REFER_AND_EARN
+   * 
+   * The template name used to send notification to `referrer` whenever a `referrer` sends a `refer and earn` to a `recipient`.
+   */
+  REFERRER_REFER_AND_EARN = "REFERRER_REFER_AND_EARN",
+
+  /**
+   * WORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED
+   * 
+   * The template name used to send notification to `worko admin` whenever a `referrer` requests for withdraw money.
+   */
+  WORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED = "WORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED",
+
+  /**
+   * REFERRER_REFER_AND_EARN_PAYMENT_COMPLETED
+   * 
+   * The template name used to send notification to `referrer` whenever `worko admin` pays money to `referrer`.
+   */
+  REFERRER_REFER_AND_EARN_PAYMENT_COMPLETED = "REFERRER_REFER_AND_EARN_PAYMENT_COMPLETED",
 }
