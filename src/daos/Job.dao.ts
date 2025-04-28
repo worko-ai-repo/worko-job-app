@@ -1,6 +1,7 @@
 // Import opensearch types
 import { Search_RequestBody } from "@opensearch-project/opensearch/api/_core/search";
 import { QueryContainer } from "@opensearch-project/opensearch/api/_types/_common.query_dsl";
+import { SortOptions } from "@opensearch-project/opensearch/api/_types/_common";
 import { Index_Response, Update_Response } from "@opensearch-project/opensearch/api";
 
 // import luxon
@@ -21,7 +22,7 @@ import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opense
 
 // Import enums
 import { AwsOpensearchSortOrderTypeEnum } from "../enums/Common.aws-opensearch.enum";
-import { JobStatusEnum } from "../enums/Job.enum";
+import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
 import { JobSourcedFromEnum } from "../enums/Common.enum";
 
 // Import models
@@ -142,17 +143,67 @@ class JobDao {
         },
       },
       size: jobFilterOptions.pageSize,
-      sort: [
+
+      /**
+       * @description AWS OpenSearch will sort results by multiple fields
+       * in the given order top to bottom (first field is highest priority, second is used when first has ties, etc.).
+       *
+       * @see https://docs.opensearch.org/docs/latest/search-plugins/searching-data/sort/
+       */
+      sort: [],
+    };
+
+    const queryBoolMust = awsOpensearchQuery.query?.bool
+      ?.must as QueryContainer[];
+    const queryBoolShould = awsOpensearchQuery.query?.bool
+      ?.should as QueryContainer[];
+    const querySort = awsOpensearchQuery.sort as SortOptions[];
+
+    // If dashboard is provided, only retrieve jobs that contain companyId
+    if (
+      jobFilterOptions?.dashboard &&
+      [JobDashboardEnum.ADMIN, JobDashboardEnum.CORPORATE].includes(jobFilterOptions.dashboard)
+    ) {
+      queryBoolMust.push({
+        exists: {
+          field: "companyId",
+        },
+      });
+
+      querySort.push(
+        {
+          createdAt: {
+            order:
+              jobFilterOptions.sortOrder ??
+              AwsOpensearchSortOrderTypeEnum.DESCENDING,
+          },
+        },
+        {
+          _id: {
+            order:
+              jobFilterOptions.sortOrder ??
+              AwsOpensearchSortOrderTypeEnum.DESCENDING,
+          },
+        }
+      );
+    } else {
+      // If dashboard is not provided, prioritize jobs with companyId first
+      queryBoolShould.push(
+        { exists: { field: "companyId" } }, // Give priority to jobs with companyId
+        { exists: { field: "externalJobId" } } // Include externalJobId jobs second
+      );
+
+      /**
+       * @todo: 
+       *  1. Need to Investigate best way to sort job listings in OpenSearch in such a way that the latest jobs appear first, 
+       *        with priority given to jobs that contain a companyId.
+       */
+      querySort.push(
         {
           "companyId.keyword": {
             order: AwsOpensearchSortOrderTypeEnum.DESCENDING,
           },
-        }, // Prioritize jobs with companyId
-        {
-          "externalJobId.keyword": {
-            order: AwsOpensearchSortOrderTypeEnum.ASCENDING,
-          },
-        }, // Show external jobs after company jobs
+        },
         {
           createdAt: {
             order:
@@ -167,28 +218,13 @@ class JobDao {
               AwsOpensearchSortOrderTypeEnum.DESCENDING,
           },
         },
-      ],
-    };
-
-    const queryBoolMust = awsOpensearchQuery.query?.bool
-      ?.must as QueryContainer[];
-    const queryBoolShould = awsOpensearchQuery.query?.bool
-      ?.should as QueryContainer[];
-
-    // If dashboard is provided, only retrieve jobs that contain companyId
-    if (jobFilterOptions.dashboard) {
-      queryBoolMust.push({
-        exists: {
-          field: "companyId",
-        },
-      });
+        {
+          "externalJobId.keyword": {
+            order: AwsOpensearchSortOrderTypeEnum.DESCENDING,
+          },
+        }
+      );      
     }
-
-    // If dashboard is not provided, prioritize jobs with companyId first
-    queryBoolShould.push(
-      { exists: { field: "companyId" } }, // Give priority to jobs with companyId
-      { exists: { field: "externalJobId" } } // Include externalJobId jobs second
-    );
 
     // Add search text filter if provided
     if (jobFilterOptions.searchText) {
@@ -450,6 +486,13 @@ class JobDao {
     if (jobFilterOptions.lastKey) {
       awsOpensearchQuery.search_after = jobFilterOptions.lastKey;
     }
+
+    // log the query object
+    global.logger.debug("Aws OpenSearch Query Details", {
+      filePath: __filename,
+      methodName: this.getAllJobsByFilterOptions.name,
+      awsOpensearchQuery,
+    });
 
     return awsOpensearchLibrary.getDocuments<
       DbJobAwsOpensearchDto,
