@@ -40,4 +40,14 @@ export enum JobWorkModeEnum {
 export enum JobDashboardEnum {
   CORPORATE = "CORPORATE",
   ADMIN = "ADMIN",
+
+  /**
+   * USER
+   *
+   * NOTE:-
+   *  1. The `USER` may be `Candidate` or `Employee` or `Not Logged In User` or `Not Registered User`.
+   *  2. As of now frontend is using below value whenever the `Candidate` or `Employee` or `Not Logged In User` or `Not Registered User` 
+   *     want to see the `internal jobs(which are posted by worko-admin or corporate-admin/recruiter)`.
+   */
+  USER = "USER",
 }

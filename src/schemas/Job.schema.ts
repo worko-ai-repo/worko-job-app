@@ -265,6 +265,14 @@ export const jobCreateApiDtoValidation = Joi.object({
         JobStatusEnum
       ).join(", ")} `,
     }),
+
+  displaySalaryRange: Joi.boolean()
+    .required()
+    .default(true)
+    .messages({
+      "any.required": "The Display salary range field is required.",
+      "any.type": "The Display salary range field must be a boolean.",
+    }),
 });
 
 /**

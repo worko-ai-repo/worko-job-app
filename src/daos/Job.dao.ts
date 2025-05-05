@@ -162,7 +162,7 @@ class JobDao {
     // If dashboard is provided, only retrieve jobs that contain companyId
     if (
       jobFilterOptions?.dashboard &&
-      [JobDashboardEnum.ADMIN, JobDashboardEnum.CORPORATE].includes(jobFilterOptions.dashboard)
+      [JobDashboardEnum.ADMIN, JobDashboardEnum.CORPORATE, JobDashboardEnum.USER].includes(jobFilterOptions.dashboard)
     ) {
       queryBoolMust.push({
         exists: {

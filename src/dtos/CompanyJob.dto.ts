@@ -38,6 +38,7 @@ export interface CompanyJobCreateApiDto {
   technicalSkills: string[]; // Array of skills like [MS EXCEL, MS OFFICE, SAP]
   miscellaneousSkills?: string[]; // Array of any skills could be from the above 3 fields.
   status: JobStatusEnum;
+  displaySalaryRange: boolean; // by default it sets to `true`
 }
 
 /**

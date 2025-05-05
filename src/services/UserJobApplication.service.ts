@@ -1315,6 +1315,44 @@ class UserJobApplicationService {
         },
         statusTracker: statusTrackerData,
       };
+    } else if(jobApplicationRequestBody.status === JobApplicationStatus.CV_DOWNLOADED) {
+      // If cv is already downloaded then override the action date, user id and user type
+      if(parsedJobApplication.status === JobApplicationStatus.CV_DOWNLOADED) {
+        const statusTrackerData: JobApplicationStatusTrackerType = [
+          ...parsedJobApplication.statusTracker.map(
+            (item) =>
+              item.newStatus === JobApplicationStatus.CV_DOWNLOADED
+                ? { 
+                  ...item, 
+                  actionDate: currentActionDateTime,
+                  userId: jobApplicationRequestBody.userId,
+                  userType: jobApplicationRequestBody.userType
+                } // override "actionDate", "userId" and "userType"
+                : item // keep others unchanged
+          )
+        ];
+  
+        updateData = {
+          status: jobApplicationRequestBody.status,
+          statusTracker: statusTrackerData,
+        };
+      } else {
+        const statusTrackerData: JobApplicationStatusTrackerType = [
+          ...parsedJobApplication.statusTracker,
+          {
+            oldStatus: parsedJobApplication.status,
+            newStatus: jobApplicationRequestBody.status,
+            actionDate: currentActionDateTime,
+            userId: jobApplicationRequestBody.userId,
+            userType: jobApplicationRequestBody.userType,
+          },
+        ];
+
+        updateData = {
+          status: jobApplicationRequestBody.status,
+          statusTracker: statusTrackerData,
+        };
+      }
     } else {
       const statusTrackerData: JobApplicationStatusTrackerType = [
         ...parsedJobApplication.statusTracker,

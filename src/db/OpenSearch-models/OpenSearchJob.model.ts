@@ -252,4 +252,9 @@ export interface DbJobAwsOpensearchDto {
    * isDeleted
    */
   isDeleted: boolean;
+
+  /**
+   * displaySalaryRange
+   */
+  displaySalaryRange?: boolean; 
 }
