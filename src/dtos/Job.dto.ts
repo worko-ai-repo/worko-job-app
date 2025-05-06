@@ -30,7 +30,7 @@ export interface JobCreateApiDto {
   technicalSkills: string[]; // Array of skills like [MS EXCEL, MS OFFICE, SAP]
   miscellaneousSkills?: string[]; // Array of any skills could be from the above 3 fields.
   status: JobStatusEnum; // This will be asked by the UI team to update the status of the Job. for eg. If the admin leaves the form and close the session it'd be saved as draft.
-  displaySalaryRange: boolean; // by default it sets to `true`
+  displaySalaryRange?: boolean; 
 }
 
 /**
@@ -161,6 +161,7 @@ export interface JobUpdateApiDto {
   softSkills?: string[];
   technicalSkills?: string[];
   miscellaneousSkills?: string[];
+  displaySalaryRange?: boolean;
 }
 
 /**

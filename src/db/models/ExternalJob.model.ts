@@ -85,6 +85,7 @@ class DbExternalJobDto extends BaseDbDto {
   softSkills?: string[];
   experienceRange?: MinMaxRange;
   salaryRange?: MinMaxRange;
+  displaySalaryRange?: boolean;
   typeofEmployment?: string;
   companyName?: string;
   companyUrl?: string;
@@ -213,6 +214,11 @@ const ExternalJobSchema: Schema = new dynamoose.Schema(
         min: { type: Number, required: true },
         max: { type: Number, required: true },
       },
+    },
+    displaySalaryRange: {
+      type: Boolean,
+      required: false,
+      default: true,
     },
     typeofEmployment: {
       type: String,

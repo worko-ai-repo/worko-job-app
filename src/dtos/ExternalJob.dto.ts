@@ -95,6 +95,7 @@ export interface ExternalJobUpdateApiDto {
   softSkills?: string[];
   technicalSkills?: string[];
   miscellaneousSkills?: string[];
+  displaySalaryRange?: boolean;
 }
 
 /**

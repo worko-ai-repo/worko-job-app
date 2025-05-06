@@ -267,10 +267,9 @@ export const jobCreateApiDtoValidation = Joi.object({
     }),
 
   displaySalaryRange: Joi.boolean()
-    .required()
+    .optional()
     .default(true)
     .messages({
-      "any.required": "The Display salary range field is required.",
       "any.type": "The Display salary range field must be a boolean.",
     }),
 });
@@ -636,6 +635,13 @@ export const jobUpdateApiDtoValidation = Joi.object({
         .optional()
         .messages({
             "array.base": "MiscellaneousSkills skills must be an array.",
+        }),
+      
+    displaySalaryRange: Joi
+        .boolean()
+        .optional()
+        .messages({
+            'boolean.base': 'The Display salary range field must be a boolean.',
         }),
 
 });

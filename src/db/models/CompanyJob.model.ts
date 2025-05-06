@@ -64,7 +64,7 @@ class DbCompanyJobDto extends BaseDbDto {
   technicalSkills!: string[];
   typeofEmployment!: string;
   workMode!: JobWorkModeEnum;
-  displaySalaryRange!: boolean; 
+  displaySalaryRange?: boolean; 
 
   isDeleted!: boolean;
 }
@@ -210,7 +210,7 @@ const CompanyJobSchema = new dynamoose.Schema(
     },
     displaySalaryRange: {
       type: Boolean,
-      required: true,
+      required: false,
       default: true
     },
   },
