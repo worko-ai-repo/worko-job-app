@@ -24,7 +24,6 @@ import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.mod
 import { companyJobServiceObj } from "./CompanyJob.service";
 import { jobServiceObj } from "./Job.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
-import { fantasticJobServiceObj } from "./FantasticJob.service";
 
 /**
  * ScriptService
@@ -44,7 +43,7 @@ class ScriptService {
       `Script to schedule job for external job api [Script Service]`
     );
 
-    return fantasticJobServiceObj.scheduleDelayedFantasticJobTwentyFourHour();
+    return false;
   }
 
   /**

@@ -2,13 +2,17 @@
 import { Search_RequestBody } from "@opensearch-project/opensearch/api/_core/search";
 import { QueryContainer } from "@opensearch-project/opensearch/api/_types/_common.query_dsl";
 import { SortOptions } from "@opensearch-project/opensearch/api/_types/_common";
-import { Index_Response, Update_Response } from "@opensearch-project/opensearch/api";
+import { DeleteByQuery_RequestBody, DeleteByQuery_Response, Index_Response, Update_Response, UpdateByQuery_RequestBody, UpdateByQuery_Response } from "@opensearch-project/opensearch/api";
+import { TransportRequestPromise } from "@opensearch-project/opensearch/lib/Transport";
 
 // import luxon
 import { DateTime } from "luxon";
 
 // Import Aws opensearch client
 import { awsOpensearchLibrary } from "../configs/aws-sdk.config";
+
+// Import configs
+import APP_CONSTANTS from "../configs/constants.config";
 
 // Import dtos
 import {
@@ -22,8 +26,11 @@ import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opense
 
 // Import enums
 import { AwsOpensearchSortOrderTypeEnum } from "../enums/Common.aws-opensearch.enum";
-import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
+import { JobDashboardEnum } from "../enums/Job.enum";
 import { JobSourcedFromEnum } from "../enums/Common.enum";
+
+// Import helpers
+import { dateHelperObj } from "../helpers/date.helper";
 
 // Import models
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
@@ -35,6 +42,21 @@ import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.mod
  */
 class JobDao {
   IndexName = "worko-jobs";
+
+  /**
+   * modifyUpdatedAtFieldWithCurrentDateTime
+   *
+   * Modifies the updatedAt field of an object with the current time.
+   *
+   * @param {EntityUpdateDto} updateObject - The object to be updated.
+   * @returns {EntityUpdateDto} - The updated object.
+   */
+  modifyUpdatedAtFieldWithCurrentDateTime<
+    EntityUpdateDto extends { updatedAt?: string }
+  >(updateObject: EntityUpdateDto): EntityUpdateDto {
+    updateObject.updatedAt = DateTime.now().toISO();
+    return updateObject;
+  }
 
   /**
    * createJob
@@ -217,7 +239,7 @@ class JobDao {
             order: AwsOpensearchSortOrderTypeEnum.DESCENDING,
           },
         }
-      );      
+      );
     }
 
     // Add search text filter if provided
@@ -629,15 +651,15 @@ class JobDao {
 
   /**
    * updateInternalOrExternalJobById
+   * 
+   * Updates a job by its ID using the provided update data.
    *
-   * Updates a job in the AWS OpenSearch index using its ID.
-   *
-   * This method is used to update both internal and external jobs.
+   * This method logs the update operation and sends an update request to the OpenSearch client to modify the job document with the given ID.
    *
    * @param {string} jobId - The ID of the job to update.
-   * @param {JobUpdateDto} jobUpdateDto - The data transfer object containing the updated details of the job.
+   * @param {JobUpdateDto} jobUpdateDto - The update data for the job.
    *
-   * @returns {Promise<Update_Response> } - A promise that resolves when the update operation is complete.
+   * @returns {Promise<Update_Response>} - A promise that resolves when the update operation is complete.
    */
   async updateInternalOrExternalJobById(
     jobId: string,
@@ -652,57 +674,60 @@ class JobDao {
     return awsOpensearchLibrary.updateDocumentById<JobUpdateDto>(
       jobId,
       this.IndexName,
-      jobUpdateDto
+      this.modifyUpdatedAtFieldWithCurrentDateTime<JobUpdateDto>(jobUpdateDto) // Will add `updatedAt` field to jobUpdateDto object.
     );
   }
 
   /**
-   * Soft deletes a job by updating the `isDeleted` field to true based on the given job ID.
+   * softDeleteJobById
+   * 
+   * Soft deletes a job by its ID in the OpenSearch index.
    *
-   * This method logs the soft delete operation and sends an update request to the OpenSearch client to modify the job document with the given ID.
+   * @param {string} jobId - The ID of the job to be soft deleted.
+   * @param {Partial<JobUpdateInternalDto>} updateObject - The update data
+   * containing fields to mark the job as deleted.
    *
-   * @param {string} jobId - The ID of the job to soft delete.
-   * @returns {Promise<Update_Response>} - A promise that resolves when the update operation is complete.
+   * @returns {Promise<Update_Response>} - A promise that resolves to the
+   * result of the update operation.
    */
-  async softDeleteJobById(jobId: string): Promise<Update_Response> {
+  async softDeleteJobById(jobId: string, updateObject: Partial<JobUpdateInternalDto>): Promise<Update_Response> {
     // Logger
     global.logger.info(`Soft Delete job by id [DAO].`, {
       methodName: this.softDeleteJobById.name,
       id: jobId,
     });
 
-    // Prepare update object
-    const updateObject = {
-      isDeleted: true,
-      status: JobStatusEnum.CLOSED,
-    };
-
-    return awsOpensearchLibrary.updateDocumentById<{
-      isDeleted: boolean;
-      status: JobStatusEnum;
-    }>(jobId, this.IndexName, updateObject);
+    return awsOpensearchLibrary.updateDocumentById<Partial<JobUpdateInternalDto>>(
+      jobId, 
+      this.IndexName, 
+      this.modifyUpdatedAtFieldWithCurrentDateTime<Partial<JobUpdateInternalDto>>(updateObject) // Add `updatedAt` field to "updateObject".
+    );
   }
 
   /**
-   * Updates a job by its ID using the provided update data.
+   * updateJobById
    *
-   * This method logs the update operation and sends an update request to the OpenSearch client to modify the job document with the given ID.
+   * Updates a job in the AWS OpenSearch index by its ID.
+   *
+   * This method logs the update operation and sends an update request to the OpenSearch client
+   * to modify the job document with the given ID using the provided update data.
+   * An `updatedAt` field is added to the update data before sending the request.
    *
    * @param {string} jobId - The ID of the job to update.
-   * @param {JobUpdateInternalDto} updateDto - The update data for the job.
+   * @param {Partial<JobUpdateInternalDto>} updateDto - The partial update data for the job.
    *
-   * @returns {Promise<Update_Response>} - A promise that resolves when the update operation is complete.
+   * @returns {Promise<Update_Response>} - A promise that resolves to the result of the update operation.
    */
-  updateJobById(jobId: string, updateDto: JobUpdateInternalDto) {
+  async updateJobById(jobId: string, updateDto: Partial<JobUpdateInternalDto>): Promise<Update_Response> {
     // logger
     global.logger.info(`Update Job By Id From aws opensearch [Service]`, {
       methodName: this.updateJobById.name,
     });
 
-    return awsOpensearchLibrary.updateDocumentById<JobUpdateInternalDto>(
+    return awsOpensearchLibrary.updateDocumentById<Partial<JobUpdateInternalDto>>(
       jobId,
       this.IndexName,
-      updateDto
+      this.modifyUpdatedAtFieldWithCurrentDateTime<Partial<JobUpdateInternalDto>>(updateDto) // Add `updatedAt` field to "updateDto".
     );
   }
 
@@ -731,56 +756,156 @@ class JobDao {
   }
 
   /**
-   * Bulk deletes jobs from the OpenSearch index with the given IDs.
+   * buildSoftDeleteOrHardDeleteExternalJobBoolQuery
    *
-   * This method logs the bulk delete operation and sends a bulk delete request to the OpenSearch client.
-   * The bulk delete request includes a list of `delete` action objects, each containing the ID of a job to delete.
-   * The OpenSearch client will respond with an error if any of the job IDs do not exist in the index.
+   * NOTE: As of now this method is used in `deleteOldUnappliedExternalJobs` and `softDeleteOldAppliedExternalJobs`
+   * methods, because both methods are having some kind of similar boolean queries, but in near future if we want to implement
+   * different boolean queries, then we need to update `deleteOldUnappliedExternalJobs`, `softDeleteOldAppliedExternalJobs`,
+   * `buildSoftDeleteOrHardDeleteExternalJobBoolQuery` methods accordingly.
    *
-   * @see https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#delete
+   * This method builds a query to identify external jobs in the OpenSearch index
+   * that meet the following criteria:
+   * - The `createdAt` field is older than a specified number of days.
+   * - The `externalJobId` field exists.
+   * - The `isAppliedBySomeone` field is either true or false, based on the parameter.
    *
-   * @param {string[]} ids - The IDs of the jobs to delete.
+   * The query can be used for either delete by query or update by query operations.
    *
-   * @returns {Promise<boolean>}
+   * @param {boolean} isAppliedBySomeone - Indicates if the job has been applied by someone.
+   * @returns {ActionByQuery} - The constructed boolean query for deletion or update.
    */
-  /* async bulkDeleteJobs(ids: string[]): Promise<boolean> {
-    global.logger.info(`bulk delete jobs`, {
-      fileName: __filename,
-      methodName: this.bulkDeleteJobs.name,
-    });
-
-    return awsOpensearchLibrary.bulkDeleteDocument(ids, this.IndexName);
-  } */
+  private buildSoftDeleteOrHardDeleteExternalJobBoolQuery<
+    ActionByQuery extends DeleteByQuery_RequestBody["query"] | UpdateByQuery_RequestBody["query"]
+  >(isAppliedBySomeone: boolean): ActionByQuery {
+    return {
+      bool: {
+        must: [
+          {
+            range: {
+              createdAt: {
+                lt: dateHelperObj.getPastISODate(
+                  APP_CONSTANTS.FANTASTIC_JOB_CLEANUP_CONFIG
+                    .DELETE_OLDER_THAN_DAYS
+                ),
+              },
+            },
+          },
+          {
+            exists: {
+              field: "externalJobId",
+            },
+          },
+          {
+            term: {
+              isAppliedBySomeone: isAppliedBySomeone,
+            },
+          },
+        ],
+      },
+    } as ActionByQuery;
+  }
 
   /**
-   * Bulk soft deletes jobs from the OpenSearch index with the given IDs.
+   * deleteOldUnappliedExternalJobs
    *
-   * This method logs the bulk soft delete operation and sends a bulk update request to the OpenSearch client.
-   * The bulk update request includes a list of `update` action objects, each containing the ID of a job to soft delete.
-   * The OpenSearch client will set the `isDeleted` field of the job to `true` if the job exists in the index.
-   * The OpenSearch client will respond with an error if any of the job IDs do not exist in the index.
+   * Deletes unapplied external jobs that are older than a specified number of days from the OpenSearch index.
    *
-   * @see https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#update
+   * This method constructs a delete by query request to remove documents that meet the following criteria:
+   * - The `createdAt` field is older than the specified number of days.
+   * - The `externalJobId` field exists.
+   * - The `isAppliedBySomeone` field is set to false.
    *
-   * @param {string[]} ids - The IDs of the jobs to soft delete.
+   * The method logs the deletion operation and returns a promise that resolves to the result of the delete by query operation.
    *
-   * @returns
+   * @returns {Promise<TransportRequestPromise<DeleteByQuery_Response>>} - A promise resolving to the result of the delete by query operation.
    */
-  /* async bulkSoftDeleteJobs(ids: string[]) {
-    global.logger.info(`bulk soft delete jobs`, {
+  async deleteOldUnappliedExternalJobs(): Promise<
+    TransportRequestPromise<DeleteByQuery_Response>
+  > {
+    // logger
+    global.logger.info(`Delete old unapplied external jobs by query [Dao]`, {
       fileName: __filename,
-      methodName: this.bulkSoftDeleteJobs.name,
+      methodName: this.deleteOldUnappliedExternalJobs.name,
     });
 
-    const bulkJobUpdateData = ids.flatMap((eachId: string) => [
-      { update: { _index: this.IndexName, _id: eachId } },
-      { doc: { isDeleted: true } },
-    ]);
+    // Prepare delete request body
+    const deleteOldUnappliedExternalJobsQueryRequestBody: DeleteByQuery_RequestBody =
+      {
+        /**
+         * @todo: Observe the flow of deleting documents and decide whether to use `max_docs` or not.
+         */
+        // max_docs: 1000,
 
-    return awsOpensearchLibrary.opensearchClient.bulk({
-      body: bulkJobUpdateData,
+        query: this.buildSoftDeleteOrHardDeleteExternalJobBoolQuery<
+            DeleteByQuery_RequestBody["query"]
+          >(false),
+      };
+
+    return awsOpensearchLibrary.deleteDocumentsByQuery(
+      this.IndexName,
+      deleteOldUnappliedExternalJobsQueryRequestBody
+    );
+  }
+
+  /**
+   * softDeleteOldAppliedExternalJobs
+   * 
+   * Soft deletes old applied external jobs that are older than a specified number of days.
+   *
+   * This method logs the soft deletion process and calls the JobDao's softDeleteOldAppliedExternalJobs method
+   * to perform the update by query operation in OpenSearch.
+   *
+   * @param {Partial<JobUpdateInternalDto>} updateObject - The data transfer object containing the updated details of the job.
+   * @returns {Promise<TransportRequestPromise<UpdateByQuery_Response>>} - A promise resolving to the result of the update by query operation.
+   */
+  async softDeleteOldAppliedExternalJobs(
+    updateObject: Partial<JobUpdateInternalDto>
+  ): Promise<TransportRequestPromise<UpdateByQuery_Response>> {
+    global.logger.info(`Soft delete old applied external jobs [Dao]`, {
+      fileName: __filename,
+      methodName: this.softDeleteOldAppliedExternalJobs.name,
     });
-  } */
+
+    /**
+     * Prepare soft delete old applied external jobs request body
+     *
+     * Request body options
+     * @see https://docs.opensearch.org/docs/latest/api-reference/document-apis/update-by-query/#request-body-options
+     */
+    const softDeleteOldAppliedExternalJobsQueryRequestBody: UpdateByQuery_RequestBody =
+      {
+        /**
+         * @todo: Observe the flow of deleting documents and decide whether to use `max_docs` or not.
+         */
+        // max_docs: 1000,
+
+        query: this.buildSoftDeleteOrHardDeleteExternalJobBoolQuery<
+            UpdateByQuery_RequestBody["query"]
+          >(true),
+
+        /**
+         * Painless script
+         * @see https://docs.opensearch.org/docs/latest/api-reference/script-apis/exec-script/#example-request
+         */
+        script: {
+          params:
+            this.modifyUpdatedAtFieldWithCurrentDateTime<
+              Partial<JobUpdateInternalDto>
+            >(updateObject),
+          lang: "painless",
+          source: `
+            ctx._source.isDeleted = params.isDeleted;
+            ctx._source.updatedAt = params.updatedAt;
+            ctx._source.status = params.status;
+          `,
+        },
+      };
+
+    return awsOpensearchLibrary.updateDocumentsByQuery(
+      this.IndexName,
+      softDeleteOldAppliedExternalJobsQueryRequestBody
+    );
+  }
 
   /**
    * createBulkJobs

@@ -12,7 +12,6 @@ import { AwsOpensearchRequestHelper } from '../helpers/request.aws-opensearch.he
 // Import models
 import { DbCompanyJobDto } from '../db/models/CompanyJob.model';
 import { DbJobAwsOpensearchDto } from '../db/OpenSearch-models/OpenSearchJob.model';
-import { DbExternalJobDto } from '../db/models/ExternalJob.model';
 
 // Import services
 import { jobServiceObj } from '../services/Job.service';
@@ -222,11 +221,7 @@ class JobController {
           updatedByCorporateUserId: actionByCorporateUserId,
         };
 
-      const jobDetails:
-        | DbJobAwsOpensearchDto
-        | DbExternalJobDto
-        | DbCompanyJobDto
-        | undefined = await jobServiceObj.updateInternalOrExternalJobById(
+      const jobDetails: DbJobAwsOpensearchDto | DbCompanyJobDto | undefined = await jobServiceObj.updateInternalOrExternalJobById(
         jobId,
         jobUpdateDto
       );

@@ -19,7 +19,7 @@ class DbExternalJobDto extends BaseDbDto {
   // Ids
 
   /**
-   * Whenever the External Job is created, then the `id` attribute from `Job.aws-opensearch-model.ts` will be set to this attribute
+   * Whenever the External Job is created, then the `id` attribute from `OpensearchJob.model.ts` will be set to this attribute
    */
   id!: string;
 

@@ -194,7 +194,13 @@ export interface EntityDetailsPaginationData {
  * NOTE: Use this interface for only key value pairs of `DbEntityDto`.
  */
 export interface PaginatedResultsWithMatchingConditionsResponse<DbEntityDto> {
+  /**
+   * Index Signatures:- Sometimes you don’t know all the names of a type’s properties ahead of time, 
+   * but you do know the shape of the values. In those cases you can use an index signature to describe the types of possible values
+   * @see https://www.typescriptlang.org/docs/handbook/2/objects.html#index-signatures
+   */
   [key: number]: DbEntityDto;
+
   lastKey: ObjectType | undefined;
   count: number;
   timesQueried: number;

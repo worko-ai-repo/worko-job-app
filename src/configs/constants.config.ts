@@ -230,6 +230,13 @@ const APP_CONSTANTS = {
   },
 
   /**
+   * FANTASTIC_JOB_CLEANUP_CONFIG
+   */
+  FANTASTIC_JOB_CLEANUP_CONFIG: {
+    DELETE_OLDER_THAN_DAYS: 30,
+  },
+
+  /**
    * CONFIRMATION_LABELS
    */
   CONFIRMATION_LABELS: {
@@ -244,7 +251,7 @@ const APP_CONSTANTS = {
    */
   get FANTASTIC_JOB_TWENTY_FOUR_HOURS_AFTER_X_HOURS(): number {
     const PROD_HOURS = 3 * 24; // 72 hours
-    const DEV_HOURS = 3 / 60; // 1 minute converted to hour
+    const DEV_HOURS = 3 / 60; // 3 minutes converted to hours
 
     // return the time based on the environment
     return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_HOURS : DEV_HOURS;

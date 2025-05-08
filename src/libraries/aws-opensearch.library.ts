@@ -6,15 +6,21 @@ import { AwsSigv4Signer } from "@opensearch-project/opensearch/aws";
 // Import opensearch request and response types
 import { Hit } from "@opensearch-project/opensearch/api/_types/_core.search";
 import {
-  Bulk_RequestBody,
   Bulk_Response,
   Delete_Response,
+  DeleteByQuery_Request,
+  DeleteByQuery_RequestBody,
+  DeleteByQuery_Response,
   Index_RequestBody,
   Index_Response,
   Search_RequestBody,
   Search_Response,
   Update_Response,
+  UpdateByQuery_Request,
+  UpdateByQuery_RequestBody,
+  UpdateByQuery_Response,
 } from "@opensearch-project/opensearch/api";
+import { TransportRequestPromise } from "@opensearch-project/opensearch/lib/Transport";
 
 // Import constants
 import APP_CONSTANTS from "../configs/constants.config";
@@ -136,7 +142,7 @@ class AwsOpensearchLibrary {
    * request succeed, or `false` if any operation fails.
    */
   async bulkCreateDocument(
-    bulkData:
+    bulkData: (
       | Index_RequestBody
       | {
           index: {
@@ -144,9 +150,11 @@ class AwsOpensearchLibrary {
             _id: string;
           };
         }
+    )[]
   ) {
     const response: Bulk_Response = await this.opensearchClient.bulk({
       body: bulkData,
+      refresh: true,
     });
 
     return !response.body.errors;
@@ -250,20 +258,96 @@ class AwsOpensearchLibrary {
    *
    * @param {string} id - The ID of the document to update.
    * @param {string} indexName - The name of the OpenSearch index.
-   * @param {Partial<EntityDto>} updateData - The update data for the document.
+   * @param {EntityDto} updateData - The data to update the document with.
    * @returns {Promise<Update_Response>} - A promise that resolves to the result
    *   of the update operation.
    */
-  async updateDocumentById<EntityDto>(
+  async updateDocumentById<EntityDto extends Index_RequestBody>(
     id: string,
     indexName: string,
-    updateData: Partial<EntityDto>
+    updateData: EntityDto
   ): Promise<Update_Response> {
     return this.opensearchClient.update({
       index: indexName,
       id,
       body: { doc: updateData },
+      refresh: true,
     });
+  }
+
+  /**
+   * updateDocumentsByQuery
+   *
+   * Updates multiple documents in an OpenSearch index based on a query.
+   *
+   * This method sends an update by query request to the OpenSearch client
+   * with the specified index name and update query request body. The request
+   * body is a partial object that contains only the fields to be updated, and
+   * the values to be updated with.
+   *
+   * The method returns a promise that resolves to the result of the update
+   * operation.
+   *
+   * Request body options
+   * @see https://docs.opensearch.org/docs/latest/api-reference/document-apis/update-by-query/#request-body-options
+   *
+   * Response body fields
+   * @see https://docs.opensearch.org/docs/latest/api-reference/document-apis/update-by-query/#response-body-fields
+   *
+   * @param {string} indexName - The name of the OpenSearch index.
+   * @param {UpdateByQuery_RequestBody} updateQueryRequestBody - The request body for the update by query request.
+   * @returns {Promise<TransportRequestPromise<UpdateByQuery_Response>>} - A promise that resolves to the result of the update operation.
+   */
+  async updateDocumentsByQuery(
+    indexName: string,
+    updateQueryRequestBody: UpdateByQuery_RequestBody
+  ): Promise<TransportRequestPromise<UpdateByQuery_Response>> {
+    // Prepare the update query request
+    const updateQueryRequest: UpdateByQuery_Request = {
+      body: updateQueryRequestBody,
+      index: indexName,
+      refresh: true,
+    };
+
+    return this.opensearchClient.updateByQuery(updateQueryRequest);
+  }
+
+  /**
+   * bulkUpdateDocument
+   *
+   * Bulk updates documents in an OpenSearch index.
+   *
+   * This method sends a bulk request to the OpenSearch client to update multiple
+   * documents in the given index. Each operation in the `bulkUpdateRequestData`
+   * array can either be a new document or an update action with metadata
+   * specifying the document's index and ID.
+   *
+   * The method returns a promise that resolves to `true` if all operations in
+   * the bulk request succeed, or `false` if any operation fails.
+   *
+   * @param {(
+   *   | { update: { _index: string; _id: string } }
+   *   | { doc: Index_RequestBody }
+   * )[]} bulkUpdateRequestData - An array of update operations to be processed in the bulk request.
+   *
+   * @returns {Promise<boolean>} - A promise that resolves to `true` if all operations in the bulk request succeed, or `false` if any operation fails.
+   */
+  async bulkUpdateDocument(
+    bulkUpdateRequestData: (
+      | { update: { _index: string; _id: string } }
+      | { doc: Index_RequestBody }
+    )[]
+  ) {
+    // Send the bulk update request to OpenSearch
+    const response: Bulk_Response = await this.opensearchClient.bulk({
+      body: bulkUpdateRequestData,
+      refresh: true,
+    });
+
+    /**
+     * Returns `true` if there are no errors in the response, `false` otherwise.
+     */
+    return !response.body.errors;
   }
 
   /**
@@ -285,7 +369,41 @@ class AwsOpensearchLibrary {
     return this.opensearchClient.delete({
       index: indexName,
       id: id,
+      refresh: true,
     });
+  }
+
+  /**
+   * deleteDocumentsByQuery
+   *
+   * Deletes multiple documents from an OpenSearch index based on a query.
+   *
+   * This method sends a delete by query request to the OpenSearch client.
+   * The request includes a query that specifies the documents to be deleted.
+   *
+   * Request body fields
+   * @see https://docs.opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/#request-body-fields
+   *
+   * Response body fields
+   * @see https://docs.opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/#response-body-fields
+   *
+   * @param {string} indexName - The name of the OpenSearch index from which to delete the documents.
+   * @param {DeleteByQuery_RequestBody} deleteQueryRequestBody - The request body for the delete by query request.
+   * @returns {Promise<TransportRequestPromise<DeleteByQuery_Response>>} - A promise that resolves to the result of the delete by query operation.
+   */
+  async deleteDocumentsByQuery(
+    indexName: string,
+    deleteQueryRequestBody: DeleteByQuery_RequestBody
+  ): Promise<TransportRequestPromise<DeleteByQuery_Response>> {
+    // Prepare the delete query request
+    const deleteQueryRequest: DeleteByQuery_Request = {
+      body: deleteQueryRequestBody,
+      index: indexName,
+      refresh: true,
+    };
+
+    // Return the delete query request
+    return this.opensearchClient.deleteByQuery(deleteQueryRequest);
   }
 
   /**
@@ -295,8 +413,9 @@ class AwsOpensearchLibrary {
    *
    * This method constructs a bulk delete request for the specified document IDs
    * in the given index and sends it to the OpenSearch client. Each delete action
-   * in the request is associated with a document ID, and the operation will
-   * attempt to delete these documents from the index.
+   * in the request is associated with a document ID, and This action deletes a document if it exists.
+   * If the document doesn’t exist, OpenSearch doesn’t return an error but instead returns not_found under result.
+   * Delete actions don’t require documents on the next line.
    *
    * @see https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#delete
    *
@@ -305,7 +424,8 @@ class AwsOpensearchLibrary {
    * @returns {Promise<boolean>} - A promise that resolves when the bulk delete operation is completed.
    */
   async bulkDeleteDocument(ids: string[], indexName: string): Promise<boolean> {
-    const bulkData: {
+    // Construct the bulk delete request
+    const bulkRequestData: {
       delete: {
         _index: string;
         _id: string;
@@ -314,8 +434,15 @@ class AwsOpensearchLibrary {
       delete: { _index: indexName, _id: id },
     }));
 
-    const response = await this.opensearchClient.bulk({ body: bulkData });
+    // Send the bulk delete request to OpenSearch
+    const response: Bulk_Response = await this.opensearchClient.bulk({
+      body: bulkRequestData,
+      refresh: true,
+    });
 
+    /**
+     * Returns `true` if there are no errors in the response, `false` otherwise.
+     */
     return !response.body.errors;
   }
 }

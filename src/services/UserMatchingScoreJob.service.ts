@@ -180,7 +180,7 @@ class UserMatchingScoreJobService {
    *
    * The method returns a promise that resolves to an array of user matching score job documents
    * if all operations in the bulk request succeed, or rejects with an error if any operation fails.
-   * 
+   *
    * @param {string} userId - The ID of the user for whom the user matching score jobs are being created.
    * @param {string[]} jobIds - The array of jobIds for which the user matching score jobs are being created.
    * @param {boolean} [invokeLambdaToMatchUserResumeWithJobsAndJds=true] - Whether to invoke the lambda function to update the user matching scores after creating the documents.

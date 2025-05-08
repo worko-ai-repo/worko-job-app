@@ -10,35 +10,23 @@ import "./libraries/logger.library";
 // Import database configuration
 import DBConfig from "./db/DB.config";
 
-// Import constants
-import APP_CONSTANTS from "./configs/constants.config";
-import { FANTASTIC_JOB_APP_CONSTANTS } from "./configs/constants/ExternalJob.constant";
-
 // import dtos
 import { ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "./dtos/ScheduleJob.dto";
-import { FantasticJobCloudApiDto, FantasticJobApiResponse } from "./dtos/FantasticJob.dto";
 
 // Import enums
 import { ScheduleJobType } from "./enums/ScheduleJob.enum";
-
-// Import helpers
-import { jobDescriptionValidatorHelperObj } from "./helpers/jobDescriptionValidator.helper";
-
-// Import libraries
-import { fantasticJobCloudApiLibraryObj } from "./libraries/FantasticJobCloudApi.library";
 
 // Import models
 import { DbScheduleJobDto } from "./db/models/ScheduleJob.model";
 
 // Import services
-import { fantasticJobServiceObj } from "./services/FantasticJob.service";
 import scheduleJobService from "./services/ScheduleJob.service";
-import { jobServiceObj } from "./services/Job.service";
 import { userJobApplicationServiceObj } from "./services/UserJobApplication.service";
 
 // Import error handling utilities
 import { BaseError } from "./utils/errors.util";
 import HttpStatusCode from "./utils/http-codes.util";
+import { responseHandlerUtilObj } from "./utils/response-handler.util";
 
 /**
  * Initializes the database configuration.
@@ -53,73 +41,6 @@ const initDatabaseConfig = () => {
 
 // Initialize the database configuration
 initDatabaseConfig();
-
-/**
- * Sends an error response.
- *
- * @param {any} error - The error object.
- * @param {string} message - The error message to return in the response.
- * @param {boolean} [consoleResponse=true] - Whether to log the error response to the console.
- * @returns {Promise<object>} The formatted error response object.
- */
-const sendErrResponse = async (
-  error: any,
-  message: string,
-  consoleResponse: boolean = true
-): Promise<object> => {
-  // Prepare the error response
-  const response = {
-    statusCode: error.statusCode ?? HttpStatusCode.INTERNAL_SERVER_ERROR_500,
-    body: JSON.stringify({
-      message: message,
-      error: error.message ?? "Internal Server Error",
-    }),
-  };
-
-  // Log the response if required
-  if (consoleResponse) {
-    global.logger.info("sendErrResponse: ", {
-      filePath: __filename,
-      methodName: "sendErrResponse",
-      response: JSON.stringify(response),
-    });
-  }
-
-  return response;
-};
-
-/**
- * Sends a success response.
- *
- * @param {number} statusCode - The HTTP status code to return.
- * @param {string} message - The success message to return in the response.
- * @param {boolean} [consoleResponse=true] - Whether to log the success response to the console.
- * @returns {Promise<object>} The formatted success response object.
- */
-const sendSuccessResponse = async (
-  statusCode: HttpStatusCode,
-  message: string,
-  consoleResponse: boolean = true
-): Promise<object> => {
-  // Prepare the success response
-  const response = {
-    statusCode: statusCode,
-    body: JSON.stringify({
-      message: message,
-    }),
-  };
-
-  // Log the response if required
-  if (consoleResponse) {
-    global.logger.info("sendSuccessResponse: ", {
-      filePath: __filename,
-      methodName: "sendSuccessResponse",
-      response: response,
-    });
-  }
-
-  return response;
-};
 
 /**
  * handler
@@ -166,95 +87,7 @@ export const handler = async (
     });
 
     // Process the scheduled job based on its type
-    if (scheduleJob.type === ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS) {
-      global.logger.info(
-        `Processing scheduled job for external job twenty four hours [app scheduler handler]`,
-        {
-          filePath: __filename,
-          methodName: "handler",
-          scheduleJobType: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
-        }
-      );
-
-      // External job API call with pagination
-      const externalJobDetails: FantasticJobApiResponse[] = [];
-      let offset = 0;
-      const limit = 100; // Each request fetches 100 jobs
-
-      // This is custom variable which will use for debugging how many external jobs get called.
-      let externalTwentyFourHourJobApiCallsCount = 0;
-
-      while (true) {
-        // Prepare Argument for external job API call
-        const externalJobArgument: FantasticJobCloudApiDto = {
-            offSet: offset,
-            descriptionType: FANTASTIC_JOB_APP_CONSTANTS.HTML_DESCRIPTION_TYPE,
-          };
-
-        // Break the loop if dev stage
-        if(process.env.APP_STAGE === APP_CONSTANTS.STAGES.DEV) {
-          global.logger.info("App scheduler handler: Dev stage");
-          if(externalJobDetails.length > 0) {
-            global.logger.info("App scheduler handler: Dev stage, breaking the loop because already fetched some jobs from external api");
-            break;
-          }
-        }
-
-        // Fetch jobs with the current offset
-        const jobs: FantasticJobApiResponse[] =
-          await fantasticJobCloudApiLibraryObj.getFantasticJobTwentyFourHours(
-            externalJobArgument
-          );
-        externalTwentyFourHourJobApiCallsCount += 1;
-
-        // If no more jobs, stop the loop
-        if (!jobs || jobs.length === 0) {
-          break;
-        }
-
-        // Filter jobs with empty description
-        const filteredJobs: FantasticJobApiResponse[] = jobs.filter(
-          (eachExternalJob: FantasticJobApiResponse) => {
-            const givenJobDescription: string | undefined = eachExternalJob.description_text || eachExternalJob.description_html;
-
-            /**
-             * NOTE: The job description validation is happening on `html` description.
-             */
-            const isValidDescription: boolean | "" | undefined =
-              givenJobDescription &&
-              jobDescriptionValidatorHelperObj.isValidDescription(
-                givenJobDescription
-              );
-
-            return isValidDescription;
-          }
-        );
-
-        // Add fetched jobs to the array
-        externalJobDetails.push(...filteredJobs);
-
-        // Increment the offset
-        offset += limit;
-      }
-
-      global.logger.info(`Job retrival details`, {
-        filePath: __filename,
-        methodName: "handler",
-        externalTwentyFourHourJobApiCallsCount, // @todo: Need to create a tracking for this api call count in database
-        externalFilteedJobDetailsLength: externalJobDetails.length,
-      });
-
-      // Bulk index jobs in opensearch
-      await jobServiceObj.createBulkJobsInOpensearch(externalJobDetails);
-
-      // If the stage is production then schedule delayed external job
-      if (process.env.APP_STAGE === APP_CONSTANTS.STAGES.PROD) {
-        global.logger.info(`Schedule delayed external job in production environment.`);
-
-        // Schedule delayed external job
-        await fantasticJobServiceObj.scheduleDelayedFantasticJobTwentyFourHour();
-      }
-    } else if (
+    if (
       scheduleJob.type === ScheduleJobType.USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED
     ) {
       // scheduleJob input
@@ -310,13 +143,13 @@ export const handler = async (
     await scheduleJobService.completeScheduleJob(scheduleJobId);
 
     // Return success response
-    return sendSuccessResponse(
+    return responseHandlerUtilObj.sendSuccess(
       HttpStatusCode.OK_200,
       `Scheduled job ${scheduleJobId} processed successfully.`
     );
   } catch (error: any) {
     // Return error response
-    return sendErrResponse(
+    return responseHandlerUtilObj.sendError(
       error,
       error?.errorMsg ??
         error?.message ??

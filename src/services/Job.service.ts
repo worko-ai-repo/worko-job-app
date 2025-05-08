@@ -5,7 +5,8 @@ import { APIGatewayProxyResult } from "aws-lambda";
 import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 
 // Import opensearch types
-import { Index_Response, Update_Response } from "@opensearch-project/opensearch/api";
+import { DeleteByQuery_Response, Index_Response, Update_Response, UpdateByQuery_Response } from "@opensearch-project/opensearch/api";
+import { TransportRequestPromise } from "@opensearch-project/opensearch/lib/Transport";
 
 // Import luxon
 import { DateTime } from "luxon";
@@ -31,7 +32,6 @@ import { htmlToTextHelperObj } from "../helpers/htmlToText.helper";
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
-import { DbExternalJobDto } from "../db/models/ExternalJob.model";
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
 
 // Import services
@@ -362,7 +362,7 @@ class JobService {
    *
    * @returns {Promise<boolean>} - A promise that resolves to `true` if all operations in the bulk request succeed, or `false` if any operation fails.
    */
-  scriptBulkUploadJobs(
+  async scriptBulkUploadJobs(
     formattedJobListingArray: (
       | DbJobAwsOpensearchDto
       | {
@@ -380,23 +380,67 @@ class JobService {
     return jobDaoObj.createBulkJobs(formattedJobListingArray);
   }
 
-  // ============================================================
-  // In near future we will work on deleting job flow
-  // ============================================================
-  /* bulkDeleteJobs(ids: string[]) {
-    return jobDaoObj.bulkDeleteJobs(ids);
-  } */
+  /**
+   * deleteOldUnappliedExternalJobs
+   *
+   * Deletes unapplied external jobs that are older than a specified number of days.
+   *
+   * This method logs the deletion process and calls the JobDao's deleteOldUnappliedExternalJobs method
+   * to perform the delete by query operation in OpenSearch.
+   *
+   * @returns {Promise<TransportRequestPromise<DeleteByQuery_Response>>} - A promise resolving to the result of the delete by query operation.
+   */
+  async deleteOldUnappliedExternalJobs(): Promise<TransportRequestPromise<DeleteByQuery_Response>> {
+    global.logger.info("Delete old unapplied external jobs [Service]", {
+      methodName: this.deleteOldUnappliedExternalJobs.name,
+    });
 
-  /* bulkSoftDeleteJobs(ids: string[]) {
-    return jobDaoObj.bulkSoftDeleteJobs(ids);
-  } */
+    return jobDaoObj.deleteOldUnappliedExternalJobs();
+  }
 
+  /**
+   * softDeleteOldAppliedExternalJobs
+   * 
+   * Soft deletes old applied external jobs that are older than a specified number of days.
+   *
+   * This method logs the soft deletion process and calls the JobDao's softDeleteOldAppliedExternalJobs method
+   * to perform the update by query operation in OpenSearch.
+   *
+   * @returns {Promise<TransportRequestPromise<UpdateByQuery_Response>>} - A promise resolving to the result of the update by query operation.
+   */
+  async softDeleteOldAppliedExternalJobs(): Promise<TransportRequestPromise<UpdateByQuery_Response>> {
+    global.logger.info("Soft delete old applied external jobs [Service]", {
+      methodName: this.softDeleteOldAppliedExternalJobs.name,
+    });
+
+    // Prepare Update Object
+    const updateObject: Partial<JobUpdateInternalDto> = {
+      isDeleted: true,
+      status: JobStatusEnum.CLOSED,
+    };
+
+    return jobDaoObj.softDeleteOldAppliedExternalJobs(updateObject);
+  }
+
+  /**
+   * updateInternalOrExternalJobById
+   *
+   * Updates a job by its ID using the provided update data.
+   *
+   * This method retrieves the job details from the `worko-jobs` index on `AWS Opensearch` and throws an error if the job is not found.
+   * If the job is found, it updates the job details in `worko-jobs` index on `AWS Opensearch` and if the job is internal then it updates the `companyJob` details in dynamodb.
+   *
+   * If the job is external then it returns the updated job details from `worko-jobs` index on `AWS Opensearch`.
+   *
+   * @param {string} jobId - The ID of the job to update.
+   * @param {JobUpdateDto} jobUpdateDto - The update data for the job.
+   *
+   * @returns {Promise<DbJobAwsOpensearchDto | DbCompanyJobDto | undefined>} - A promise that resolves to the updated job details from `worko-jobs` index on `AWS Opensearch` or undefined if the job is not found.
+   */
   async updateInternalOrExternalJobById(
     jobId: string,
     jobUpdateDto: JobUpdateDto
-  ): Promise<
-    DbJobAwsOpensearchDto | DbExternalJobDto | DbCompanyJobDto | undefined
-  > {
+  ): Promise<DbJobAwsOpensearchDto | DbCompanyJobDto | undefined> {
     // Logger
     global.logger.debug(`Update job by id [service]`, {
       methodName: this.updateInternalOrExternalJobById.name,
@@ -420,46 +464,51 @@ class JobService {
       global.logger.error(
         `Update job by id in aws opensearch failed [SERVICE]`,
         {
+          jobId: jobId,
           updatedJobDetailsOnAwsOpensearch,
         }
       );
+
+      // Throw an error if the job is not updated
+      throw new BaseError(
+        "Unable to update job details, please try again.",
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500
+      );
     }
 
-    // If `companyId` is not present, then check and update `external job` details in `ExternalJob` model in `worko-job-app` table on `AWS Dynamodb` and return the response.
-    if (!jobDetailsOnAwsOpensearch.companyId) {
-      // Retrieve the external job details from dynamodb and if not present return the retrieved job details from opensearch
-      const externalJobDetailsOnAwsDynamodb: QueryResponse<DbExternalJobDto> = await externalJobServiceObj.getExternalJobById(jobId);
-      if (externalJobDetailsOnAwsDynamodb.count === 0) {
-        return jobDaoObj.getJobById(jobId);
-      }
+    // If the job is internal then update the `companyJob` details in dynamodb.
+    if(jobDetailsOnAwsOpensearch.companyId) {
 
-      // Prepare update External Job dto
-      const externalJobUpdateDto: ExternalJobUpdateDto = {
+      /**
+       * Removes the `updatedAt` property from `jobUpdateDto` before updating the item in DynamoDB.
+       *
+       * Reason:
+       * - `updatedAt` attribute is managed automatically by DynamoDB (via timestamps settings in Dynamoose).
+       * - Including it manually may cause unintended overrides or conflicts during update.
+       */
+      delete jobUpdateDto.updatedAt;
+
+      // Prepare Company Job Update Dto
+      const companyJobUpdateDto: CompanyJobUpdateDto = {
         ...jobUpdateDto,
       };
 
-      // If the external job details from dynamodb present then update it and return
-      return externalJobServiceObj.updateExternalJobById(jobId, externalJobUpdateDto);
+      // Return updated `companyJob` details
+      return companyJobServiceObj.updateCompanyJobById(
+        jobId,
+        jobDetailsOnAwsOpensearch.companyId,
+        companyJobUpdateDto
+      );
     }
 
-    // Prepare Company Job Update Dto
-    const companyJobUpdateDto: CompanyJobUpdateDto = {
-      ...jobUpdateDto,
-    };
-
-    // Else Update `job` details in `CompanyJob` model in `worko-job-app` table on `AWS Dynamodb` and return the response.
-    return companyJobServiceObj.updateCompanyJobById(
-      jobId,
-      jobDetailsOnAwsOpensearch.companyId,
-      companyJobUpdateDto
-    );
+    // Return the external job details
+    return jobDaoObj.getJobById(jobId);
   }
 
   /**
    * softDeleteJobById
    * 
-   * NOTE: As of now soft delete is implemented on the `CompanyJobs` present in `dynamodb`(CompanyJob.model.ts) and `opensearch`
-   * but it will implement on `external jobs` which are present in in `dynamodb`(ExternalJob.model.ts) and `opensearch` also in near future.
+   * NOTE: As of now soft delete is implemented on the `CompanyJobs` present in `dynamodb`(CompanyJob.model.ts) and Job documents containing `companyId` in `opensearch`
    *
    * @param {string} jobId - The ID of the job to be soft deleted.
    * @param {string} companyId - The ID of the company associated with the job.
@@ -477,9 +526,15 @@ class JobService {
       companyId: companyId,
     });
 
+    // Prepare Update Object for opensearch
+    const updateObjectForOpensearch: Partial<JobUpdateInternalDto> = {
+      isDeleted: true,
+      status: JobStatusEnum.CLOSED,
+    };
+
     // Soft deleting the job from opensearch database
     const softDeleteJobOnAwsOpensearch: Update_Response =
-      await jobDaoObj.softDeleteJobById(jobId);
+      await jobDaoObj.softDeleteJobById(jobId, updateObjectForOpensearch);
     if (softDeleteJobOnAwsOpensearch.statusCode !== HttpStatusCode.OK_200) {
       throw new BaseError(
         "Unable to soft delete job, Please try again.",
@@ -506,7 +561,9 @@ class JobService {
    * @param {string} id - The ID of the job to retrieve.
    * @returns {Promise<DbJobAwsOpensearchDto | undefined>} A promise that resolves to the job details.
    */
-  getJobByIdFromAwsOpensearch(id: string): Promise<DbJobAwsOpensearchDto | undefined> {
+  async getJobByIdFromAwsOpensearch(
+    id: string
+  ): Promise<DbJobAwsOpensearchDto | undefined> {
     // logger
     global.logger.info(`Get Job By Id From aws opensearch [Service]`, {
       methodName: this.getJobByIdFromAwsOpensearch.name,
@@ -523,11 +580,14 @@ class JobService {
    * This method logs the update operation and sends an update request to the OpenSearch client to modify the job document with the given ID.
    *
    * @param {string} id - The ID of the job to update.
-   * @param {JobUpdateInternalDto} updateDto - The updated details of the job.
+   * @param {Partial<JobUpdateInternalDto>} updateDto - The updated details of the job.
    *
    * @returns {Promise<DbJobAwsOpensearchDto | undefined>} - A promise that resolves to the updated job details from the OpenSearch client.
    */
-  updateJobByIdOnAwsOpensearch(id: string, updateDto: JobUpdateInternalDto) {
+  async updateJobByIdOnAwsOpensearch(
+    id: string,
+    updateDto: Partial<JobUpdateInternalDto>
+  ): Promise<Update_Response> {
     // logger
     global.logger.info(`Update Job By Id From aws opensearch [Service]`, {
       methodName: this.updateJobByIdOnAwsOpensearch.name,

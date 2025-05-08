@@ -5,7 +5,7 @@ import axios, { AxiosResponse } from "axios";
 import {
   FANTASTIC_JOB_CLOUD_API_ENDPOINTS,
   FANTASTIC_JOB_APP_CONSTANTS,
-} from "../configs/constants/ExternalJob.constant";
+} from "../configs/constants/FantasticJob.constant";
 
 // Import dtos
 import { FantasticJobCloudApiDto, FantasticJobApiResponse, FantasticJobCloudApiQueryParamDTO } from "../dtos/FantasticJob.dto";

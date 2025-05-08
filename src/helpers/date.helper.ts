@@ -17,7 +17,6 @@ class DateHelper {
    * @param {string} dateISO - The date string in ISO format to be formatted.
    * @returns {string} The formatted date string in "DayMonthYear" format with ordinal suffix.
    */
-
   formatDateToDayMonthYear(dateISO: string): string {
     const date: DateTime<true> | DateTime<false> = DateTime.fromISO(dateISO);
     const day: number = date.day;
@@ -47,6 +46,20 @@ class DateHelper {
     };
 
     return `${day}${getOrdinal(day)} ${month} ${year}.`;
+  }
+
+  /**
+   * getPastISODate
+   * 
+   * Gets the ISO date string for a given number of days ago.
+   *
+   * @param {number} daysAgo - The number of days ago to get the ISO date string for.
+   * @returns {string} The ISO date string for the given days ago, @example: "2023-01-01T00:00:00.000Z".
+   */
+  getPastISODate(daysAgo: number): string {
+    return DateTime.now()
+      .minus({ days: daysAgo })
+      .toISO();
   }
 }
 

@@ -25,6 +25,7 @@ import { userJobApplicationServiceObj } from "./services/UserJobApplication.serv
 // Import utils
 import { BaseError } from "./utils/errors.util";
 import HttpStatusCode from "./utils/http-codes.util";
+import { responseHandlerUtilObj } from "./utils/response-handler.util";
 
 /**
  * Initializes the database configuration.
@@ -41,72 +42,6 @@ const initDatabaseConfig = () => {
 
 // Initialize the database configuration
 initDatabaseConfig();
-
-/**
- * Sends an error response.
- *
- * @param {any} error - The error object.
- * @param {string} message - The error message to return in the response.
- * @param {boolean} [consoleResponse=true] - Whether to log the error response to the console.
- * @returns {Promise<object>} The formatted error response object.
- */
-const sendErrResponse = async (
-  error: any,
-  message: string,
-  consoleResponse: boolean = true
-): Promise<object> => {
-  // Prepare the response with required details
-  const response = {
-    statusCode: error.statusCode ?? HttpStatusCode.INTERNAL_SERVER_ERROR_500,
-    body: JSON.stringify({
-      message: message,
-      error: error.message ?? "Internal Server Error",
-    }),
-  };
-
-  // If consoleResponse is true, log the response
-  if (consoleResponse) {
-    global.logger.info("sendErrResponse: ", {
-      filePath: __filename,
-      methodName: "sendErrResponse",
-      response: response,
-    });
-  }
-
-  return response;
-};
-
-/**
- * Sends a success response.
- *
- * @param {number} statusCode - The HTTP status code to return.
- * @param {string} message - The success message to return in the response.
- * @param {boolean} [consoleResponse=true] - Whether to log the success response to the console.
- * @returns {Promise<object>} The formatted success response object.
- */
-const sendSuccessResponse = async (
-  statusCode: HttpStatusCode,
-  message: string,
-  consoleResponse: boolean = true
-): Promise<object> => {
-  // Prepare the response with required details
-  const response = {
-    statusCode: statusCode,
-    body: JSON.stringify({ message: message }),
-  };
-
-  // If consoleResponse is true, log the response
-  if (consoleResponse) {
-    global.logger.info("sendSuccessResponse: ", {
-      filePath: __filename,
-      methodName: "sendSuccessResponse",
-      response: response,
-    });
-  }
-
-  return response;
-};
-
 
 /**
  * validateUserJobApplicationMatchingScore
@@ -174,7 +109,7 @@ const validateUserJobApplicationMatchingScore = async (
         }
       );
 
-      return sendSuccessResponse(
+      return responseHandlerUtilObj.sendSuccess(
         HttpStatusCode.OK_200,
         "Job application matching score validated successfully."
       );
@@ -187,7 +122,7 @@ const validateUserJobApplicationMatchingScore = async (
     }
   } catch (error: any) {
     // Return error response if validation failed
-    return sendErrResponse(error, error?.errorMsg ?? error?.message);
+    return responseHandlerUtilObj.sendError(error, error?.errorMsg ?? error?.message);
   }
 };
 
@@ -265,6 +200,6 @@ export const handler = async (
     );
   } catch (error: any) {
     // Return error response if an unexpected error occurred
-    return sendErrResponse(error, "An unexpected error occurred.");
+    return responseHandlerUtilObj.sendError(error, "An unexpected error occurred.");
   }
 };

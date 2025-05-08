@@ -12,8 +12,6 @@ import { UserMatchingScoreJobStatusEnum } from "../../enums/UserMatchingScoreJob
 export interface DbUserMatchingScoreJobAwsOpensearchDto {
   /**
    * id
-   *
-   * NOTE: This id attribute is creating in the database as `uuid` but ideally it should create in `ulid` format to maintain consistency in backend.
    */
   id: string;
 
@@ -41,7 +39,7 @@ export interface DbUserMatchingScoreJobAwsOpensearchDto {
   /**
    * jobId
    *
-   * @reference `id` attribute from `Job.aws-opensearch-model.ts`
+   * @reference `id` attribute from `OpenSearchJob.model.ts`
    */
   jobId: string;
 

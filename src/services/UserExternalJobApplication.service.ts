@@ -41,18 +41,16 @@ class UserExternalJobApplicationService {
    * 
    * Creates a new user external job application.
    *
-   * This method first checks if the job is published and if the user has already
-   * applied for the job. If the job is not published or the user has already applied
-   * for the job, it throws an error.
+   * This method first verifies if the job is published and if the user has already applied for the job.
+   * If the job is not published or if the user has already applied for the job then it throws an error.
+   * If the user has not already applied for the job then it updates the user matching score job status to `APPLIED`
+   * if the user matching score job details are found. Otherwise, it creates a new user external job application
+   * in the database.
    *
-   * Otherwise, it creates a new user external job application in the database.
-   *
-   * @param {string} userId - The ID of the user applying for the job.
+   * @param {string} userId - The id of the user applying for the job.
    * @param {string} email - The email of the user applying for the job.
-   * @param {UserExternalJobApplicationCreateApiDTO} userExternalJobApplicationRequestBody -
-   * The data required to create a new user external job application.
-   * @returns {Promise<DbUserExternalJobApplicationDto>} A promise that resolves to
-   * the created user external job application data.
+   * @param {UserExternalJobApplicationCreateApiDTO} userExternalJobApplicationRequestBody - The data required to create a new user external job application.
+   * @return {Promise<DbUserExternalJobApplicationDto>} A promise that resolves to the created user external job application data.
    */
   async createUserExternalJobApplication(
     userId: string,
@@ -106,13 +104,6 @@ class UserExternalJobApplicationService {
       );
     }
 
-    // Validate and create external job
-    await externalJobServiceObj.validateAndCreateExternalJob(
-      userExternalJobApplicationRequestBody.jobId,
-      externalJobDetailsOnAwsOpensearch,
-      decodedJobUrl
-    );
-
     // Get matching score details by `userId` and `jobId` from `worko-user-matching-score-job` index in aws opensearch
     const userMatchingScoreJobDetails:
       | DbUserMatchingScoreJobAwsOpensearchDto
@@ -155,7 +146,7 @@ class UserExternalJobApplicationService {
     // If `isAppliedBySomeone` is not already set then update it.
     if (!externalJobDetailsOnAwsOpensearch.isAppliedBySomeone) {
       // Prepare and update job by id
-      const updatDto: JobUpdateInternalDto = {
+      const updatDto: Partial<JobUpdateInternalDto> = {
         isAppliedBySomeone: true,
       };
 

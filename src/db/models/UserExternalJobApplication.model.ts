@@ -25,7 +25,7 @@ class DbUserExternalJobApplicationDto extends BaseDbDto {
   GSI1SK!: string;
 
   // references
-  jobId!: string; // `id` attribute from `ExternalJob` model in `worko-job-app` table on aws dynamodb
+  jobId!: string; // `id` attribute from `OpensearchJob.model.ts` in `worko-jobs` index on aws opensearch
   applicantUserId!: string; // `id` attribute from `UserDetail` model in `worko` table on aws dynamodb
 
   status!: UserExternalJobApplicationStatusEnum;

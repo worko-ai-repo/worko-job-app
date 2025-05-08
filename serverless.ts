@@ -16,6 +16,9 @@
  */
 import type { AWS } from "@serverless/typescript";
 
+// Import enums
+import { ScheduleJobType } from "./src/enums/ScheduleJob.enum";
+
 /**
  * Serverless configuration for the "worko-job-app" service.
  * This configuration includes provider settings, plugins, package options, and function definitions.
@@ -59,13 +62,22 @@ const serverlessConfiguration: AWS = {
     },
 
     /**
-     * @todo: Need to debug why this piece of code is implemented.
+     * awsLambdaFunctions
+     *
+     * This `awsLambdaFunctions` object is used to define the ARNs (Amazon Resource Names) of AWS Lambda functions.
      */
     awsLambdaFunctions: {
-      APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN:
-        "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-scheduler-handler",
-      APP_AWS_SCHEDULER_HANDLER_ROLE_ARN:
-        "arn:aws:iam::${self:custom.aws.APP_AWS_ACCOUNT_ID}:role/worko-schedule-invoke-lambda-role",
+      /**
+       * APP_SCHEDULER_HANDLER
+       *
+       * In "APP_SCHEDULER_HANDLER", The details of "app-scheduler-handler" AWS Lambda function are stored.
+       */
+      APP_SCHEDULER_HANDLER: {
+        APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN:
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-scheduler-handler",
+        APP_AWS_SCHEDULER_HANDLER_ROLE_ARN:
+          "arn:aws:iam::${self:custom.aws.APP_AWS_ACCOUNT_ID}:role/worko-schedule-invoke-lambda-role",
+      },
     },
   },
 
@@ -89,14 +101,14 @@ const serverlessConfiguration: AWS = {
      */
     stage: process.env.APP_SLS_STAGE,
 
-    /**
-     * @todo: Need to debug why this piece of code is implemented.
-     */
     environment: {
+      /**
+       * Environment variables for "app-scheduler-handler" function
+       */
       APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN:
-        "${self:custom.awsLambdaFunctions.APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN}",
+        "${self:custom.awsLambdaFunctions.APP_SCHEDULER_HANDLER.APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN}",
       APP_AWS_SCHEDULER_HANDLER_ROLE_ARN:
-        "${self:custom.awsLambdaFunctions.APP_AWS_SCHEDULER_HANDLER_ROLE_ARN}",
+        "${self:custom.awsLambdaFunctions.APP_SCHEDULER_HANDLER.APP_AWS_SCHEDULER_HANDLER_ROLE_ARN}",
     },
 
     /**
@@ -251,7 +263,7 @@ const serverlessConfiguration: AWS = {
     /**
      * workoJobApp
      *
-     * AWS Function Format:- {service}-{enviroment}-{lambdaName}
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
      * Ex:
      *  1. `worko-job-app-local-workoJobApp`
      *  2. `worko-job-app-dev-workoJobApp`
@@ -312,7 +324,7 @@ const serverlessConfiguration: AWS = {
      *
      * Using `AWS EventBridge` service to schedule jobs
      *
-     * AWS Function Format:- {service}-{enviroment}-{lambdaName}
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
      * Ex:
      *  1. `worko-job-app-local-app-scheduler-handler`
      *  2. `worko-job-app-dev-app-scheduler-handler`
@@ -332,12 +344,106 @@ const serverlessConfiguration: AWS = {
     },
 
     /**
+     * app-scheduler-external-jobs
+     *
+     * Using `AWS EventBridge` service
+     *
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
+     * Ex:
+     *  1. `worko-job-app-local-app-scheduler-external-jobs`
+     *  2. `worko-job-app-dev-app-scheduler-external-jobs`
+     *  3. `worko-job-app-prod-app-scheduler-external-jobs`
+     */
+    "app-scheduler-external-jobs": {
+      handler: "dist/src/app-scheduler-external-jobs.handler",
+      timeout: 900, // Set timeout to 900 seconds (15 minutes)
+
+      vpc: {
+        securityGroupIds: ["${self:custom.aws.APP_AWS_SECURITY_GROUP}"],
+        subnetIds: [
+          "${self:custom.aws.APP_AWS_SUBNET1}",
+          "${self:custom.aws.APP_AWS_SUBNET2}",
+        ],
+      },
+
+      /**
+       * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-name-and-description
+       */
+      events: [
+        {
+          schedule: {
+            name: "cleanup-old-unapplied-jobs-and-init-score-schedule", // Name can be specified for a schedule event. This is not a required property.
+            description:
+              "Triggers to hard and soft delete old unapplied external jobs and initial matching score jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+
+            /**
+             * Cron expressions
+             *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
+             * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
+             *
+             * @reference "Amazon EventBridge" > "Buses" > "Rules" > {name} > Event schedule
+             *
+             * @description Whatever input you provide will be passed to the function as input,
+             *              If no input is provided, the type of event object will be by default `ScheduledEvent`.
+             */
+            rate: ["cron(30 14 ? * 1 *)"],
+            enabled: true,
+
+            /**
+             * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
+             *
+             * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
+             *
+             * @description Whatever input you provide, that will be passed to the handler function as input,
+             *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
+             */
+            input: {
+              scheduleJob: {
+                type: ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS,
+              },
+            },
+          },
+        },
+        {
+          schedule: {
+            name: "fantastic-job-twenty-four-hours-schedule", // Name can be specified for a schedule event. This is not a required property.
+            description:
+              "Triggers to retrieve fantastic job twenty four hours according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+            /**
+             * Cron expressions
+             *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
+             * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
+             *
+             * @reference "Amazon EventBridge" > "Buses" > "Rules" > {Rule name} > Event schedule
+             */
+            rate: ["cron(30 14 ? * 2,5 *)"],
+            enabled: true,
+
+            /**
+             * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
+             *
+             * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
+             *
+             * @description Whatever input you provide, that will be passed to the handler function as input,
+             *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
+             */
+            input: {
+              scheduleJob: {
+                type: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
+              },
+            },
+          },
+        },
+      ],
+    },
+
+    /**
      * appeventtrigger
      *
      * Using `AWS SQS` service
      *
-     * AWS Function Format:- {service}-{enviroment}-{lambdaName}
-     * Ex:
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
+     * Ex:  
      *  1. `worko-job-app-local-appeventtrigger`
      *  2. `worko-job-app-dev-appeventtrigger`
      *  3. `worko-job-app-prod-appeventtrigger`

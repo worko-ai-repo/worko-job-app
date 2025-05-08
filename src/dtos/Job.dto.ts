@@ -170,6 +170,13 @@ export interface JobUpdateApiDto {
 export interface JobUpdateDto extends JobUpdateApiDto {
   updatedByUserId?: string;
   updatedByCorporateUserId?: string;
+
+  /**
+   * updatedAt
+   * 
+   * @example "2023-02-01T15:33:14.375184"
+   */
+  updatedAt?: string;
 }
 
 /**
@@ -183,7 +190,17 @@ export interface JobSoftDeleteApiDto {
  * JobUpdateInternalDto
  */
 export interface JobUpdateInternalDto {
-  isAppliedBySomeone?: boolean;
+  isAppliedBySomeone: boolean;
+  isDeleted: boolean;
+
+  /**
+   * updatedAt
+   *
+   * @example "2023-02-01T15:33:14.375184"
+   */
+  updatedAt: string;
+  
+  status: JobStatusEnum;
 }
 
 /**

@@ -1,6 +1,17 @@
 import { ScheduleJobStatus, ScheduleJobType } from "../enums/ScheduleJob.enum";
 
 /**
+ * ScheduledEventDto
+ * 
+ * @reference Currently `ScheduledEventDto` is used as parameter for `handler` function in `app-scheduler-external-jobs.ts`.
+ */
+export interface ScheduledEventDto {
+  scheduleJob: {
+    type: ScheduleJobType;
+  };
+}
+
+/**
  * ScheduleJobCreateDto
  *
  * This interface defines the structure of a schedule job data transfer object, representing a schedule job with additional fields.

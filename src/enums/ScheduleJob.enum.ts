@@ -15,6 +15,13 @@ export enum ScheduleJobType {
   FANTASTIC_JOB_TWENTY_FOUR_HOURS = "FANTASTIC_JOB_TWENTY_FOUR_HOURS",
 
   /**
+   * FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS
+   * 
+   * When this schedule job is triggered we need to hard and soft delete old unapplied fantastic jobs and old initial matching score jobs.
+   */
+  FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS = "FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS",
+
+  /**
    * USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED
    *
    * Whenever a user applies for a job, even though the matching score is low, then at that time we initially make

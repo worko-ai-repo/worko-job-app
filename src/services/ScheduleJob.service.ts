@@ -1,3 +1,7 @@
+
+// Import AWS SDK
+import { Scheduler } from "aws-sdk";
+
 // Import DAOs
 import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import { scheduleJobDaoObj } from "../daos/ScheduleJob.dao";
@@ -24,7 +28,14 @@ class ScheduleJobService {
     this.schedulerRoleArn = process.env.APP_AWS_SCHEDULER_HANDLER_ROLE_ARN ?? '';
 
     if (!this.schedulerLambdaArn || !this.schedulerRoleArn) {
-      throw new BaseError('Scheduler ARNs are not properly configured');
+      // Log the error
+      global.logger.error('Scheduler ARNs are not properly configured', {
+        schedulerLambdaArn: this.schedulerLambdaArn,
+        schedulerRoleArn: this.schedulerRoleArn,
+      });
+
+      // Throw an error
+      throw new BaseError('Scheduler ARNs are not properly configured', HttpStatusCode.INTERNAL_SERVER_ERROR_500);
     }
   }
 
@@ -101,8 +112,12 @@ class ScheduleJobService {
     global.logger.info("Marked scheduler job as completed in database:", id);
 
     // Delete the schedule from AWS Scheduler
-    await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
-    global.logger.info("Deleted scheduler job from AWS:", id);
+    const deleteResponse: Scheduler.DeleteScheduleOutput = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
+    global.logger.info("Deleted scheduler job from AWS:", {
+      response: JSON.stringify(deleteResponse),
+      deleteResponse: deleteResponse,
+      id,
+    });
 
     return true;
   }
