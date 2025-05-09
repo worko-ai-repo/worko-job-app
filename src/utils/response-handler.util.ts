@@ -58,7 +58,7 @@ class ResponseHandlerUtil {
     };
 
     if (consoleResponse) {
-      global.logger.error("ResponseHandler.sendSuccess:", {
+      global.logger.info("ResponseHandler.sendSuccess:", {
         filePath: __filename,
         methodName: this.sendSuccess.name,
         response: response,
