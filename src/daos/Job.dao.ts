@@ -767,7 +767,7 @@ class JobDao {
    * that meet the following criteria:
    * - The `createdAt` field is older than a specified number of days.
    * - The `externalJobId` field exists.
-   * - The `isAppliedBySomeone` field is either true or false, based on the parameter.
+   * - The `isAppliedBySomeone` field is either true or false, based on the parameter and we will write a "must" query accordingly.
    *
    * The query can be used for either delete by query or update by query operations.
    *
@@ -777,30 +777,57 @@ class JobDao {
   private buildSoftDeleteOrHardDeleteExternalJobBoolQuery<
     ActionByQuery extends DeleteByQuery_RequestBody["query"] | UpdateByQuery_RequestBody["query"]
   >(isAppliedBySomeone: boolean): ActionByQuery {
-    return {
-      bool: {
-        must: [
-          {
-            range: {
-              createdAt: {
-                lt: dateHelperObj.getPastISODate(
-                  APP_CONSTANTS.FANTASTIC_JOB_CLEANUP_CONFIG
-                    .DELETE_OLDER_THAN_DAYS
-                ),
+    const mustQueries: QueryContainer[] = [
+      {
+        range: {
+          createdAt: {
+            lt: dateHelperObj.getPastISODate(
+              APP_CONSTANTS.FANTASTIC_JOB_CLEANUP_CONFIG.DELETE_OLDER_THAN_DAYS
+            ),
+          },
+        },
+      },
+      {
+        exists: {
+          field: "externalJobId",
+        },
+      },
+    ];
+
+    if (isAppliedBySomeone) {
+      // Only true
+      mustQueries.push({
+        term: {
+          isAppliedBySomeone: true,
+        },
+      });
+    } else {
+      // false or undefined => should: false, must_not exists
+      mustQueries.push({
+        bool: {
+          should: [
+            {
+              term: {
+                isAppliedBySomeone: false,
               },
             },
-          },
-          {
-            exists: {
-              field: "externalJobId",
+            {
+              bool: {
+                must_not: {
+                  exists: {
+                    field: "isAppliedBySomeone",
+                  },
+                },
+              },
             },
-          },
-          {
-            term: {
-              isAppliedBySomeone: isAppliedBySomeone,
-            },
-          },
-        ],
+          ],
+        },
+      });
+    }
+
+    return {
+      bool: {
+        must: mustQueries,
       },
     } as ActionByQuery;
   }
