@@ -153,13 +153,7 @@ class JobDao {
       query: {
         bool: {
           must: [],
-
-          must_not: [
-            {
-              match: { isDeleted: true }, // Exclude deleted jobs
-            },
-          ],
-
+          must_not: [],
           should: [],
           minimum_should_match: 0, // This ensures that the `should` clause is not mandatory
         },
