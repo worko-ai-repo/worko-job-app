@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from "express";
 // import dtos
 import {
   UserJobApplicationCreateApiDTO,
+  UserJobApplicationDisplayToCorporateApiDTO,
   UserJobApplicationHiredFromOtherPortalApiDTO,
   UserJobApplicationHiredFromOtherPortalDTO,
   UserJobApplicationListingFilterOptions,
@@ -39,6 +40,7 @@ import {
   userJobApplicationFilterDtoValidation,
   userJobApplicationRequestFeedbackValidation,
   userJobApplicationUpdateValidation,
+  userJobApplicationDisplayToCorporateValidation,
 } from "../schemas/UserJobApplication.schema";
 
 // import types
@@ -46,7 +48,8 @@ import { JobApplicationWithUserDetailsType } from "../types/UserJobApplication.t
 
 // import utils
 import HttpStatusCode from "../utils/http-codes.util";
-import { RequestValidationError } from "../utils/errors.util";
+import { BaseError, RequestValidationError } from "../utils/errors.util";
+import ErrorCodeName from "../utils/error-code-name.util";
 
 /**
  * UserJobApplicationController
@@ -439,6 +442,70 @@ class UserJobApplicationController {
   };
 
   /**
+   * updateJobApplicationDisplayToCorporate
+   *
+   * Controller for when worko admin send job application to recruiter
+   *
+   * @param {Request} req - Express request object:
+   * @param {Response} res - Express response object used to send back the API response.
+   * @param {NextFunction} next - Express next function for error handling.
+   */
+  updateJobApplicationDisplayToCorporate = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Update Job Application Display To Corporate [Controller]`,
+        {
+          filePath: __filename,
+          methodName: this.updateJobApplicationDisplayToCorporate.name,
+          reqParams: req.params,
+        }
+      );
+
+      // Get job application details from the request body and validate it, if not valid throw error
+      const reqBody: UserJobApplicationDisplayToCorporateApiDTO = req.body;
+      const { error: reqBodyError, value: jobApplicationRequestBody } =
+        userJobApplicationDisplayToCorporateValidation.validate(reqBody, {
+          abortEarly: false,
+        });
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+
+      const jobApplicationDetails: DbUserJobApplicationDto = await userJobApplicationServiceObj.updateJobApplicationDisplayToCorporate(
+        req.params.id, // `id` attribute of `UserJobApplication.model.ts`
+        jobApplicationRequestBody
+      );
+
+      res.status(HttpStatusCode.OK_200).json(jobApplicationDetails);
+    } catch (error: any) {
+      global.logger.debug(
+        `Error at catch block in while sending to recruiter. [Script Controller]`,
+        {
+          error,
+          methodName: this.updateJobApplicationDisplayToCorporate.name,
+        }
+      );
+
+      if(error?.code === ErrorCodeName.RESOURCE_NOT_FOUND_EXCEPTION && error.statusCode === HttpStatusCode.NOT_FOUND_404) {
+        global.logger.error(`Schedule Not found to delete.`, {
+          methodName: this.updateJobApplicationDisplayToCorporate.name,
+        })
+        res.status(HttpStatusCode.FORBIDDEN_403).json(
+          {
+            "errorCode": HttpStatusCode.FORBIDDEN_403,
+            "errorMsg": "You can only send to corporates before specified hours.",
+          }
+        )
+      }
+      next(error);
+    }
+  };
+
+  /**
    * updateUserJobApplicationHiredFromOtherPortalDetails
    *
    * Controller for when a corporate recruiter/admin hires a candidate
@@ -458,7 +525,8 @@ class UserJobApplicationController {
         `Update User Job Application Hired From Other Portal Details [Controller]`,
         {
           filePath: __filename,
-          methodName: this.updateUserJobApplicationHiredFromOtherPortalDetails.name,
+          methodName:
+            this.updateUserJobApplicationHiredFromOtherPortalDetails.name,
           reqParams: req.params,
         }
       );
@@ -469,33 +537,44 @@ class UserJobApplicationController {
       // Get job application details from the request body and validate it, if not valid throw error
       const reqBody: UserJobApplicationHiredFromOtherPortalApiDTO = req.body;
       const { error: reqBodyError, value: validatedRequestBody } =
-        userJobApplicationHiredFromOtherPortalValidationApiDto.validate(reqBody, {
-          abortEarly: false,
-        });
+        userJobApplicationHiredFromOtherPortalValidationApiDto.validate(
+          reqBody,
+          {
+            abortEarly: false,
+          }
+        );
       if (reqBodyError) {
         throw new RequestValidationError(reqBodyError);
       }
 
       // Get existing user job application details
-      const existingUserJobApplicationDetails: DbUserJobApplicationDto = await userJobApplicationServiceObj.getJobApplicationById(jobApplicationId);
+      const existingUserJobApplicationDetails: DbUserJobApplicationDto =
+        await userJobApplicationServiceObj.getJobApplicationById(
+          jobApplicationId
+        );
 
       // Get email id from PK of existingUserJobApplicationDetails;
-      const emailId: string = getEmailFromPK(existingUserJobApplicationDetails.PK); 
+      const emailId: string = getEmailFromPK(
+        existingUserJobApplicationDetails.PK
+      );
 
       // Get actionByUserId and actionByCorporateUserId using the helper function
       const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
 
       // Prepare the details required to be updated
-      let userJobApplicationHiredFromOtherPortalDetails: UserJobApplicationHiredFromOtherPortalDTO = {
-        ...validatedRequestBody,
-      };
+      let userJobApplicationHiredFromOtherPortalDetails: UserJobApplicationHiredFromOtherPortalDTO =
+        {
+          ...validatedRequestBody,
+        };
 
       if (actionByUserId) {
-        userJobApplicationHiredFromOtherPortalDetails.updatedByUserId = actionByUserId;
+        userJobApplicationHiredFromOtherPortalDetails.updatedByUserId =
+          actionByUserId;
       }
 
       if (actionByCorporateUserId) {
-        userJobApplicationHiredFromOtherPortalDetails.updatedByCorporateUserId = actionByCorporateUserId;
+        userJobApplicationHiredFromOtherPortalDetails.updatedByCorporateUserId =
+          actionByCorporateUserId;
       }
 
       const userJobApplicationDetails: DbUserJobApplicationDto =

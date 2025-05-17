@@ -570,3 +570,19 @@ Stack:arn:aws:cloudformation:ap-south-1:211125353899:stack/worko-job-app-dev/931
 ```sh
 ERROR	TypeError: Cannot read properties of undefined (reading 'includes')
 ```
+
+25. delete response when `id` is wrong
+```json
+{
+    "error": {
+        "[Message]": "See error.Message for details.",
+        "code": "ResourceNotFoundException",
+        "message": "Schedule s does not exist.",
+        "requestId": "a161c048-2460-4143-b454-8ad2754736f6",
+        "retryDelay": 18.198095140667657,
+        "retryable": false,
+        "statusCode": 404,
+        "time": "2025-05-17T05:27:08.097Z"
+    }
+}
+```

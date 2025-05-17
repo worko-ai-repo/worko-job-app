@@ -141,3 +141,12 @@ export interface ScheduleUserJobApplicationStatusUpdateToRejectedInputDto {
   userEmail: string;
   userId: string;
 }
+
+/**
+ * ScheduleJobInternalUpdateDto
+ * 
+ * This dto is used as reusable for updating `ScheduleJob.model.ts` by using `Partial` typescript feature
+ */
+export interface ScheduleJobInternalUpdateDto {
+  status: ScheduleJobStatus;
+}

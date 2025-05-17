@@ -1,6 +1,10 @@
 // Import npm packages
 import { Request, Response, NextFunction } from "express";
 
+// Import aws related libraries
+import { PromiseResult } from "aws-sdk/lib/request";
+import { AWSError, Scheduler } from "aws-sdk";
+
 // Import dynamoose types
 import { ObjectType } from "dynamoose/dist/General";
 
@@ -9,6 +13,8 @@ import { scriptServiceObj } from "../services/Script.service";
 
 // Import local utils
 import HttpStatusCode from "../utils/http-codes.util";
+import ErrorCodeName from "../utils/error-code-name.util";
+import { BaseError } from "../utils/errors.util";
 
 /**
  * ScriptController
@@ -201,6 +207,102 @@ class ScriptController {
           error,
         }
       );
+      next(error);
+    }
+  };
+
+  /**
+   * scriptGetAwsScheduleById
+   * 
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @param {NextFunction} next - The Express next middleware function.
+   */
+  scriptGetAwsScheduleById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      // log
+      global.logger.info(
+        `Script get aws schedule by id [Script Controller]`,
+        {
+          filePath: __filename,
+          methodName: this.scriptGetAwsScheduleById.name,
+        }
+      );
+
+      // Script get aws schedule by id 
+      const scheduleDetails: PromiseResult<Scheduler.GetScheduleOutput, AWSError> = await scriptServiceObj.scriptGetAwsScheduleById(
+        req.params.id
+      );
+
+      res
+        .status(HttpStatusCode.OK_200)
+        .json(
+          scheduleDetails
+        );
+    } catch (error) {
+      global.logger.debug(
+        `Error at catch block in while get aws shchedule by id. [Script Controller]`,
+        {
+          error,
+        }
+      );
+      next(error);
+    }
+  };
+
+  /**
+   * scriptDeleteAwsScheduleById
+   * 
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @param {NextFunction} next - The Express next middleware function.
+   */
+  scriptDeleteAwsScheduleById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      // log
+      global.logger.info(
+        `Script delete aws schedule by id [Script Controller]`,
+        {
+          filePath: __filename,
+          methodName: this.scriptDeleteAwsScheduleById.name,
+        }
+      );
+
+      // Script delete aws schedule by id 
+      const scheduleDetails: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await scriptServiceObj.scriptDeleteAwsScheduleById(
+        req.params.id
+      );
+
+      res
+        .status(HttpStatusCode.OK_200)
+        .json(
+          scheduleDetails
+        );
+    } catch (error: any) {
+      global.logger.debug(
+        `Error at catch block in while delete aws shchedule by id. [Script Controller]`,
+        {
+          error,
+        }
+      );
+
+      if(error?.code === ErrorCodeName.RESOURCE_NOT_FOUND_EXCEPTION && error.statusCode === HttpStatusCode.NOT_FOUND_404) {
+        global.logger.error(`Schedule Not found to delete.`)
+        res.status(HttpStatusCode.FORBIDDEN_403).json(
+          {
+            "errorCode": HttpStatusCode.FORBIDDEN_403,
+            "errorMsg": "You can only send to corporates before specified hours.",
+          }
+        )
+      }
       next(error);
     }
   };

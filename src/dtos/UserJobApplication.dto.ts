@@ -128,6 +128,15 @@ export interface UserJobApplicationRequestFeedbackApiDTO {
 }
 
 /**
+ * UserJobApplicationDisplayToCorporateApiDTO
+ * 
+ * Data required from the API to display a user's job application to a corporate user.
+ */
+export interface UserJobApplicationDisplayToCorporateApiDTO {
+  displayToCorporate: boolean;
+}
+
+/**
  * UserJobApplicationBulkUploadDto
  */
 export interface UserJobApplicationBulkUploadDto {
@@ -216,4 +225,11 @@ export interface UserJobApplicationHiredFromOtherPortal {
    * @example "2024-12-17T11:36:46.753"
    */
   date: string;
+}
+
+/**
+ * UserJobApplicationCommonUpdateDto
+ */
+export interface UserJobApplicationCommonUpdateDto {
+  rejectionAwsScheduleId: string;
 }

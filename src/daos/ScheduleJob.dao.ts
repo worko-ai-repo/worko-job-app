@@ -7,6 +7,7 @@ import UlidService from "../services/Ulid.service";
 // Load the local DTOs
 import {
   ScheduleJobCreateDto,
+  ScheduleJobInternalUpdateDto,
   ScheduleJobUpdateDto,
 } from "../dtos/ScheduleJob.dto";
 
@@ -95,6 +96,31 @@ class ScheduleJobDao implements BaseDao {
 
     // Retrieve the schedule job from the database
     return ScheduleJobModel.get(keys);
+  }
+
+  /**
+   * updateScheduleJobById
+   * 
+   * Updates an existing schedule job by id in the database.
+   *
+   * @param {string} id - The ID of the schedule job to be updated.
+   * @param {Partial<ScheduleJobInternalUpdateDto>} scheduleJobUpdateDto - Data Transfer Object containing the updated details of the schedule job.
+   * @return {Promise<DbScheduleJobDto>} A promise that resolves to the updated schedule job object.
+   */
+  async updateScheduleJobById(
+    id: string,
+    scheduleJobUpdateDto: Partial<ScheduleJobInternalUpdateDto>
+  ): Promise<DbScheduleJobDto> {
+    global.logger.info("Updating schedule job by id in DAO", { id, scheduleJobUpdateDto });
+
+    // Prepare the keys for updating the schedule job based on the ID
+    let keys = {
+      PK: this.partitianKey,
+      SK: this.sortKeys.SK_SUBS.strtr({ "{ID}": id }),
+    };
+
+    // Update the existing schedule job in the database
+    return ScheduleJobModel.update(keys, scheduleJobUpdateDto);
   }
 }
 

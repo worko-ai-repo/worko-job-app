@@ -49,4 +49,18 @@ ScriptRouter.post("/script-internal-jobs-worko-ddb-to-worko-job-app-ddb", script
  */
 ScriptRouter.post("/script-internal-user-job-applications-worko-ddb-to-worko-job-app-ddb", scriptController.scriptInternalUserJobApplicationsWorkoDdbToWorkoJobAppDdb);
 
+/**
+ * scriptGetAwsScheduleById
+ * 
+ * @authorisedRoles ["admin"]
+ */
+ScriptRouter.get("/:id/script-get-aws-schedule", scriptController.scriptGetAwsScheduleById);
+
+/**
+ * scriptGetAwsScheduleById
+ * 
+ * @authorisedRoles ["admin"]
+ */
+ScriptRouter.delete("/:id/script-delete-aws-schedule", scriptController.scriptDeleteAwsScheduleById);
+
 export default ScriptRouter;

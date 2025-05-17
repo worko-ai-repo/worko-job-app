@@ -1,6 +1,7 @@
 // import dynamoose types 
 import { Query, QueryResponse } from "dynamoose/dist/ItemRetriever";
 import { ObjectType } from "dynamoose/dist/General";
+import { Condition } from "dynamoose/dist/Condition";
 
 // import luxon
 import { DateTime } from "luxon";
@@ -12,7 +13,7 @@ import APP_CONSTANTS from "../configs/constants.config";
 import BaseDao from "./Base.dao";
 
 // import dtos
-import { UserJobApplicationBulkUploadDto, UserJobApplicationCreateDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions } from "../dtos/UserJobApplication.dto";
+import { UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions } from "../dtos/UserJobApplication.dto";
 import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
 
 // import enums
@@ -67,6 +68,37 @@ class UserJobApplicationDao implements BaseDao {
         "{id}": id,
       }),
     };
+  }
+
+  /**
+   * updateJobApplicationByIdAndPrimaryEmail
+   *
+   * Updates a job application by its ID and user email.
+   *
+   * This method updates a job application with the provided update data.
+   *
+   * @param {string} jobApplicationId - The ID of the job application to be updated.
+   * @param {string} applicantUserEmail - The primary email of the user who applied for the job.
+   * @param {Partial<UserJobApplicationCommonUpdateDto>} updateData - The update data for the job application.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated job application data.
+   */
+  async updateJobApplicationByIdAndPrimaryEmail(
+    jobApplicationId: string,
+    applicantUserEmail: string,
+    updateData: Partial<UserJobApplicationCommonUpdateDto>
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(`Update Job Application details [DAO]`, {
+      filePath: __filename,
+      methodName: this.updateJobApplicationByIdAndPrimaryEmail.name,
+      jobApplicationId,
+      applicantUserEmail,
+      updateData,
+    });
+
+    return UserJobApplicationModel.update(
+      this.preparePKAndSKForQuery(applicantUserEmail, jobApplicationId),
+      updateData
+    );
   }
 
   /**
@@ -328,11 +360,22 @@ class UserJobApplicationDao implements BaseDao {
       jobApplicationRequestBody.userType ===
         CorporateUserTypeEnum.CORPORATE_RECRUITER
     ) {
-      query = query
-        .where("rejectionFeedbackBySystem")
-        .eq("")
-        .where("matchingScore")
-        .ge(APP_CONSTANTS.MATCHING_SCORES.JOB_APPLICATION_MINIMUM_MATCHING_SCORE);
+      query = query.and().parenthesis((condition: Condition) => {
+        return condition
+          .where("displayToCorporate")
+          .eq(true)
+          .or()
+          .parenthesis((inner: Condition) => {
+            return inner
+              .where("rejectionFeedbackBySystem")
+              .eq("")
+              .where("matchingScore")
+              .ge(
+                APP_CONSTANTS.MATCHING_SCORES
+                  .JOB_APPLICATION_MINIMUM_MATCHING_SCORE
+              );
+          });
+      });
     }
 
     // Apply status filter if provided
@@ -375,17 +418,19 @@ class UserJobApplicationDao implements BaseDao {
       The parenthesis() method allows grouping of conditions for complex queries.
       */
       query = query.and().parenthesis((condition) => {
-        return condition
-          .where("status")
-          .contains(searchTextValue.toUpperCase())
-          .or()
-          .where("PK")
-          .contains(`USR#EML#${searchTextValue.toLowerCase()}`)
-          .or()
-          // NOTE: `companyName` search will not work when the `companyName` is changed in `CompanyDetail` model and
-          // if the `companyName` is changed in `CompanyDetail` model, then the `companyName` will not be updated in `UserJobApplication` model
-          .where("companyName")
-          .contains(searchTextValue.toUpperCase());
+        return (
+          condition
+            .where("status")
+            .contains(searchTextValue.toUpperCase())
+            .or()
+            .where("PK")
+            .contains(`USR#EML#${searchTextValue.toLowerCase()}`)
+            .or()
+            // NOTE: `companyName` search will not work when the `companyName` is changed in `CompanyDetail` model and
+            // if the `companyName` is changed in `CompanyDetail` model, then the `companyName` will not be updated in `UserJobApplication` model
+            .where("companyName")
+            .contains(searchTextValue.toUpperCase())
+        );
       });
     }
 
@@ -459,6 +504,42 @@ class UserJobApplicationDao implements BaseDao {
           },
         ],
       }
+    );
+  }
+
+  /**
+   * updateJobApplicationDisplayToCorporate
+   * 
+   * Updates a job application in the database with the provided display to corporate
+   * value.
+   *
+   * This method updates the job application with the provided display to corporate value
+   * and logs the update action. It returns the updated job application data.
+   *
+   * @param {string} jobApplicationId - The ID of the job application to be updated.
+   * @param {string} applicantUserEmail - The email of the user associated with the job
+   * application.
+   * @param {UserJobApplicationDisplayToCorporateApiDTO} validatedRequestBody - The
+   * validated data to be updated in the job application.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated
+   * job application data.
+   */
+  async updateJobApplicationDisplayToCorporate(
+    jobApplicationId: string,
+    applicantUserEmail: string,
+    validatedRequestBody: UserJobApplicationDisplayToCorporateApiDTO
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(`Update Job Application Display To Corporate [DAO]`, {
+      filePath: __filename,
+      methodName: this.updateJobApplicationDisplayToCorporate.name,
+      jobApplicationId,
+      applicantUserEmail,
+      validatedRequestBody,
+    });
+
+    return UserJobApplicationModel.update(
+      this.preparePKAndSKForQuery(applicantUserEmail, jobApplicationId),
+      validatedRequestBody
     );
   }
 

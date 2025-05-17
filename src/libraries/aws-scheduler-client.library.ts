@@ -1,5 +1,6 @@
 // NPM packages
 import AWS from "aws-sdk";
+import { PromiseResult } from "aws-sdk/lib/request";
 
 /**
  * AwsSchedulerLibrary
@@ -33,6 +34,28 @@ class AwsSchedulerLibrary {
   }
 
   /**
+   * getScheduleById
+   *
+   * Retrieves a schedule from AWS Scheduler by its name (ID).
+   *
+   * @param {AWS.Scheduler.GetScheduleInput} params - Parameters required to fetch the schedule.
+   * @returns {: Promise<PromiseResult<AWS.Scheduler.GetScheduleOutput, AWS.AWSError>>} - A promise that resolves to the schedule details.
+   */
+  async getScheduleById(
+    params: AWS.Scheduler.GetScheduleInput
+  ): Promise<PromiseResult<AWS.Scheduler.GetScheduleOutput, AWS.AWSError>> {
+    // Logger message for the getScheduleById method call
+    global.logger.info("Fetching schedule by ID (data).", {
+      filePath: __filename,
+      methodName: this.getScheduleById.name,
+      params: params,
+    });
+
+    // Fetch and return the schedule details
+    return this.scheduler.getSchedule(params).promise();
+  }
+
+  /**
    * updateConfig
    *
    * Update the AWS Scheduler configuration
@@ -50,11 +73,11 @@ class AwsSchedulerLibrary {
    * Creates a new schedule in AWS Scheduler based on the parameters provided.
    *
    * @param {AWS.Scheduler.CreateScheduleInput} params - Parameters required to create the schedule.
-   * @returns {Promise<AWS.Scheduler.CreateScheduleOutput>} - A promise that resolves to the output of the create schedule operation.
+   * @returns {Promise<PromiseResult<AWS.Scheduler.CreateScheduleOutput, AWS.AWSError>>} - A promise that resolves to the output of the create schedule operation.
    */
   async createSchedule(
     params: AWS.Scheduler.CreateScheduleInput
-  ): Promise<AWS.Scheduler.CreateScheduleOutput> {
+  ): Promise<PromiseResult<AWS.Scheduler.CreateScheduleOutput, AWS.AWSError>> {
     // Logger message for the createSchedule method call
     global.logger.info("Creating new schedule (data).", {
       filePath: __filename,
@@ -72,11 +95,11 @@ class AwsSchedulerLibrary {
    * Deletes a schedule from AWS Scheduler based on the parameters provided.
    *
    * @param {AWS.Scheduler.DeleteScheduleInput} params - Parameters required to delete the schedule.
-   * @returns {Promise<AWS.Scheduler.DeleteScheduleOutput>} - A promise that resolves to the output of the delete schedule operation.
+   * @returns {Promise<PromiseResult<AWS.Scheduler.DeleteScheduleOutput, AWS.AWSError>>} - A promise that resolves to the output of the delete schedule operation.
    */
   async deleteSchedule(
     params: AWS.Scheduler.DeleteScheduleInput
-  ): Promise<AWS.Scheduler.DeleteScheduleOutput> {
+  ): Promise<PromiseResult<AWS.Scheduler.DeleteScheduleOutput, AWS.AWSError>> {
     // Logger message for the deleteSchedule method call
     global.logger.info("Deleting schedule (data).", {
       filePath: __filename,

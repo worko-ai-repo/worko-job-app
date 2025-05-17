@@ -70,6 +70,25 @@ class DbUserJobApplicationDto extends BaseDbDto {
   hiredFromOtherPortal?: UserJobApplicationHiredFromOtherPortal;
 
   /**
+   * displayToCorporate
+   * 
+   * This attribute is used whenever the `worko-admin` see a job application 
+   * and if its matching score is very near to the minimum matching score(example: 69),
+   * then `worko-admin` will click on `send to recruiter` button in admin dashboard
+   * and this attribute will be set to `true`.
+   */
+  displayToCorporate?: boolean;
+
+  /**
+   * rejectionAwsScheduleId
+   *
+   * @reference
+   *  1. `id` attribute of `ScheduleJob.model.ts`
+   *  2. `Schedule name` in [Amazon EventBridge > Scheduler > Schedules > Schedule name]
+   */
+  rejectionAwsScheduleId?: string;
+
+  /**
    * Attributes Being set after comparing `Job description` and `CV`
    * from `Python script` by Automation Architect Team
    */
@@ -229,6 +248,14 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
           required: true,
         },
       },
+    },
+    displayToCorporate: {
+      type: Boolean,
+      required: false,
+    },
+    rejectionAwsScheduleId: {
+      type: String,
+      required: false,
     },
     cvExtract: {
       type: String,

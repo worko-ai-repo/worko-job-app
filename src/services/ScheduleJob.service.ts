@@ -1,6 +1,8 @@
 
 // Import AWS SDK
-import { Scheduler } from "aws-sdk";
+import { AWSError, Scheduler } from "aws-sdk";
+import { PromiseResult } from "aws-sdk/lib/request";
+
 
 // Import DAOs
 import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
@@ -10,7 +12,7 @@ import { scheduleJobDaoObj } from "../daos/ScheduleJob.dao";
 import { DbScheduleJobDto } from "../db/models/ScheduleJob.model";
 
 // Import DTOs
-import { ScheduleJobCreateDto } from "../dtos/ScheduleJob.dto";
+import { ScheduleJobCreateDto, ScheduleJobInternalUpdateDto } from "../dtos/ScheduleJob.dto";
 
 // Import enums
 import { ScheduleJobStatus } from "../enums/ScheduleJob.enum";
@@ -70,7 +72,7 @@ class ScheduleJobService {
       global.logger.info("Created job in database:", createdJob);
 
       // Create the schedule in AWS Scheduler
-     let response = await awsSchedulerClientLibrary.createSchedule({
+     let response: PromiseResult<Scheduler.CreateScheduleOutput, AWSError> = await awsSchedulerClientLibrary.createSchedule({
         Name: createdJob.id,
         ScheduleExpression: `at(${scheduleBody.scheduleTime})`,
         FlexibleTimeWindow: {
@@ -79,7 +81,7 @@ class ScheduleJobService {
         Target: {
           Arn: schedulerLambdaFunctionArn,
           RoleArn: schedulerLambdaRoleArn,
-          Input: JSON.stringify({ scheduleJobId: createdJob.id }),
+          Input: JSON.stringify({ scheduleJobId: createdJob.id, ...scheduleBody.input }),
         },
       });
 
@@ -112,7 +114,7 @@ class ScheduleJobService {
     global.logger.info("Marked scheduler job as completed in database:", id);
 
     // Delete the schedule from AWS Scheduler
-    const deleteResponse: Scheduler.DeleteScheduleOutput = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
+    const deleteResponse: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
     global.logger.info("Deleted scheduler job from AWS:", {
       response: JSON.stringify(deleteResponse),
       deleteResponse: deleteResponse,
@@ -131,6 +133,25 @@ class ScheduleJobService {
   async getScheduleJobById(id: string): Promise<DbScheduleJobDto> {
     // Retrieve the schedule job from the database by its ID
     return scheduleJobDaoObj.getById(id);
+  }
+
+  /**
+   * updateScheduleJobById
+   * 
+   * Updates a schedule job by its ID.
+   *
+   * @param {string} id - The ID of the schedule job to retrieve.
+   * @param {Partial<ScheduleJobInternalUpdateDto>} updateData - Data Transfer Object containing the updated details of the schedule job.
+   * @return {Promise<DbScheduleJobDto>} The retrieved schedule job DTO.
+   */
+  async updateScheduleJobById(id: string, updateData: Partial<ScheduleJobInternalUpdateDto>): Promise<DbScheduleJobDto> {
+    global.logger.info("Update schedule job by id [ScheduleJob Service].", {
+      methodName: this.updateScheduleJobById.name,
+      id,
+    });
+
+    // Update the schedule job from the database by its ID
+    return scheduleJobDaoObj.updateScheduleJobById(id, updateData);
   }
 }
 

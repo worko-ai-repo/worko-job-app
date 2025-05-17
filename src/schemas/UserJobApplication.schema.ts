@@ -160,6 +160,19 @@ export const userJobApplicationRequestFeedbackValidation = Joi.object({
 });
 
 /**
+ * userJobApplicationDisplayToCorporateValidation
+ */
+export const userJobApplicationDisplayToCorporateValidation = Joi.object({
+  displayToCorporate: Joi
+    .valid(true)
+    .required()
+    .messages({
+      "any.required": "The Display to Corporate field is required.",
+      "boolean.base": "The Display to Corporate field must be a boolean.",
+    }),
+});
+
+/**
  * userJobApplicationHiredFromOtherPortalValidationApiDto
  */
 export const userJobApplicationHiredFromOtherPortalValidationApiDto = Joi.object({

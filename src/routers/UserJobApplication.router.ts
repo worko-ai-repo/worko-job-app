@@ -47,6 +47,12 @@ UserJobApplicationRouter.patch("/:id/corp-action", userJobApplicationController.
 UserJobApplicationRouter.patch("/:id/request-feedback", userJobApplicationController.updateJobApplicationRequestFeedback);
 
 /**
+ * Send to recruiter by admin
+ * @authorisedRoles ["admin"]
+ */
+UserJobApplicationRouter.patch("/:id/display-to-corporate", userJobApplicationController.updateJobApplicationDisplayToCorporate);
+
+/**
  * Update job application based on the provided parameters in route
  * 
  * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]

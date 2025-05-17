@@ -2,10 +2,15 @@
 // Import dynamoose types
 import { ObjectType } from "dynamoose/dist/General";
 
+// Import aws-sdk related types
+import { PromiseResult } from "aws-sdk/lib/request";
+import { AWSError, Scheduler } from "aws-sdk";
+
 // Import luxon
 import { DateTime } from "luxon";
 
 // Import constants
+import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import APP_CONSTANTS from "../configs/constants.config";
 
 // Import daos
@@ -378,6 +383,33 @@ class ScriptService {
 
     return unprocessedItems;
   }
+
+  async scriptGetAwsScheduleById(id: string): Promise<PromiseResult<Scheduler.GetScheduleOutput, AWSError>> {
+    const getResponse: PromiseResult<Scheduler.GetScheduleOutput, AWSError> = await awsSchedulerClientLibrary.getScheduleById({ Name: id });
+    global.logger.info(
+      `Get Schedule Job [Script Service]`,
+      {
+        methodName: this.scriptGetAwsScheduleById.name,
+        getResponse,
+      }
+    )
+
+    return getResponse;
+  };
+
+
+  async scriptDeleteAwsScheduleById(id: string): Promise<PromiseResult<Scheduler.DeleteScheduleOutput, AWSError>> {
+    const deleteResponse: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
+    global.logger.info(
+      `Delete Schedule Job [Script Service]`,
+      {
+        methodName: this.scriptDeleteAwsScheduleById.name,
+        deleteResponse,
+      }
+    )
+
+    return deleteResponse;
+  };
 }
 
 // Export the ScriptService class and its instance

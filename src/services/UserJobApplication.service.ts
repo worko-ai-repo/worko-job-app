@@ -1,3 +1,8 @@
+
+// Import aws sdk
+import { AWSError, Scheduler } from "aws-sdk";
+import { PromiseResult } from "aws-sdk/lib/request";
+
 // import dynamoose types
 import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 import { ObjectType } from "dynamoose/dist/General";
@@ -7,15 +12,16 @@ import { DateTime } from "luxon";
 
 // import constants
 import APP_CONSTANTS from "../configs/constants.config";
+import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 
 // import daos
 import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 
 // import dtos
-import { UserJobApplicationBulkUploadDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
+import { UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
 import { PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
 import { EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
-import { ScheduleJobCreateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
+import { ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
 import { UserMatchingScoreJobUpdateDto } from "../dtos/UserMatchingScoreJob.dto";
 import { ReferAndEarnStatusTrackerDto, UpdateReferAndEarnInternalDto } from "../dtos/ReferAndEarn.dto";
 
@@ -46,6 +52,7 @@ import { DbScheduleJobDto } from "../db/models/ScheduleJob.model";
 import { DbReferAndEarnDto } from "../db/models/ReferAndEarn.model";
 
 // import services
+import scheduleJobService from "../services/ScheduleJob.service";
 import UserDetailService from "./UserDetail.service";
 import userDetailServiceObj from "../services/UserDetail.service";
 import { corporateUserServiceObj } from "./CorporateUser.service";
@@ -70,6 +77,32 @@ import HttpStatusCode from "../utils/http-codes.util";
  * Service for handling user job application-related operations
  */
 class UserJobApplicationService {
+  /**
+   * updateJobApplicationByIdAndPrimaryEmail
+   *
+   * Updates a job application by its ID and user email.
+   *
+   * This method updates a job application with the provided update data.
+   *
+   * @param {string} id - The ID of the job application to be updated.
+   * @param {string} email - The email of the user who applied for the job.
+   * @param {Partial<UserJobApplicationCommonUpdateDto>} updateData - The update data for the job application.
+   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated job application data.
+   */
+  async updateJobApplicationByIdAndPrimaryEmail(
+    id: string,
+    email: string,
+    updateData: Partial<UserJobApplicationCommonUpdateDto>
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info("Update job application [service]", {
+      methodName: this.updateJobApplicationByIdAndPrimaryEmail.name,
+      id,
+      email
+    });
+
+    return userJobApplicationDao.updateJobApplicationByIdAndPrimaryEmail(id, email, updateData);
+  }
+
   /**
    * scheduleUserJobApplicationStatusUpdateToRejected
    *
@@ -138,6 +171,18 @@ class UserJobApplicationService {
         filePath: __filename,
         methodName: this.scheduleUserJobApplicationStatusUpdateToRejected.name,
       });
+
+      // Prepare update job application data
+      const updateData: Partial<UserJobApplicationCommonUpdateDto> = {
+        rejectionAwsScheduleId: scheduleJobCreated.id,
+      }
+
+      const updateJobApplication: DbUserJobApplicationDto = await this.updateJobApplicationByIdAndPrimaryEmail(
+        userJobApplicationId,
+        userEmail,
+        updateData
+      )
+
       return true;
     } else {
       global.logger.error(
@@ -614,6 +659,18 @@ class UserJobApplicationService {
       // Fetch job application details
       const userJobApplicationDetails: DbUserJobApplicationDto =
         userJobApplicationDetailsQueryResponse[0];
+
+      if (userJobApplicationDetails.displayToCorporate === true) {
+        global.logger.info(
+          `Job application is sent to corporate by worko-admin`,
+          {
+            methodName:
+              this.prepareUserJobApplicationUpdateDtoToRejectAfterXHours.name,
+            userJobApplicationId,
+          }
+        );
+        return true;
+      }
 
       const currentActionDateTime: string = DateTime.now().toISO();
 
@@ -1537,7 +1594,10 @@ class UserJobApplicationService {
       companyJobDetailsQueryResponse[0];
 
     // Send email to each corporate user
-    const corporateUsersEmailPromises = Object.values(corporateUsersData).map(
+    const corporateUsersEmailPromises: Promise<{
+      awsMessageId: string | null;
+      systemLogId: string | null;
+    }>[] = Object.values(corporateUsersData).map(
       (corporateUser: DbCorporateUserDto) => {
         // Retrieve email and first name from the corporate user
         const { email, firstName, lastName } = corporateUser;
@@ -1713,6 +1773,120 @@ class UserJobApplicationService {
     );
 
     return true;
+  }
+
+  /**
+   * updateJobApplicationDisplayToCorporate
+   * 
+   * Updates the visibility of a job application to corporate users.
+   *
+   * This method performs the following steps:
+   * 1. Logs the update attempt.
+   * 2. Fetches the existing job application by ID.
+   * 3. Checks if the `displayToCorporate` flag is already set to the requested value; if so, throws a 409 Conflict.
+   * 4. If a pending rejection schedule exists:
+   *    - Retrieves the schedule job.
+   *    - If the schedule has already completed, throws a 403 Forbidden.
+   *    - Deletes the AWS Scheduler entry.
+   *    - Marks the schedule job as completed in DynamoDB.
+   * 5. Updates the job application record in the database.
+   * 6. Fetches candidate details by email.
+   * 7. Sends notification emails to all corporate users associated with the company.
+   * 8. Returns the updated job application record.
+   * 
+   * @param {string} jobApplicationId - The unique identifier of the job application to update.
+   * @param {UserJobApplicationDisplayToCorporateApiDTO} validatedRequestBody
+   *   - DTO containing the new `displayToCorporate` flag.
+   *
+   * @returns {Promise<DbUserJobApplicationDto>}
+   *   The updated job application record from the database.
+   *
+   * @throws {BaseError} 409 Conflict
+   *   - If the `displayToCorporate` value is already the same as requested.
+   * @throws {BaseError} 403 Forbidden
+   *   - If attempting to resend to corporate after the rejection schedule has completed.
+   * @throws {BaseError} 500 Internal Server Error
+   *   - If the update operation fails unexpectedly.
+   */
+  async updateJobApplicationDisplayToCorporate(
+    jobApplicationId: string,
+    validatedRequestBody: UserJobApplicationDisplayToCorporateApiDTO
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(
+      `Update Job Application Display To Corporate [Service]`,
+      {
+        filePath: __filename,
+        methodName: this.updateJobApplicationDisplayToCorporate.name,
+        jobApplicationId,
+      }
+    );
+
+    const existingJobApplicationDetails: DbUserJobApplicationDto = await this.getJobApplicationById(
+      jobApplicationId
+    )
+    if(existingJobApplicationDetails.displayToCorporate === validatedRequestBody.displayToCorporate){
+      throw new BaseError("The Job Application already updated.", HttpStatusCode.CONFLICT_409);
+    }
+
+    if(existingJobApplicationDetails?.rejectionAwsScheduleId){
+      const rejectionAwsScheduleId: string = existingJobApplicationDetails.rejectionAwsScheduleId;
+
+      // Retrieve the schedule job details by `rejectionAwsScheduleId` from `ScheduleJob.model.ts`
+      const scheduleJobDetails: DbScheduleJobDto = await ScheduleJobService.getScheduleJobById(rejectionAwsScheduleId); 
+
+      // validate the `status` attribute in `ScheduleJob.model.ts`
+      if (scheduleJobDetails.status === ScheduleJobStatus.COMPLETED) {
+        throw new BaseError(
+          `You can only send to corporates before specified hours.`,
+          HttpStatusCode.FORBIDDEN_403
+        );
+      }
+
+      const deleteResponse: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await awsSchedulerClientLibrary.deleteSchedule({ Name: rejectionAwsScheduleId });
+      global.logger.info(
+        `Delete Schedule Job [Service]`,
+        {
+          methodName: this.updateJobApplicationDisplayToCorporate.name,
+          deleteResponse,
+        }
+      )
+
+      // Prepare scheduleJob status update data
+      const updateData: Partial<ScheduleJobInternalUpdateDto> = {
+        status: ScheduleJobStatus.COMPLETED
+      }
+
+      const updateScheduleJobStatus: DbScheduleJobDto = await scheduleJobService.updateScheduleJobById(
+        rejectionAwsScheduleId,
+        updateData,
+      )
+      global.logger.info(`Schedule job details updated in dynamodb`, {
+        updateScheduleJobStatus: updateScheduleJobStatus.status
+      })
+    }
+
+    const applicantUserEmail: string = getEmailFromPK(
+      existingJobApplicationDetails.PK
+    );
+
+    const updatedJobApplication: DbUserJobApplicationDto =
+      await userJobApplicationDao.updateJobApplicationDisplayToCorporate(
+        jobApplicationId,
+        applicantUserEmail,
+        validatedRequestBody
+      );
+
+    // Fetch candidate details using email and throw error if not found
+    const candidateDetails: DbUserDetailDto =
+      await UserDetailService.getUserDetailsByEmail(applicantUserEmail);
+
+    // Send email notification to all corporate users who is currently working on that particular company about the job application
+    await this.sendEmailToCorporateUsersOnNewJobApplication(
+      updatedJobApplication,
+      candidateDetails
+    );
+
+    return updatedJobApplication;
   }
 
   /**

@@ -416,7 +416,7 @@ const serverlessConfiguration: AWS = {
              *
              * @reference "Amazon EventBridge" > "Buses" > "Rules" > {Rule name} > Event schedule
              */
-            rate: ["cron(30 14 ? * 2,5 *)"],
+            rate: ["cron(30 14 ? * TUE,FRI *)"],
             enabled: true,
 
             /**
