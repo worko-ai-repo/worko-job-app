@@ -71,31 +71,27 @@ class UserExternalJobApplicationDao implements BaseDao {
   }
 
   /**
-   * getUserExternalJobApplicationByJobId
+   * getByJobIdAndApplicantUserEmail
    *
-   * Retrieves a user's external job application by job id.
+   * Retrieves a user's external job application by job id and email.
    *
-   * @param {string} emailId - The email of the user.
-   * @param {string} jobId - The job URL.
+   * @param {string} emailId - The email of the applicant.
+   * @param {string} jobId - The job id.
    * @return {Promise<QueryResponse<DbUserExternalJobApplicationDto>>} A promise that resolves to the job application data.
    */
-  async getUserExternalJobApplicationByJobId(
+  async getByJobIdAndApplicantUserEmail(
     emailId: string,
     jobId: string
   ): Promise<QueryResponse<DbUserExternalJobApplicationDto>> {
     global.logger.info(`Get User External Job Application By jobId [DAO]`, {
       filePath: __filename,
-      methodName: this.getUserExternalJobApplicationByJobId.name,
+      methodName: this.getByJobIdAndApplicantUserEmail.name,
       emailId,
       jobId,
     });
 
-    // Generate the PK using the user's email
-    let PK: string = this.partitianKey.strtr({ "{primaryEmail}": emailId });
-
-    // Retrieve the job application data from the database and return
     return UserExternalJobApplicationModel.query("PK")
-      .eq(PK)
+      .eq(this.partitianKey.strtr({ "{primaryEmail}": emailId }))
       .where("SK")
       .beginsWith(
         this.sortKeys.SK_INIT.strtr({

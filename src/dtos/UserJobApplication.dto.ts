@@ -49,13 +49,6 @@ export interface UserJobApplicationCreateDto extends UserJobApplicationCreateApi
   companyId: string;
   status: JobApplicationStatus;
   statusTracker: JobApplicationStatusTrackerType;
-  
-  cvExtract?: string;
-  jdMatchErrorCode?: number;
-  jdMatchErrorDesc?: string;
-  rejectionFeedbackBySystem?: string;
-  scoreDetails?: string;
-  scoreFetchedDate?: string;
 }
 
 /**

@@ -180,6 +180,57 @@ export interface FantasticJobCloudApiQueryParamDTO {
    BETA Feature. Filter on a jobs that include a mention of Visa sponsorship within the job description.
    */
   ai_visa_sponsorship_filter?: boolean;
+
+  /*
+  Set to 'true' to only include jobs with a salary, 
+  either listed in salary_raw or extracted from the job description with AI
+  */
+  ai_has_salary?: boolean;
+
+  /*
+  BETA Feature. We're now including LinkedIn Company profiles for ~93% of all jobs.
+  Accuracy is over 99%, which means that there can be mistakes Please report any mistakes here: https://tally.so/r/nW1j8k
+  */
+  include_li?: boolean;
+
+  /*
+  Filter on the job's company via the slug. You can search on more than one company with a comma delimited list without spaces!. For example: organization_filter:netflix,walmart
+
+  Only allows for exact matches, please check the exact company slug before filtering.
+
+  The slug is the company specific part of the url. For example the slug in the following url is 'walmart': https://www.linkedin.com/company/walmart/
+
+  Please send us a message or email at remco@fantastic.jobs to receive a list of companies
+  */
+  li_organization_slug_filter?: string;
+
+  /*
+  Similar to the slug filter, but it removes companies from the results.
+  */
+  li_organization_slug_exclusion_filter?: string;
+
+  /*
+    Filter on the organization's LinkedIn Industry.
+
+    Please use the exact Industry name. This filter is case sensitive.
+
+    You can filter on more than one industry with a comma-delimited list without spaces. For example: industry_filter=Accounting,Staffing and Recruiting
+
+    If the industry contains a comma, please double-quote.
+
+    You can find a list of industries on our website: https://fantastic.jobs/article/linkedin-industries
+   */
+  li_industry_filter?: string;
+
+  /*
+  Filter on the job's organization LinkedIn specialties, with the same syntax as our job search filters. Please note that not all companies have specialties listed on their company profile
+  */
+  li_organization_specialties_filter?: string;
+
+  /*
+  Filter on the company's description, with the same syntax as our job search filters
+   */
+  li_organization_description_filter?: string;
 }
 
 /**

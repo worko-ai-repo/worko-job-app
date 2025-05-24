@@ -29,6 +29,15 @@ UserJobApplicationRouter.get("/:id/score", userJobApplicationController.getJobAp
 UserJobApplicationRouter.get("/:id", userJobApplicationController.getJobApplicationById);
 
 /**
+ * getByJobIdAndApplicantUserEmail
+ * 
+ * Get user job application by `jobId` and `applicant user email` 
+ * 
+ * @authorisedRoles [loggedInUser]
+ */
+UserJobApplicationRouter.get("/:jobId/:applicantUserEmail", userJobApplicationController.getUserJobApplicationByEmailIdAndJobId);
+
+/**
  * Get job applications by filter options 
  * @authorisedRoles ["loggedInUser"] 
  */
@@ -58,12 +67,6 @@ UserJobApplicationRouter.patch("/:id/display-to-corporate", userJobApplicationCo
  * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
  */
 UserJobApplicationRouter.put("/:id/hired-from-other-portal", userJobApplicationController.updateUserJobApplicationHiredFromOtherPortalDetails);
-
-/**
- * Delete job application by id
- * @authorisedRoles ["admin"]
- */
-UserJobApplicationRouter.delete("/:id", userJobApplicationController.deleteUserJobApplicationById);
 
 // Export the "UserJobApplicationRouter" router
 export default UserJobApplicationRouter;

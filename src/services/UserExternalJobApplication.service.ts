@@ -6,7 +6,6 @@ import { DateTime } from "luxon";
 
 // import dtos
 import { UserExternalJobApplicationCreateApiDTO, UserExternalJobApplicationCreateDto } from "../dtos/UserExternalJobApplication.dto";
-import { UserMatchingScoreJobUpdateDto } from "../dtos/UserMatchingScoreJob.dto";
 import { JobUpdateInternalDto } from "../dtos/Job.dto";
 
 // Import daos
@@ -15,18 +14,14 @@ import { userExternalJobApplicationDaoObj } from "../daos/UserExternalJobApplica
 // import enums
 import { JobStatusEnum } from "../enums/Job.enum";
 import { UserExternalJobApplicationStatusEnum } from "../enums/UserExternalJobApplication.enum";
-import { UserMatchingScoreJobStatusEnum } from "../enums/UserMatchingScoreJob.enum";
 import { UserType } from "../enums/User.enum";
 
 // import models
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
 import { DbUserExternalJobApplicationDto } from "../db/models/UserExternalJobApplication.model";
-import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchUserMatchingScoreJob.model";
 
 // import services
 import { jobServiceObj } from "./Job.service";
-import { externalJobServiceObj } from "./ExternalJob.service";
-import { userMatchingScoreJobServiceObj } from "./UserMatchingScoreJob.service";
 
 // import utils
 import { BaseError } from "../utils/errors.util";
@@ -93,7 +88,7 @@ class UserExternalJobApplicationService {
 
     // Check if the user has already applied for the job and throw error if already applied for the job
     let existingJobApplication: QueryResponse<DbUserExternalJobApplicationDto> =
-      await userExternalJobApplicationDaoObj.getUserExternalJobApplicationByJobId(
+      await userExternalJobApplicationDaoObj.getByJobIdAndApplicantUserEmail(
         email,
         userExternalJobApplicationRequestBody.jobId
       );
@@ -101,45 +96,6 @@ class UserExternalJobApplicationService {
       throw new BaseError(
         `You have already applied for this job. Check your dashboard for reference.`,
         HttpStatusCode.FORBIDDEN_403
-      );
-    }
-
-    // Get matching score details by `userId` and `jobId` from `worko-user-matching-score-job` index in aws opensearch
-    const userMatchingScoreJobDetails:
-      | DbUserMatchingScoreJobAwsOpensearchDto
-      | undefined =
-      await userMatchingScoreJobServiceObj.getUserMatchingScoreJobByUserIdAndJobId(
-        userId,
-        userExternalJobApplicationRequestBody.jobId
-      );
-
-    if (!userMatchingScoreJobDetails) {
-      global.logger.debug(
-        `User matching score job details not found [SERVICE]`,
-        {
-          methodName: this.createUserExternalJobApplication.name,
-          userId,
-          jobId: userExternalJobApplicationRequestBody.jobId,
-        }
-      );
-    }
-
-    // If user matching score job details for the job and user then mark that entry as `APPLIED`.
-    if (userMatchingScoreJobDetails !== undefined) {
-      global.logger.debug(`Updating user matching score job [SERVICE]`, {
-        methodName: this.createUserExternalJobApplication.name,
-      });
-
-      // Prepare update UserMatchingScoreJob DTO
-      const updateUserMatchingScoreJob: UserMatchingScoreJobUpdateDto = {
-        status: UserMatchingScoreJobStatusEnum.APPLIED,
-        updatedAt: DateTime.now().toISO(),
-      };
-
-      // Update the `status` in aws opensearch in `worko-user-matching-score-job` index
-      await userMatchingScoreJobServiceObj.updateUserMatchingScoreJobById(
-        userMatchingScoreJobDetails.id,
-        updateUserMatchingScoreJob
       );
     }
 
@@ -172,13 +128,6 @@ class UserExternalJobApplicationService {
       ],
       companyName: externalJobDetailsOnAwsOpensearch.companyName,
       jobPortal: userExternalJobApplicationRequestBody.jobPortal,
-      jdMatchErrorCode:
-        userMatchingScoreJobDetails?.jdMatchErrorCode ?? undefined,
-      jdMatchErrorDesc:
-        userMatchingScoreJobDetails?.jdMatchErrorDesc ?? undefined,
-      matchingScore: userMatchingScoreJobDetails?.matchingScore ?? undefined,
-      scoreDetails: userMatchingScoreJobDetails?.scoreDetails ?? undefined,
-      scoreFetchedDate: userMatchingScoreJobDetails?.createdAt ?? undefined,
     };
 
     // Create a new job application
@@ -186,6 +135,26 @@ class UserExternalJobApplicationService {
       email, // email id of the candidate applying for the job
       userExternalJobApplicationDto // job application request body
     );
+  }
+
+  /**
+   * getByJobIdAndApplicantUserEmail
+   * 
+   * Retrieves a user's external job application by job id and email.
+   * 
+   * @param {string} applicantUserEmail - The email of the applicant.
+   * @param {string} jobId - The job id.
+   * @return {Promise<QueryResponse<DbUserExternalJobApplicationDto>>} A promise that resolves to the job application data.
+   */
+  async getByJobIdAndApplicantUserEmail(applicantUserEmail: string, jobId: string): Promise<QueryResponse<DbUserExternalJobApplicationDto>> {
+    global.logger.info(`Get User External Job Application By Job Id And Applicant User Email [Service]`, {
+      filePath: __filename,
+      methodName: this.getByJobIdAndApplicantUserEmail.name,
+      applicantUserEmail,
+      jobId,
+    });
+
+    return userExternalJobApplicationDaoObj.getByJobIdAndApplicantUserEmail(applicantUserEmail, jobId);
   }
 }
 

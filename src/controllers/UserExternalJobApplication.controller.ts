@@ -1,6 +1,9 @@
 // Load the npm packages
 import { Request, Response, NextFunction } from "express";
 
+// Import dynamoose packages
+import { QueryResponse } from "dynamoose/dist/ItemRetriever";
+
 // import dtos
 import { UserExternalJobApplicationCreateApiDTO } from "../dtos/UserExternalJobApplication.dto";
 
@@ -20,7 +23,7 @@ import { userExternalJobApplicationCreateApiDTOValidation } from "../schemas/Use
 
 // import utils
 import HttpStatusCode from "../utils/http-codes.util";
-import { RequestValidationError } from "../utils/errors.util";
+import { BaseError, RequestValidationError } from "../utils/errors.util";
 
 /**
  * UserExternalJobApplicationController
@@ -78,7 +81,57 @@ class UserExternalJobApplicationController {
         );
 
       // send the response
-      res.status(HttpStatusCode.CREATED_201).json(userExternalJobApplicationDetails);
+      res
+        .status(HttpStatusCode.CREATED_201)
+        .json(userExternalJobApplicationDetails);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * getByJobIdAndApplicantUserEmail
+   *
+   * Controller for retrieving a user external job application by job id and applicant user email
+   *
+   * @param {Request} req - Express request object:
+   * @param {Response} res - Express response object used to send back the API response.
+   * @param {NextFunction} next - Express next function for error handling.
+   */
+  getByJobIdAndApplicantUserEmail = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Get User External Job Application By Job Id And Applicant User Email [Controller]`,
+        {
+          filePath: __filename,
+          methodName:
+            this.getByJobIdAndApplicantUserEmail.name,
+          requestParams: req.params,
+        }
+      );
+
+      // Extract the email and jobId from the request params
+      const emailId: string = req.params?.applicantUserEmail;
+      const jobId: string = req.params?.jobId;
+
+      // Get the external job application using the service
+      const userExternalJobApplicationDetails: QueryResponse<DbUserExternalJobApplicationDto> =
+        await userExternalJobApplicationServiceObj.getByJobIdAndApplicantUserEmail(
+          emailId,
+          jobId
+        );
+
+      // Throw error if not found
+      if(!userExternalJobApplicationDetails?.count) {
+        throw new BaseError(`The User Job Application not found.`, HttpStatusCode.NOT_FOUND_404);
+      }
+
+      // send the response
+      res.status(HttpStatusCode.OK_200).json(userExternalJobApplicationDetails[0]);
     } catch (error) {
       next(error);
     }

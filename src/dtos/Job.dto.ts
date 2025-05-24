@@ -15,7 +15,7 @@ export interface JobCreateApiDto {
   companyId: string;
   jobTitle: string;
   jobDescription: string;
-  htmlJobDescription?: string;
+  htmlJobDescription: string;
   otherRequirements?: string;
   experienceRange: MinMaxRange;
   noticePeriod: number;

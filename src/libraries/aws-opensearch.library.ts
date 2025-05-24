@@ -178,7 +178,7 @@ class AwsOpensearchLibrary {
     id: string,
     indexName: string
   ): Promise<EntityDto | undefined> {
-    const response = await this.opensearchClient.search({
+    const response: Search_Response = await this.opensearchClient.search({
       index: indexName,
       body: { query: { match: { id: id } } },
     });

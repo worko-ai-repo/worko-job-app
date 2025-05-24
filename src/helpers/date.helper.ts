@@ -54,7 +54,7 @@ class DateHelper {
    * Gets the ISO date string for a given number of days ago.
    *
    * @param {number} daysAgo - The number of days ago to get the ISO date string for.
-   * @returns {string} The ISO date string for the given days ago, @example: "2023-01-01T00:00:00.000Z".
+   * @returns {string} The ISO date string for the given days ago, @example: "2025-04-12T02:59:22.932+00:00".
    */
   getPastISODate(daysAgo: number): string {
     return DateTime.now()

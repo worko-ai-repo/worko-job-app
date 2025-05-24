@@ -25,11 +25,5 @@ export interface UserExternalJobApplicationCreateDto {
   statusTracker: UserExternalJobApplicationStatusTrackerType;
   companyName?: string;
   jobPortal?: string;
-  cvExtract?: string;
-  jdMatchErrorCode?: number;
-  jdMatchErrorDesc?: string;
   matchingScore?: number;
-  rejectionFeedbackBySystem?: string;
-  scoreDetails?: string;
-  scoreFetchedDate?: string;
 }

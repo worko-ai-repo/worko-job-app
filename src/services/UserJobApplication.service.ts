@@ -22,7 +22,6 @@ import { UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, Use
 import { PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
 import { EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
 import { ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
-import { UserMatchingScoreJobUpdateDto } from "../dtos/UserMatchingScoreJob.dto";
 import { ReferAndEarnStatusTrackerDto, UpdateReferAndEarnInternalDto } from "../dtos/ReferAndEarn.dto";
 
 // import enums
@@ -31,7 +30,6 @@ import { EmailTemplateEnum } from "../enums/EmailTemplate.enum";
 import { UserType } from "../enums/User.enum";
 import { JobStatusEnum } from "../enums/Job.enum";
 import { ScheduleJobStatus, ScheduleJobType } from "../enums/ScheduleJob.enum";
-import { UserMatchingScoreJobStatusEnum } from "../enums/UserMatchingScoreJob.enum";
 import { MatchingScoreEntityEnum } from "../enums/Common.enum";
 import { ReferAndEarnJobApplicationStatusEnum, ReferAndEarnStatusEnum } from "../enums/ReferAndEarn.enum";
 
@@ -47,7 +45,6 @@ import { DbUserJobApplicationDto } from "../db/models/UserJobApplication.model";
 import { DbUserDetailDto } from "../db/models/UserDetail.model";
 import { DbCorporateUserDto } from "../db/models/CorporateUser.model";
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
-import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchUserMatchingScoreJob.model";
 import { DbScheduleJobDto } from "../db/models/ScheduleJob.model";
 import { DbReferAndEarnDto } from "../db/models/ReferAndEarn.model";
 
@@ -57,7 +54,6 @@ import UserDetailService from "./UserDetail.service";
 import userDetailServiceObj from "../services/UserDetail.service";
 import { corporateUserServiceObj } from "./CorporateUser.service";
 import { companyJobServiceObj } from "./CompanyJob.service";
-import { userMatchingScoreJobServiceObj } from "./UserMatchingScoreJob.service";
 import ScheduleJobService from "./ScheduleJob.service";
 import InvokeLambdaService from "./InvokeLambda.service";
 import { referAndEarnServiceObj } from "./ReferAndEarn.service";
@@ -250,28 +246,31 @@ class UserJobApplicationService {
 
   /**
    * createJobApplication
-   * 
+   *
    * Creates a new job application for a candidate.
    *
-   * @param {string} userId - The ID of the user applying for the job.
-   * @param {string} emailId - The email of the user applying for the job.
-   * @param {string} fullPhoneNumber - The full phone number of the user applying for the job, Sample Format: "+919666xxx100"
-   * @param {UserJobApplicationCreateApiDTO} jobApplicationRequestBody - The data required to create a new job application.
+   * If the job is not published, then throws an error.
+   * If the candidate has already applied for the job, then throws an error.
+   * If refer and earn id is present in the request body, then it checks if the refer and earn id is valid.
+   * If the refer and earn id is valid, then it updates the refer and earn status to `APPLIED`.
+   * If the refer and earn id is not valid, then it ignores the refer and earn id and creates a new job application.
+   * If the job application is created successfully, then it triggers a lambda function to calculate the matching score for the job application.
+   * If the updated matching score is less than the minimum matching score, then it schedules a job to update the job application status to `REJECTED` after 24 hours.
+   * If the updated matching score is greater than the minimum matching score, then it sends an email notification to all corporate users who is currently working on that particular company about the new job application.
+   *
+   * @param {DbUserDetailDto} candidateDetails - The candidate details.
+   * @param {UserJobApplicationCreateApiDTO} jobApplicationRequestBody - The job application request body.
    *
    * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to an object representing the created job application.
    */
   async createJobApplication(
-    userId: string, // Applicant user id
-    emailId: string, // Applicant user email
-    fullPhoneNumber: string, // Applicant user full phone number, Sample Format: "+919666xxx100"
+    candidateDetails: DbUserDetailDto,
     jobApplicationRequestBody: UserJobApplicationCreateApiDTO
   ): Promise<DbUserJobApplicationDto> {
     // Logger
     global.logger.info("Create Job Application [Service]", {
       filePath: __filename,
       methodName: this.createJobApplication.name,
-      userId,
-      emailId,
     });
 
     // Get current date and time
@@ -290,6 +289,11 @@ class UserJobApplicationService {
       );
     }
 
+    // Extract Candidate details
+    const emailId: string = getEmailFromPK(candidateDetails.PK);
+    const userId: string = candidateDetails.id;
+    const fullPhoneNumber: string = candidateDetails.number; // sample: "+919666xxx100"
+
     // Check if the user has already applied for the job and throw error if already applied for the job
     let existingUserJobApplicationQueryResponse: QueryResponse<DbUserJobApplicationDto> =
       await userJobApplicationDao.getJobApplicationByjobId(
@@ -303,21 +307,6 @@ class UserJobApplicationService {
       throw new BaseError(
         `You have already applied for this job. Check your dashboard for reference.`,
         HttpStatusCode.FORBIDDEN_403
-      );
-    }
-
-    // Get matching score details by `userId` and `jobId` from `worko-user-matching-score-job` index in aws opensearch
-    const userMatchingScoreJobDetails: DbUserMatchingScoreJobAwsOpensearchDto | undefined =
-      await userMatchingScoreJobServiceObj.getUserMatchingScoreJobByUserIdAndJobId(
-        userId,
-        jobApplicationRequestBody.jobId
-      );
-    if (!userMatchingScoreJobDetails) {
-      global.logger.debug(
-        `User matching score job details not found for userId: ${userId} and jobId: ${jobApplicationRequestBody.jobId} in aws opensearch [SERVICE].`,
-        {
-          methodName: this.createJobApplication.name,
-        }
       );
     }
 
@@ -375,12 +364,6 @@ class UserJobApplicationService {
           userType: UserType.CAND,
         },
       ],
-      jdMatchErrorCode:
-        userMatchingScoreJobDetails?.jdMatchErrorCode ?? undefined,
-      jdMatchErrorDesc:
-        userMatchingScoreJobDetails?.jdMatchErrorDesc ?? undefined,
-      scoreDetails: userMatchingScoreJobDetails?.scoreDetails ?? undefined,
-      matchingScore: userMatchingScoreJobDetails?.matchingScore ?? undefined,
     };
 
     // Create a new job application
@@ -390,21 +373,6 @@ class UserJobApplicationService {
         emailId, // email id of the candidate applying for the job
         userJobApplicationDto // job application request body
       );
-
-    // Prepare update UserMatchingScoreJob DTO
-    const updateUserMatchingScoreJob: UserMatchingScoreJobUpdateDto = {
-      status: UserMatchingScoreJobStatusEnum.APPLIED,
-      updatedAt: currentDateAndTime,
-    };
-
-    // If user matching score job details is not undefined then update it.
-    if (userMatchingScoreJobDetails !== undefined) {
-      // Update the `status` in aws opensearch in `worko-user-matching-score-job` index
-      await userMatchingScoreJobServiceObj.updateUserMatchingScoreJobById(
-        userMatchingScoreJobDetails.id,
-        updateUserMatchingScoreJob
-      );
-    }
 
     // Check if the job application is for a refer and earn id
     if (jobApplicationDetails.referAndEarnId) {
@@ -451,10 +419,6 @@ class UserJobApplicationService {
       }
     }
 
-    // Fetch candidate details using user ID
-    const candidateDetails: DbUserDetailDto =
-      await UserDetailService.getUserByIdOne(userId);
-
     // Send email notification to the candidate about the new job application
     const sendEmailResponse: boolean =
       await this.sendEmailToCandidateOnNewJobApplication(
@@ -462,7 +426,7 @@ class UserJobApplicationService {
         candidateDetails,
         jobDetails.jobTitle
       );
-    global.logger.debug({
+    global.logger.debug("send Email To Candidate On New Job Application details", {
       sendEmailResponse,
       email: emailId,
       userId: userId,
@@ -597,35 +561,6 @@ class UserJobApplicationService {
       jobId
     )
   } 
-
-  /**
-   * deleteUserJobApplicationById
-   *
-   * Deletes the job application in the database identified by the given job application ID.
-   *
-   * This method deletes the job application in the database identified by the given job application ID.
-   * It logs the deletion action and returns a promise that resolves to `void`.
-   *
-   * @param {string} id - The job application ID to be deleted.
-   * @returns {Promise<void>} A promise that resolves to `void`.
-   */
-  async deleteUserJobApplicationById(id: string): Promise<void> {
-    // logger
-    global.logger.info(`Delete User Job Application [DAO]`, {
-      filePath: __filename,
-      methodName: this.deleteUserJobApplicationById.name,
-    });
-
-    // Fetch job application details
-    const userJobApplicationDetails: DbUserJobApplicationDto = (
-      await userJobApplicationDao.getJobApplicationById(id)
-    )[0];
-
-    // delete job application
-    return userJobApplicationDao.deleteUserJobApplication(
-      userJobApplicationDetails
-    );
-  }
 
   /**
    * prepareUserJobApplicationUpdateDtoToRejectAfterXHours

@@ -1,6 +1,9 @@
 // Load the npm packages
 import { Request, Response, NextFunction } from "express";
 
+// Import dynamoose packages
+import { QueryResponse } from "dynamoose/dist/ItemRetriever";
+
 // import dtos
 import {
   UserJobApplicationCreateApiDTO,
@@ -95,15 +98,10 @@ class UserJobApplicationController {
         throw new RequestValidationError(reqBodyError);
       }
 
-      // Extract the email from the user details
-      const email: string = userDetails.PK.split("#")[2];
-
       // Create the job application using the service
       const newJobApplicationDetails: DbUserJobApplicationDto =
         await userJobApplicationServiceObj.createJobApplication(
-          cognitoUserId,
-          email,
-          userDetails.number, // Sample phone number: "+919666xxx100"
+          userDetails,
           jobApplicationRequestBody
         );
 
@@ -148,42 +146,6 @@ class UserJobApplicationController {
   };
 
   /**
-   * deleteUserJobApplicationById
-   *
-   * Controller for getting job application score
-   *
-   * @param {Request} req - Express request object:
-   * @param {Response} res - Express response object used to send back the API response.
-   * @param {NextFunction} next - Express next function for error handling.
-   */
-  deleteUserJobApplicationById = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      global.logger.info(`Delete User Job Application [Controller]`, {
-        filePath: __filename,
-        methodName: this.deleteUserJobApplicationById.name,
-        requestParams: req.params,
-      });
-
-      // Extract and validate the job application id from request parameters
-      const userJobApplicationId: string = req.params.id;
-
-      // Delete the job application using the service
-      await userJobApplicationServiceObj.deleteUserJobApplicationById(
-        userJobApplicationId
-      );
-
-      // return the response
-      res.status(HttpStatusCode.NO_CONTENT_204).send();
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  /**
    * getJobApplicationById
    *
    * Controller for getting job application by id
@@ -215,6 +177,53 @@ class UserJobApplicationController {
 
       // return the response
       res.status(HttpStatusCode.OK_200).json(jobApplicationDetails);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * getUserJobApplicationByEmailIdAndJobId
+   *
+   * Controller for retrieving a user job application by job id and applicant user email
+   *
+   * @param {Request} req - Express request object:
+   * @param {Response} res - Express response object used to send back the API response.
+   * @param {NextFunction} next - Express next function for error handling.
+   */
+  getUserJobApplicationByEmailIdAndJobId = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Get User Job Application By Job Id And Applicant User Email [Controller]`,
+        {
+          filePath: __filename,
+          methodName:
+            this.getUserJobApplicationByEmailIdAndJobId.name,
+          requestParams: req.params,
+        }
+      );
+
+      // Extract the email and jobId from the request params
+      const emailId: string = req.params?.applicantUserEmail;
+      const jobId: string = req.params?.jobId;
+
+      const userJobApplicationDetails: QueryResponse<DbUserJobApplicationDto> =
+        await userJobApplicationServiceObj.getUserJobApplicationByEmailIdAndJobId(
+          emailId,
+          jobId
+        );
+
+      // Throw error if not found
+      if(!userJobApplicationDetails?.count) {
+        throw new BaseError(`The User Job Application not found.`, HttpStatusCode.NOT_FOUND_404);
+      }
+
+      // send the response
+      res.status(HttpStatusCode.OK_200).json(userJobApplicationDetails[0]);
     } catch (error) {
       next(error);
     }

@@ -624,31 +624,6 @@ class UserJobApplicationDao implements BaseDao {
   }
 
   /**
-   * deleteUserJobApplication
-   *
-   * Deletes the job application in the database identified by the given job application data.
-   *
-   * This method deletes the job application in the database identified by the given job application data.
-   * It logs the deletion action and returns a promise that resolves to `void`.
-   *
-   * @param {DbUserJobApplicationDto} userJobApplicationDetails - The job application data to be deleted.
-   *
-   * @returns {Promise<void>} A promise that resolves to `void`.
-   */
-  async deleteUserJobApplication(
-    userJobApplicationDetails: DbUserJobApplicationDto
-  ): Promise<void> {
-    // logger
-    global.logger.info(`Delete User Job Application [DAO]`, {
-      filePath: __filename,
-      methodName: this.deleteUserJobApplication.name,
-    });
-
-    // delete job application
-    return userJobApplicationDetails.delete();
-  }
-
-  /**
    * scriptBatchCreateUserJobApplications
    *
    * This `batchPut` saves items to DynamoDB.

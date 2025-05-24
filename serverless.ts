@@ -372,9 +372,9 @@ const serverlessConfiguration: AWS = {
       events: [
         {
           schedule: {
-            name: "cleanup-old-unapplied-jobs-and-init-score-schedule", // Name can be specified for a schedule event. This is not a required property.
+            name: "cleanup-old-unapplied-jobs-schedule", // Name can be specified for a schedule event. This is not a required property.
             description:
-              "Triggers to hard and soft delete old unapplied external jobs and initial matching score jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+              "Triggers to hard and soft delete old unapplied external jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
 
             /**
              * Cron expressions
@@ -443,7 +443,7 @@ const serverlessConfiguration: AWS = {
      * Using `AWS SQS` service
      *
      * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
-     * Ex:  
+     * Ex:
      *  1. `worko-job-app-local-appeventtrigger`
      *  2. `worko-job-app-dev-appeventtrigger`
      *  3. `worko-job-app-prod-appeventtrigger`

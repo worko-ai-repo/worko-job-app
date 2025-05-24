@@ -154,8 +154,6 @@ class JobDao {
         bool: {
           must: [],
           must_not: [],
-          should: [],
-          minimum_should_match: 0, // This ensures that the `should` clause is not mandatory
         },
       },
       size: jobFilterOptions.pageSize,
@@ -171,8 +169,6 @@ class JobDao {
 
     const queryBoolMust = awsOpensearchQuery.query?.bool
       ?.must as QueryContainer[];
-    const queryBoolShould = awsOpensearchQuery.query?.bool
-      ?.should as QueryContainer[];
     const querySort = awsOpensearchQuery.sort as SortOptions[];
 
     // If dashboard is provided, only retrieve jobs that contain companyId
@@ -204,14 +200,31 @@ class JobDao {
       );
     } else {
       /**
-       * @todo: 
-       *  1. Need to Investigate best way to sort job listings in OpenSearch in such a way that the latest jobs appear first, 
-       *        with priority given to jobs that contain a companyId.
+       * @description
+       * Sort jobs with the following priority:
+       *
+       * 1. Internal jobs (jobs that contain `companyId`) appear first.
+       * 2. Within internal jobs, sort by `createdAt` in descending order (most recent first).
+       * 3. After internal jobs, list external jobs (jobs without `companyId`, e.g., those with `externalJobId`).
+       * 4. Within external jobs, also sort by `createdAt` in descending order.
+       *
+       * This is implemented using:
+       * - A `_script` sort to give priority (score 1) to jobs with `companyId`.
+       * - Then `createdAt` sort in descending order to list recent jobs first within each group.
+       * - Finally `_id` sort to break any remaining ties.
+       *
+       * @see https://docs.opensearch.org/docs/latest/api-reference/script-apis/exec-script/
        */
       querySort.push(
         {
-          "companyId.keyword": {
-            order: AwsOpensearchSortOrderTypeEnum.DESCENDING,
+          _script: {
+            type: "number",
+            script: {
+              // If the companyId.keyword field exists on a document and is not empty, return 1; otherwise, return 0
+              source: "doc.containsKey('companyId.keyword') && !doc['companyId.keyword'].empty ? 1 : 0", 
+              lang: "painless",
+            },
+            order: "desc",
           },
         },
         {
@@ -226,11 +239,6 @@ class JobDao {
             order:
               jobFilterOptions.sortOrder ??
               AwsOpensearchSortOrderTypeEnum.DESCENDING,
-          },
-        },
-        {
-          "externalJobId.keyword": {
-            order: AwsOpensearchSortOrderTypeEnum.DESCENDING,
           },
         }
       );
@@ -578,7 +586,7 @@ class JobDao {
      * then searching for "Web Developer" in the `jobTitle` filter will still return this job, as it's contextually relevant.
      */
     if (jobFilterOptions?.jobTitle) {
-      queryBoolShould.push({
+      queryBoolMust.push({
         multi_match: {
           query: jobFilterOptions.jobTitle,
           fields: ["jobTitle", "jobDescription"],

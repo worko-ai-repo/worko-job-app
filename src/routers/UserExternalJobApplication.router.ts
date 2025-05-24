@@ -11,11 +11,22 @@ const userExternalJobApplicationController = new UserExternalJobApplicationContr
 const UserExternalJobApplicationRouter = Router();
 
 /**
+ * createUserExternalJobApplication
+ * 
  * Create user external job application
  * 
  * @authorisedRoles [loggedInUser]
  */
 UserExternalJobApplicationRouter.post("/", userExternalJobApplicationController.createUserExternalJobApplication);
+
+/**
+ * getByJobIdAndApplicantUserEmail
+ * 
+ * Get external job application by `jobId` and `applicant user email` 
+ * 
+ * @authorisedRoles [loggedInUser]
+ */
+UserExternalJobApplicationRouter.get("/:jobId/:applicantUserEmail", userExternalJobApplicationController.getByJobIdAndApplicantUserEmail);
 
 // Export the "UserExternalJobApplicationRouter" router
 export default UserExternalJobApplicationRouter;

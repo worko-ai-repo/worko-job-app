@@ -51,10 +51,11 @@ export const jobCreateApiDtoValidation = Joi.object({
 
   htmlJobDescription: Joi
    .string()
-   .allow("")
-   .optional()
+   .required()
    .messages({
     "string.base": "The HTML job description field must be a string.",
+    "any.required": "The HTML job description field is required.",
+    "string.empty": "The HTML job description field should not be empty.",
    }),
 
   // Validate otherRequirements field
