@@ -10,6 +10,9 @@ import { UserJobApplicationModel } from "./models/UserJobApplication.model";
 import { CompanyJobModel } from "./models/CompanyJob.model";
 import { ExternalJobModel } from "./models/ExternalJob.model";
 import { UserExternalJobApplicationModel } from "./models/UserExternalJobApplication.model";
+import { ReferAndEarnModel } from "./models/ReferAndEarn.model";
+import { BatchInferenceLogModel } from "./models/BatchInferenceLog.model";
+import { FantasticJobLogModel } from "./models/FantasticJobLog.model";
 
 // Import `worko` table related models
 import { EmailTemplateModel } from "./models/EmailTemplate.model";
@@ -23,7 +26,6 @@ import { CorporateUserModel } from "./models/CorporateUser.model";
 import { UserModel } from "./models/User.model";
 import { UserDetailModel } from "./models/UserDetail.model";
 import { ScheduleJobModel } from "./models/ScheduleJob.model";
-import { ReferAndEarnModel } from "./models/ReferAndEarn.model";
 
 /**
  * DBConfig
@@ -95,6 +97,8 @@ class DBConfig {
         ExternalJobModel,
         UserExternalJobApplicationModel,
         ReferAndEarnModel,
+        BatchInferenceLogModel,
+        FantasticJobLogModel,
       ]
     );
   }

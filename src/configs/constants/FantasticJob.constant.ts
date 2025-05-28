@@ -16,6 +16,16 @@ const FANTASTIC_JOB_APP_CONSTANTS = {
    * LOCATION_FILTER
    */
   LOCATION_FILTER: "India",
+
+  /**
+   * OFF_SET
+   */
+  OFF_SET: 0,
+
+  /**
+   * LIMIT
+   */
+  LIMIT: 100,
 };
 
 /**

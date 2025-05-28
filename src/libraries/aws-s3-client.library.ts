@@ -134,16 +134,19 @@ class AwsS3ClientLibrary {
    *
    * Upload an object to an S3 bucket
    *
+   * @NOTE: This "uploadObject" method uses aws v2 SDK. If you want to use
+   * aws v3 SDK discuss with `CTO` and refer: @see https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html
+   *
    * @param {string} bucketName
    * @param {string} key Complete file path along with filename/key
-   * @param {Buffer} data
+   * @param {Buffer<ArrayBufferLike>} data
    * @param {any} params [OPTIONAL] Any additional parameter if you want to pass
    * @returns {Promise<void>}
    */
   async uploadObject(
     bucketName: string,
     key: string,
-    data: Buffer,
+    data: Buffer<ArrayBufferLike>,
     params: any = {}
   ): Promise<void> {
     try {

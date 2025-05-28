@@ -61,6 +61,21 @@ class DateHelper {
       .minus({ days: daysAgo })
       .toISO();
   }
+
+  /**
+   * getCurrentDayMonthYearFormattedDate
+   * 
+   * Gets the current date formatted as "dd-MM-yyyy".
+   *
+   * This function fetches the current date and formats it into a string 
+   * representation using the "day-month-year" format, where the day and 
+   * month are zero-padded to two digits.
+   *
+   * @returns {string} The current date formatted as "dd-MM-yyyy".
+   */
+  getCurrentDayMonthYearFormattedDate(): string {
+    return DateTime.now().toFormat("dd-MM-yyyy");
+  }
 }
 
 const dateHelperObj = new DateHelper();

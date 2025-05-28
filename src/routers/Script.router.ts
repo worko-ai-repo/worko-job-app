@@ -63,4 +63,11 @@ ScriptRouter.get("/:id/script-get-aws-schedule", scriptController.scriptGetAwsSc
  */
 ScriptRouter.delete("/:id/script-delete-aws-schedule", scriptController.scriptDeleteAwsScheduleById);
 
+/**
+ * scriptToUploadBatchInferenceFilesToS3
+ * 
+ * @authorisedRoles ["admin"]
+ */
+ScriptRouter.post("/script-to-upload-batch-inference-files-to-s3", scriptController.scriptToUploadBatchInferenceFilesToS3);
+
 export default ScriptRouter;

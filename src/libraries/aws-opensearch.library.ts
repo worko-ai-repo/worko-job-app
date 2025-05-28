@@ -125,6 +125,10 @@ class AwsOpensearchLibrary {
   /**
    * bulkCreateDocument
    *
+   * @todo: Discuss with `CTO` regarding below points:
+   *  1. Investigate "Too Many Requests" error in bulkCreateDocument and handle it with a ideal solution
+   *  2. Implementing retry logic for bulk create opensearch method.
+   *
    * Bulk creates documents in an OpenSearch index.
    *
    * This method sends a bulk request to the OpenSearch client to perform index actions. Each operation
@@ -157,6 +161,7 @@ class AwsOpensearchLibrary {
       refresh: true,
     });
 
+    // Returns `true` if all operations in the bulk request succeed and `false` if any operation fails
     return !response.body.errors;
   }
 

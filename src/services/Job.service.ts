@@ -1,3 +1,4 @@
+
 // Import lambdas
 import { APIGatewayProxyResult } from "aws-lambda";
 
@@ -16,7 +17,6 @@ import { jobDaoObj } from "../daos/Job.dao";
 
 // Import dtos
 import { JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
-import { ExternalJobUpdateDto } from "../dtos/ExternalJob.dto";
 import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 import { CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
@@ -35,10 +35,8 @@ import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
 
 // Import services
-import UlidService from "./Ulid.service";
 import { companyJobServiceObj } from "./CompanyJob.service";
 import InvokeLambdaService from "./InvokeLambda.service";
-import { externalJobServiceObj } from "./ExternalJob.service";
 import companyServiceObj  from "./Company.service";
 
 // Import types
@@ -54,6 +52,17 @@ import { BaseError } from "../utils/errors.util";
  * Class responsible for managing job related operations
  */
 class JobService {
+  /**
+   * getIndexName
+   *
+   * Retrieves the index name used for job data storage.
+   *
+   * @returns {string} - The name of the index.
+   */
+  getIndexName(): string {
+    return jobDaoObj.IndexName;
+  }
+
   /**
    * createJob
    * 
@@ -229,6 +238,39 @@ class JobService {
   }
 
   /**
+   * createBulkJobs
+   *
+   * This method sends a bulk request to create multiple job documents in the OpenSearch index.
+   * It returns a promise that resolves to `true` if all operations in the bulk request
+   * succeed, or `false` if any operation fails.
+   *
+   * @param {(DbJobAwsOpensearchDto | {index: {_index: string; _id: string;}})[]} bulkJobData - An array
+   * of job data and index actions to be processed in the bulk request.
+   *
+   * @returns {Promise<boolean>} - A promise that resolves to `true` if all operations
+   * in the bulk request succeed, or `false` if any operation fails.
+   */
+  async createBulkJobs(
+    bulkJobData: (
+      DbJobAwsOpensearchDto
+      | {
+          index: {
+            _index: string;
+            _id: string;
+          };
+        }
+    )[]
+  ): Promise<boolean> {
+    // global logger
+    global.logger.debug(`Create bulk jobs [SERVICE]`, {
+      filePath: __filename,
+      methodName: this.createBulkJobs.name,
+    });
+
+    return jobDaoObj.createBulkJobs(bulkJobData);
+  }
+
+  /**
    * transformFantasticJobToAwsOpensearchJobDto
    *
    * Transforms the fantastic job response to the DbJobAwsOpensearchDto.
@@ -238,7 +280,7 @@ class JobService {
    * @param {FantasticJobApiResponse} externalJob - The external job response from the external job API.
    * @returns {DbJobAwsOpensearchDto} - The transformed DbJobAwsOpensearchDto.
    */
-  private transformFantasticJobToAwsOpensearchJobDto(
+  transformFantasticJobToAwsOpensearchJobDto(
     ulidId: string,
     externalJob: FantasticJobApiResponse
   ): DbJobAwsOpensearchDto {
@@ -276,75 +318,6 @@ class JobService {
     };
 
     return dbJobDto;
-  }
-
-  /**
-   * createBulkJobsInOpensearch
-   *
-   * Bulk indexes jobs in aws opensearch.
-   *
-   * This method takes an array of external job responses and processes them in batches of 500.
-   * Each batch is transformed into the format required by the bulk API and indexed in the `worko-jobs` index in opensearch.
-   * If any batch fails, the method returns `false`; otherwise, it returns `true`.
-   *
-   * @param {FantasticJobApiResponse[]} bulkJobDetails - An array of external job responses to be indexed in opensearch.
-   *
-   * @returns {Promise<boolean>} - A promise that resolves to `true` if all batches are indexed successfully, or `false` if any batch fails.
-   */
-  async createBulkJobsInOpensearch(bulkJobDetails: FantasticJobApiResponse[]) {
-    // global logger
-    global.logger.debug(`Bulk index jobs in aws opensearch [SERVICE]`, {
-      filePath: __filename,
-      methodName: this.createBulkJobsInOpensearch.name,
-    });
-
-    // Define the batch size
-    const batchSize = 500;
-
-    // Split the bulkJobDetails into chunks of 500
-    for (let i = 0; i < bulkJobDetails.length; i += batchSize) {
-      const batch: FantasticJobApiResponse[] = bulkJobDetails.slice(
-        i,
-        i + batchSize
-      );
-
-      // Transform the batch into the format required by the bulk API
-      const bulkJobData: (
-        | DbJobAwsOpensearchDto
-        | {
-            index: {
-              _index: string;
-              _id: string;
-            };
-          }
-      )[] = batch.flatMap((eachExternalJob: FantasticJobApiResponse) => {
-        const ulidId: string = UlidService.getUlidId();
-        return [
-          {
-            index: { _index: jobDaoObj.IndexName, _id: ulidId },
-          },
-          this.transformFantasticJobToAwsOpensearchJobDto(
-            ulidId,
-            eachExternalJob
-          ),
-        ];
-      });
-
-      // Bulk index the current batch of jobs
-      const success: boolean = await jobDaoObj.createBulkJobs(bulkJobData);
-      global.logger.debug(
-        `Bulk index jobs in aws opensearch success status [SERVICE]`,
-        { success }
-      );
-
-      // If any batch fails, return false
-      if (!success) {
-        return false;
-      }
-    }
-
-    // Bulk index jobs
-    return true;
   }
 
   /**

@@ -13,28 +13,19 @@ import "./libraries/logger.library";
 // Import database configuration
 import DBConfig from "./db/DB.config";
 
-// Import constants
-import APP_CONSTANTS from "./configs/constants.config";
-import { FANTASTIC_JOB_APP_CONSTANTS } from "./configs/constants/FantasticJob.constant";
-
-// import dtos
-import {
-  FantasticJobCloudApiDto,
-  FantasticJobApiResponse,
-} from "./dtos/FantasticJob.dto";
 import { ScheduledEventDto } from "./dtos/ScheduleJob.dto";
 
 // Import enums
 import { ScheduleJobType } from "./enums/ScheduleJob.enum";
+import { FantasticJobLogApiTypeEnum, FantasticJobLogJobsRetrievedStatusEnum } from "./enums/FantasticJobLog.enum";
 
-// Import helpers
-import { jobDescriptionValidatorHelperObj } from "./helpers/jobDescriptionValidator.helper";
-
-// Import libraries
-import { fantasticJobCloudApiLibraryObj } from "./libraries/FantasticJobCloudApi.library";
+// Import models
+import { DbFantasticJobLogDto } from "./db/models/FantasticJobLog.model";
 
 // Import services
 import { jobServiceObj } from "./services/Job.service";
+import { fantasticJobServiceObj } from "./services/FantasticJob.service";
+import { fantasticJobLogServiceObj } from "./services/FantasticJobLog.service";
 
 // Import error handling utilities
 import { BaseError } from "./utils/errors.util";
@@ -82,7 +73,7 @@ export const handler = async (
     );
 
     /**
-     * Use type guard to check if the scheduleJob is present in the event and if it has the expected type then process it.
+     * Use type guard to check if the "scheduleJob" is present in the event and if it has the expected type then process it.
      */
     if ("scheduleJob" in event) {
 
@@ -130,7 +121,7 @@ export const handler = async (
 
         case ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS: {
           global.logger.info(
-            `Processing scheduled job for external job twenty four hours [app scheduler handler]`,
+            `Processing scheduled job for fantastic job twenty four hours [app scheduler handler]`,
             {
               filePath: __filename,
               methodName: "handler",
@@ -138,85 +129,29 @@ export const handler = async (
             }
           );
 
-          // External job API call with pagination
-          const externalJobDetails: FantasticJobApiResponse[] = [];
-          let offset = 0;
-          const limit = 100; // Each request fetches 100 jobs
-
-          // This is custom variable which will use for debugging how many external jobs get called.
-          let externalTwentyFourHourJobApiCallsCount = 0;
-
-          while (true) {
-            // Prepare Argument for external job API call
-            const externalJobArgument: FantasticJobCloudApiDto = {
-              offSet: offset,
-              descriptionType:
-                FANTASTIC_JOB_APP_CONSTANTS.HTML_DESCRIPTION_TYPE,
-            };
-
-            // Check if we have already fetched some jobs from external api. Break the loop if dev stage
-            if (process.env.APP_STAGE === APP_CONSTANTS.STAGES.DEV) {
-              global.logger.info("App scheduler handler: Dev stage");
-              if (externalJobDetails?.length > 0) {
-                global.logger.info(
-                  "App scheduler handler: Dev stage, breaking the loop because already fetched some jobs from external api"
-                );
-                break;
-              }
-
-              global.logger.info(
-                "App scheduler handler: Dev stage, fetching jobs from external api"
-              );
-            }
-
-            // Fetch jobs with the current offset
-            const jobs: FantasticJobApiResponse[] =
-              await fantasticJobCloudApiLibraryObj.getFantasticJobTwentyFourHours(
-                externalJobArgument
-              );
-            externalTwentyFourHourJobApiCallsCount += 1;
-
-            // If no more jobs, stop the loop
-            if (!jobs || jobs?.length === 0) {
-              break;
-            }
-
-            // Filter jobs with empty description
-            const filteredJobs: FantasticJobApiResponse[] = jobs.filter(
-              (eachExternalJob: FantasticJobApiResponse) => {
-                const givenJobDescription: string | undefined =
-                  eachExternalJob.description_text ||
-                  eachExternalJob.description_html;
-
-                /**
-                 * NOTE: The job description validation is happening on `html` description.
-                 */
-                const isValidDescription: boolean | "" | undefined =
-                  givenJobDescription &&
-                  jobDescriptionValidatorHelperObj.isValidDescription(
-                    givenJobDescription
-                  );
-
-                return isValidDescription;
+          const fantasticJobProcessingResult: boolean = await fantasticJobServiceObj.initializeTwentyFourHourJobLog();
+          if(!fantasticJobProcessingResult) {
+            global.logger.error(
+              `Fantastic job processing failed [app scheduler handler]`,
+              {
+                filePath: __filename,
+                methodName: "handler",
+                scheduleJobType: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
               }
             );
 
-            // Add fetched jobs to the array
-            externalJobDetails.push(...filteredJobs);
-
-            // Increment the offset
-            offset += limit;
+            throw new BaseError(`The Fantastic jobs processing failed.`, HttpStatusCode.INTERNAL_SERVER_ERROR_500);
           }
 
-          global.logger.info(`Job retrival details`, {
-            filePath: __filename,
-            methodName: "handler",
-            externalTwentyFourHourJobApiCallsCount, // @todo: Think and discuss with Team lead or CTO to create a tracking for this api call count in database.
-            externalFilteedJobDetailsLength: externalJobDetails?.length,
-          });
+          global.logger.info(
+            `Fantastic job processing completed successfully [app scheduler handler]`,
+            {
+              filePath: __filename,
+              methodName: "handler",
+              scheduleJobType: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
+            }
+          );
 
-          // Bulk index jobs in opensearch
-          await jobServiceObj.createBulkJobsInOpensearch(externalJobDetails);
           break;
         }
 

@@ -59,6 +59,8 @@ const serverlessConfiguration: AWS = {
       APP_AWS_COGNITO_USER_POOL_ID: "${env:APP_AWS_COGNITO_USER_POOL_ID}",
       APP_SLS_REGION: "${env:APP_SLS_REGION}",
       APP_OPENSEARCH_SERVICE: "${env:APP_OPENSEARCH_SERVICE}",
+      APP_AWS_BEDROCK_MODEL_NAME: "${env:APP_AWS_BEDROCK_MODEL_NAME}",
+      APP_AWS_BEDROCK_SERVICE_ROLE: "${env:APP_AWS_BEDROCK_SERVICE_ROLE}",
     },
 
     /**
@@ -251,6 +253,20 @@ const serverlessConfiguration: AWS = {
         Resource:
           "arn:aws:sqs:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:worko-job-app-event-queue",
       },
+
+      /**
+       * Required permissions for an IAM identity to submit and manage batch inference jobs
+       * @see https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference-permissions.html
+       */
+      {
+        Effect: "Allow",
+        Action: ["iam:PassRole", "bedrock:CreateModelInvocationJob"],
+        Resource: [
+          "arn:aws:bedrock:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:model-invocation-job/*",
+          "arn:aws:bedrock:${self:custom.aws.APP_SLS_REGION}::foundation-model/${self:custom.aws.APP_AWS_BEDROCK_MODEL_NAME}",
+          "arn:aws:iam::${self:custom.aws.APP_AWS_ACCOUNT_ID}:role/service-role/${self:custom.aws.APP_AWS_BEDROCK_SERVICE_ROLE}",
+        ],
+      },
     ],
   },
 
@@ -382,9 +398,6 @@ const serverlessConfiguration: AWS = {
              * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
              *
              * @reference "Amazon EventBridge" > "Buses" > "Rules" > {name} > Event schedule
-             *
-             * @description Whatever input you provide will be passed to the function as input,
-             *              If no input is provided, the type of event object will be by default `ScheduledEvent`.
              */
             rate: ["cron(30 14 ? * 1 *)"],
             enabled: true,
@@ -417,6 +430,7 @@ const serverlessConfiguration: AWS = {
              * @reference "Amazon EventBridge" > "Buses" > "Rules" > {Rule name} > Event schedule
              */
             rate: ["cron(30 14 ? * TUE,FRI *)"],
+
             enabled: true,
 
             /**

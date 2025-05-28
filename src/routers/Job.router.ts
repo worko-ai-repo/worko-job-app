@@ -24,7 +24,7 @@ JobRouter.post("/", jobController.createJob);
  * 2. It will call the lambda function to parse the job description 
  * 3. And return the parsed job description to the frontend
  * 
- * @authorisedRoles ["loggedInUser"]
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
  */
 JobRouter.post("/parsejd", jobController.parseJobDescription);
 

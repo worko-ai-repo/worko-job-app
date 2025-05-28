@@ -39,7 +39,6 @@ const APP_CONSTANTS = {
 
   /**
    * AWS S3 directory paths for different types of files.
-   * @awsS3Bucket "worko-{env}"
    */
   AWS_S3_DIR_PATHS: {
     USER_RESUME: "users/{userId}/resumes", // To upload the individual user's resume
@@ -47,6 +46,15 @@ const APP_CONSTANTS = {
     CAREER_RESUME: "career-resumes", // To upload the resumes uplaoded via career page
     COMPANY_JOB_DESCRIPTION: "companies/{companyId}/company-job-descriptions", // To upload the company job description uplaoded via `corporate dashboard` or `admin dashboard`
     BULK_CVS: "companies/{companyId}/bulk-cvs/{corporateBulkJdId}", // To upload the bulk cvs uplaoded via `corporate dashboard` or `admin dashboard`
+    BATCH_INFERENCE_INPUT: "input/{date}/", // This is used to store the `id` attributes of the `OpenSearchJob.model.ts` and some batch inference related files in to s3
+    BATCH_INFERENCE_OUTPUT: "output/{date}/", // This is used to store the batch inference output files in to s3
+  },
+
+  /**
+   * APP_TEMPORARY_FOLDER_NAMES
+   */
+  APP_TEMPORARY_FOLDER_NAMES: {
+    FANTASTIC_JOBS_BATCH_INFERENCE: "fantastic-jobs-batch-inference",
   },
 
   /**
@@ -54,6 +62,13 @@ const APP_CONSTANTS = {
    * @awsS3Bucket "worko-{env}"
    */
   AWS_S3_FILE_NAMES: {},
+
+  /**
+   * AWS Opensearch bulk create count
+   * 
+   * This is the maximum number of documents that can be created in a single bulk request to the OpenSearch index.
+   */
+  AWS_OPENSEARCH_BULK_CREATE_COUNT: 300,
 
   // The possible options for the page sizes that is expected in the request payload.
   PAGE_LENGTH_OPTIONS: [10, 25, 50, 100, 150, 200, 250],
@@ -130,9 +145,9 @@ const APP_CONSTANTS = {
 
   /**
    * REFER_AND_EARN_COMMISION_AMOUNT
-   * 
+   *
    * These are the refer and earn commission amounts for different user types.
-   * Whenever a user refers another user, the referer will receive a commission if 
+   * Whenever a user refers another user, the referer will receive a commission if
    * the referred user joins the company which was referred by the referer.
    */
   REFER_AND_EARN_COMMISION_AMOUNT: {
@@ -244,17 +259,6 @@ const APP_CONSTANTS = {
     NO: "no",
     TRUE: "true",
     FALSE: "false",
-  },
-
-  /**
-   * FANTASTIC_JOB_TWENTY_FOUR_HOURS_AFTER_X_HOURS
-   */
-  get FANTASTIC_JOB_TWENTY_FOUR_HOURS_AFTER_X_HOURS(): number {
-    const PROD_HOURS = 3 * 24; // 72 hours
-    const DEV_HOURS = 3 / 60; // 3 minutes converted to hours
-
-    // return the time based on the environment
-    return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_HOURS : DEV_HOURS;
   },
 
   /**

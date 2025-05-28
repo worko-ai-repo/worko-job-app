@@ -10,6 +10,7 @@ import { AwsSesClientLibrary } from "../libraries/aws-ses-client.library";
 import { AwsSqsClientLibrary } from "../libraries/aws-sqs-client.library";
 import { AwsSchedulerLibrary } from "../libraries/aws-scheduler-client.library";
 import { AwsOpensearchLibrary } from "../libraries/aws-opensearch.library";
+import { AwsBedrockClientLibrary } from "../libraries/aws-bedrock-client.library";
 
 /**
  * awsConfigOptions
@@ -154,11 +155,21 @@ const awsDynamoDBConfigOptions: AWS.DynamoDB.ClientConfiguration = {
 
 /**
  * awsOpensearchLibrary
+ * 
+ * NOTE: For this opensearch client, the `aws-sdk v3` is used
  */
 const awsOpensearchLibrary: AwsOpensearchLibrary = new AwsOpensearchLibrary();
 global.logger.info(`The "awsOpensearchLibrary" is initialised.`, {
   filePath: __filename,
 });
+
+/**
+ * awsBedrockClientLibrary
+ * 
+ * NOTE: For this bedrock client, the `aws-sdk v3` is used
+ */
+const awsBedrockClientLibrary: AwsBedrockClientLibrary = new AwsBedrockClientLibrary();
+global.logger.info(`The "awsBedrockClientLibrary" is initialised.`);
 
 // Export the required resourses
 export {
@@ -176,4 +187,5 @@ export {
   awsSqsClientLibrary,
   awsSchedulerClientLibrary,
   awsOpensearchLibrary,
+  awsBedrockClientLibrary,
 };

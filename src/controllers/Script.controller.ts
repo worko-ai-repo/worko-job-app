@@ -306,6 +306,46 @@ class ScriptController {
       next(error);
     }
   };
+
+  /**
+   * scriptToUploadBatchInferenceFilesToS3
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @param {NextFunction} next - The Express next middleware function.
+   */
+  scriptToUploadBatchInferenceFilesToS3 = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Script to upload batch inference files to S3 [Script Controller]`,
+        {
+          filePath: __filename,
+          methodName: this.scriptToUploadBatchInferenceFilesToS3.name,
+        }
+      );
+
+      const uploadBatchInferenceFilesToS3Details: boolean = await scriptServiceObj.scriptToUploadBatchInferenceFilesToS3();
+      global.logger.info(
+        `Upload batch inference files to S3 details: ${uploadBatchInferenceFilesToS3Details}`
+      );
+
+      res.status(HttpStatusCode.OK_200).json({
+        message: `Upload batch inference files to S3 response: ${uploadBatchInferenceFilesToS3Details}`,
+      });
+    } catch (error) {
+      global.logger.debug(
+        `Error at catch block in while upload batch inference files to S3. [Script Controller]`,
+        {
+          error,
+        }
+      );
+      next(error);
+    }
+  };
 }
 
 export default ScriptController;

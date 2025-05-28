@@ -18,66 +18,6 @@ feature/rohith-external-&-internal-job-same-format-1
    1. workoJobAppRepositoryBaseUrl: `https://jobs.dev.worko.work`
    2. workoApiRepositoryBaseUrl: `https://api.dev.worko.work`
 
-# List of attributes not given by fantastic job api but mandatory fields for us:
-   1. typeofEmployment -> examples: `FULL_TIME`, `PART_TIME`, `INTERNSHIP`
-      1. old filter provided by fantastic job:
-      ```ts
-        /*
-         BETA Feature. Filter on a specific job type as identified by our AI, the options are:
-
-         FULL_TIME/PART_TIME/CONTRACTOR/TEMPORARY/INTERN/VOLUNTEER/PER_DIEM/OTHER
-
-         To filter on more than one job type, please delimit by comma, like such: FULL_TIME, PART_TIME
-         */
-      ai_employment_type_filter?: string;
-      ```
-   2. salaryRange: {
-         min: number;
-         max: number;
-      }
-         1. new filter provided by fantastic job:
-         ```ts
-           /*
-            Set to 'true' to only include jobs with a salary, 
-            either listed in salary_raw or extracted from the job description with AI
-            */
-            ai_has_salary?: boolean;
-         ```
-          ```ts
-         /* 
-         NOTE: 
-            1. Even though if we use this filter we have a challenge to retrieve from `salary_raw` object
-               because there is not defined interface for `salary_raw` attribute
-         */
-         ```
-   3. experienceRange: {
-         min: number;
-         max: number;
-      }
-         1. new filter provided by fantastic job:
-         ```ts
-           /*
-            BETA Feature. Filter on a certain required experience level as identified by our AI, the options are:
-
-            0-2/2-5/5-10/10+
-
-            To filter on more than one job type, please delimit by comma with no space, like such: 0-2,2-5
-            */
-         ai_experience_level_filter?: string;
-         ```
-   4. coreSkills
-   5. jobDescription -> sometimes giving `invalid job description`
-
-# List of attributes not given by fantastic job api and not mandatory fields for us:
-   1. softSkills
-   2. technicalSkills
-   3. department
-
-# List of attributes sometimes given and sometimes not by fantastic job api:
-   1. company url
-   2. typeofEmployment
-   3. companyLogoUrl
-
 # Existing High level Flow:
    1. Creating jobs:
       1. Worko admin or corporate-admin/recruiter creates internal job

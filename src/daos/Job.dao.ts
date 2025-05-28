@@ -141,7 +141,7 @@ class JobDao {
     jobFilterOptions: JobListingFilterOptions
   ): Promise<AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>> {
     // logger
-    global.logger.debug(`Get All Jobs [DAO]`, {
+    global.logger.debug(`Get All Jobs by filter options [DAO]`, {
       jobFilterOptions,
       filePath: __filename,
       methodName: this.getAllJobsByFilterOptions.name,
@@ -153,7 +153,6 @@ class JobDao {
       query: {
         bool: {
           must: [],
-          must_not: [],
         },
       },
       size: jobFilterOptions.pageSize,
@@ -167,8 +166,7 @@ class JobDao {
       sort: [],
     };
 
-    const queryBoolMust = awsOpensearchQuery.query?.bool
-      ?.must as QueryContainer[];
+    const queryBoolMust = awsOpensearchQuery.query?.bool?.must as QueryContainer[];
     const querySort = awsOpensearchQuery.sort as SortOptions[];
 
     // If dashboard is provided, only retrieve jobs that contain companyId
@@ -218,13 +216,24 @@ class JobDao {
       querySort.push(
         {
           _script: {
+            /**
+             * @type { 'number' | 'string' | 'version' }
+             */
             type: "number",
             script: {
-              // If the companyId.keyword field exists on a document and is not empty, return 1; otherwise, return 0
-              source: "doc.containsKey('companyId.keyword') && !doc['companyId.keyword'].empty ? 1 : 0", 
+              /**
+               * If the companyId.keyword field exists on a document and is not empty, return 1; otherwise, return 0
+               */
+              source:
+                "doc.containsKey('companyId.keyword') && !doc['companyId.keyword'].empty ? 1 : 0",
+
+              /**
+               * @type { 'expression' | 'java' | 'mustache' | 'painless' }
+               */
               lang: "painless",
             },
-            order: "desc",
+            order: jobFilterOptions.sortOrder ??
+            AwsOpensearchSortOrderTypeEnum.DESCENDING,
           },
         },
         {
@@ -295,75 +304,27 @@ class JobDao {
 
     // Add `YOE` filter if provided
     if (jobFilterOptions?.YOE) {
-      queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "experienceRange" } }, // Ensure experienceRange exists
-                  {
-                    range: {
-                      /**
-                       * @description Is experienceRange.min less than or equal to YOE
-                       * @example If experienceRange.min = 4 and YOE = 6, then 
-                       *   experienceRange.min <= YOE i.e. 4 <= 6 i.e. true
-                       */
-                      "experienceRange.min": { lte: jobFilterOptions.YOE },
-                    },
-                  },
-                  {
-                    range: {
-                      /**
-                       * @description Is experienceRange.max greater than or equal to YOE
-                       * @example If experienceRange.max = 8 and YOE = 6, then
-                       *   experienceRange.max >= YOE i.e. 8 >= 6 i.e. true
-                       */
-                      "experienceRange.max": { gte: jobFilterOptions.YOE },
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [
-                  { exists: { field: "experienceRange" } }, // Include jobs without experienceRange
-                ],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
+      queryBoolMust.push(
+        {
+          range: {
+            "experienceRange.min": { lte: jobFilterOptions.YOE },
+          },
         },
-      });
+        {
+          range: {
+            "experienceRange.max": { gte: jobFilterOptions.YOE },
+          },
+        }
+      );
     }
 
     // Add min experience range filter if provided
     if (jobFilterOptions?.minExperience) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "experienceRange" } },
-                  {
-                    range: {
-                      "experienceRange.min": {
-                        lte: jobFilterOptions.minExperience,
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "experienceRange" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
+        range: {
+          "experienceRange.min": {
+            lte: jobFilterOptions.minExperience,
+          },
         },
       });
     }
@@ -371,29 +332,8 @@ class JobDao {
     // Add max experience range filter if provided
     if (jobFilterOptions?.maxExperience) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "experienceRange" } },
-                  {
-                    range: {
-                      "experienceRange.max": {
-                        gte: jobFilterOptions.maxExperience,
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "experienceRange" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
+        range: {
+          "experienceRange.max": { gte: jobFilterOptions.maxExperience },
         },
       });
     }
@@ -401,29 +341,10 @@ class JobDao {
     // Add min salary range filter if provided
     if (jobFilterOptions?.minSalary) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "salaryRange" } },
-                  {
-                    range: {
-                      "salaryRange.min": {
-                        lte: jobFilterOptions.minSalary,
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "salaryRange" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
+        range: {
+          "salaryRange.min": {
+            lte: jobFilterOptions.minSalary,
+          },
         },
       });
     }
@@ -431,29 +352,10 @@ class JobDao {
     // Add max salary range if provided
     if (jobFilterOptions?.maxSalary) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "salaryRange" } },
-                  {
-                    range: {
-                      "salaryRange.max": {
-                        gte: jobFilterOptions.maxSalary,
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "salaryRange" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
+        range: {
+          "salaryRange.max": {
+            gte: jobFilterOptions.maxSalary,
+          },
         },
       });
     }
@@ -461,104 +363,28 @@ class JobDao {
     // Add department filter if provided
     if (jobFilterOptions?.department) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "department" } },
-                  {
-                    match: { department: jobFilterOptions.department },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "department" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
-        },
+        match: { department: jobFilterOptions.department },
       });
     }
 
     // Add core skills filter if provided
     if (jobFilterOptions?.coreSkills) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "coreSkills" } },
-                  {
-                    match: { coreSkills: jobFilterOptions.coreSkills },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "coreSkills" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
-        },
+        match: { coreSkills: jobFilterOptions.coreSkills },
       });
     }
 
     // Add soft skills filter if provided
     if (jobFilterOptions?.softSkills) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "softSkills" } },
-                  {
-                    match: { softSkills: jobFilterOptions.softSkills },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "softSkills" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
-        },
+        match: { softSkills: jobFilterOptions.softSkills },
       });
     }
 
     // Add technical skills filter if provided
     if (jobFilterOptions?.technicalSkills) {
       queryBoolMust.push({
-        bool: {
-          should: [
-            {
-              bool: {
-                must: [
-                  { exists: { field: "technicalSkills" } },
-                  {
-                    match: { technicalSkills: jobFilterOptions.technicalSkills },
-                  },
-                ],
-              },
-            },
-            {
-              bool: {
-                must_not: [{ exists: { field: "technicalSkills" } }],
-              },
-            },
-          ],
-          minimum_should_match: 1, // At least one should be true
-        },
+        match: { technicalSkills: jobFilterOptions.technicalSkills },
       });
     }
 
@@ -986,6 +812,7 @@ class JobDao {
       methodName: this.createBulkJobs.name,
     });
 
+    // Returns `true` if all operations in the bulk request succeed and `false` if any operation fails
     return awsOpensearchLibrary.bulkCreateDocument(bulkJobData);
   }
 }

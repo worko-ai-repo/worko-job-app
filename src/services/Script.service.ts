@@ -21,6 +21,7 @@ import {
   ScriptCompanyJobBulkUploadDto,
 } from "../dtos/CompanyJob.dto";
 import { UserJobApplicationBulkUploadDto } from "../dtos/UserJobApplication.dto";
+import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
 
 // Import models
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
@@ -29,6 +30,7 @@ import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.mod
 import { companyJobServiceObj } from "./CompanyJob.service";
 import { jobServiceObj } from "./Job.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
+import { fantasticJobServiceObj } from "./FantasticJob.service";
 
 /**
  * ScriptService
@@ -410,6 +412,26 @@ class ScriptService {
 
     return deleteResponse;
   };
+
+  /**
+   * scriptToUploadBatchInferenceFilesToS3
+   *
+   * This is a script to retrieve fantastic jobs and perform batch inference on them
+   *
+   * @returns {Promise<boolean>} - A promise that resolves to true if the batch inference files were uploaded to S3 successfully.
+   */
+  async scriptToUploadBatchInferenceFilesToS3(): Promise<boolean> {
+    // log
+    global.logger.info(
+      `Script to upload batch inference files to s3 [Script Service]`,
+      {
+        filePath: __filename,
+        methodName: this.scriptToUploadBatchInferenceFilesToS3.name,
+      }
+    );
+
+    return fantasticJobServiceObj.initializeTwentyFourHourJobLog();
+  }
 }
 
 // Export the ScriptService class and its instance

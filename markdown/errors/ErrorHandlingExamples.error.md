@@ -586,3 +586,111 @@ ERROR	TypeError: Cannot read properties of undefined (reading 'includes')
     }
 }
 ```
+
+25. 
+```ts
+/**
+ * Tip:1 -> Go to `tsconfig.json` file and check
+ */
+```
+```json
+{
+  "errorCode": 500,
+  "errorMsg": "ENOENT: no such file or directory, scandir '/var/task/dist/src/files-to-be-upload'",
+  "timeStamp": "2025-05-13T09:43:05.996Z"
+}
+```
+
+26. 
+```json
+{
+    "errorCode": 500,
+    "errorMsg": "ENOENT: no such file or directory, mkdir '/var/task/dist/src/files-to-be-upload'",
+    "timeStamp": "2025-05-14T03:03:05.058Z"
+}
+```
+
+27. 
+```json
+{
+  "error": {
+    "meta": {
+      "body": "Too Many Requests",
+      "headers": {
+        "connection": "keep-alive",
+        "content-length": "17",
+        "content-type": "text; charset=utf-8",
+        "date": "Thu, 15 May 2025 07:42:14 GMT"
+      }
+    },
+    "meta": {
+      "aborted": false,
+      "attempts": 0,
+      "connection": {
+        "_openRequests": 0,
+        "deadCount": 0,
+        "headers": {},
+        "id": "https://vpc-worko-xj7suso2dgzou25l2lgpoymbk4.aos.ap-south-1.on.aws/",
+        "resurrectTimeout": 0,
+        "roles": { "data": true, "ingest": true },
+        "status": "alive",
+        "url": "https://vpc-worko-xj7suso2dgzou25l2lgpoymbk4.aos.ap-south-1.on.aws/"
+      },
+      "context": null,
+      "name": "opensearch-js"
+    }
+  }
+}
+```
+
+28. 
+```ts
+/**
+ * Check account id is correct or wronf
+ */
+```
+```json
+{
+    "error": {
+        "$fault": "client",
+        "$metadata": {
+            "attempts": 1,
+            "httpStatusCode": 403,
+            "requestId": "9b45a814-ecec-4799-aaa2-2db8c92f2965",
+            "totalRetryDelay": 0
+        },
+        "name": "AccessDeniedException"
+    },
+}
+```
+
+29. 
+```json
+{
+    "response": {
+        "body": "{
+            \"message\":\"The provided resource ARN is from a different account.\",\"error\":\"The provided resource ARN is from a different account.\"
+        }",
+    }
+}
+```
+
+30. 
+```sh
+User: arn:aws:sts::211125353899:assumed-role/worko-job-app-dev-ap-south-1-lambdaRole/worko-job-app-dev-app-scheduler-external-jobs is not authorized to perform: bedrock:CreateModelInvocationJob on resource: arn:aws:bedrock:ap-south-1:211125353899:model-invocation-job/* because no identity-based policy allows the bedrock:CreateModelInvocationJob action
+```
+
+31. 
+```sh
+User: arn:aws:sts::211125353899:assumed-role/worko-job-app-dev-ap-south-1-lambdaRole/worko-job-app-dev-app-scheduler-external-jobs is not authorized to perform: bedrock:CreateModelInvocationJob on resource: arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0 because no identity-based policy allows the bedrock:CreateModelInvocationJob action
+```
+
+32. 
+```sh
+User: arn:aws:sts::211125353899:assumed-role/worko-job-app-dev-ap-south-1-lambdaRole/worko-job-app-dev-app-scheduler-external-jobs is not authorized to perform: iam:PassRole on resource: arn:aws:iam::211125353899:role/service-role/worko-batch-inference-role because no identity-based policy allows the iam:PassRole action
+```
+
+33. 
+```sh
+Batch inference is not supported for model arn:aws:bedrock:ap-south-1::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0 in region ap-south-1
+```

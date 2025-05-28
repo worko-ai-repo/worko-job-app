@@ -4,9 +4,14 @@
  */
 enum ErrorCodeName {
    /**
-    * 1. "ResourceNotFoundException" is known AWS error code
+    * "ResourceNotFoundException" is known AWS error code
     */
-   RESOURCE_NOT_FOUND_EXCEPTION = "ResourceNotFoundException"
+   RESOURCE_NOT_FOUND_EXCEPTION = "ResourceNotFoundException",
+
+   /**
+    * "ValidationException" is known AWS error code
+    */
+   VALIDATION_EXCEPTION = "ValidationException"
 }
 
 export default ErrorCodeName;

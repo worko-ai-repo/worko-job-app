@@ -1,7 +1,4 @@
 
-# Prod checklist:
-1. Copy and paste `worko-auth` lambda
-
 # Test cases
 1. authorization: only worko-admin should able to use the api
 2. Joi validation of api:
