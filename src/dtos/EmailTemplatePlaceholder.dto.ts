@@ -130,6 +130,7 @@ export interface EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICAT
   jobTitle: string;
   matchingScore: number;
   scoreDetails: string;
+  companyJobApplicantsUrl: string;
 }
 
 /**

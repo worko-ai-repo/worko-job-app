@@ -10,6 +10,9 @@ import { ObjectType } from "dynamoose/dist/General";
 // import luxon
 import { DateTime } from "luxon";
 
+// Import marked library
+import { marked } from "marked";
+
 // import constants
 import APP_CONSTANTS from "../configs/constants.config";
 import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
@@ -1533,7 +1536,7 @@ class UserJobApplicationService {
       awsMessageId: string | null;
       systemLogId: string | null;
     }>[] = Object.values(corporateUsersData).map(
-      (corporateUser: DbCorporateUserDto) => {
+      async(corporateUser: DbCorporateUserDto) => {
         // Retrieve email and first name from the corporate user
         const { email, firstName, lastName } = corporateUser;
 
@@ -1554,9 +1557,10 @@ class UserJobApplicationService {
             candidateName: candidateDetails.name.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             matchingScore: parsedJobApplication.matchingScore!,
-            scoreDetails:
-              parsedJobApplication.scoreDetails ??
-              `Overall Matching Score: ${parsedJobApplication.matchingScore}`,
+            scoreDetails: parsedJobApplication.scoreDetails !== undefined ? await marked(parsedJobApplication.scoreDetails) : `Overall Matching Score: ${parsedJobApplication.matchingScore}`,
+            companyJobApplicantsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL.strtr({
+              "{jobId}": parsedJobApplication.jobId,
+            }),
           };
 
         // Send email to the corporate user

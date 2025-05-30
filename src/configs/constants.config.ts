@@ -186,6 +186,18 @@ const APP_CONSTANTS = {
    */
   FRONTEND_URLS: {
     WORKO_INTERNAL_JOB_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/jobs/{companyName}/{jobId}`,
+
+    /**
+     * DEV:
+     *  @example: "https://dev-ui.worko.work/v1/corporate/cApplicants/01JWAV427WK374DR3ACKV25RQ1"
+     *
+     * PROD:
+     *  @example: "https://worko.ai/v1/corporate/cApplicants/01JWAV427WK374DR3ACKV25RQ1"
+     *
+     * @reference
+     *  1. "{jobId}" is the `id` attribute of `CompanyJob.model.ts` and `OpenSearchJob.model.ts`
+     */
+    WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/v1/corporate/cApplicants/{jobId}`,
   },
 
   /**
