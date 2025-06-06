@@ -142,10 +142,8 @@ class JobDao {
   ): Promise<AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>> {
     // logger
     global.logger.debug(`Get All Jobs by filter options [DAO]`, {
-      jobFilterOptions,
-      filePath: __filename,
       methodName: this.getAllJobsByFilterOptions.name,
-      searchText: jobFilterOptions.searchText,
+      jobFilterOptions,
     });
 
     // Construct the AWS OpenSearch query based on the filter options
@@ -252,36 +250,44 @@ class JobDao {
         }
       );
     }
-
-    // Add search text filter if provided
+  
     if (jobFilterOptions?.searchText) {
+      const searchText: string = jobFilterOptions.searchText;
+
       queryBoolMust.push({
-        multi_match: {
-          query: jobFilterOptions.searchText,
-          fields: [
-            "jobTitle",
-            "jobDescription",
-            "department",
-            "workMode",
-            "location.city",
-            "location.state",
-            "companyName",
+        bool: {
+          should: [
+            { term: { "jobTitle.keyword": searchText.toLowerCase() } },
+            { term: { "department.keyword": searchText.toLowerCase() } },
+
+            { term: { "workMode.keyword": searchText.toUpperCase() } },
+
+            { match: { companyName: searchText } },
+            { match: { "location.city": searchText } },
+            { match: { "location.state": searchText } },
+
+            { match_phrase: { jobDescription: searchText } },
           ],
+          minimum_should_match: 1,
         },
       });
-    }
+    }    
 
     // If `companyId` is given then this indicates that we are looking for internal jobs for a specific company
     if (jobFilterOptions?.companyId) {
       queryBoolMust.push({
-        match: { companyId: jobFilterOptions.companyId },
+        term: {
+          "companyId.keyword": jobFilterOptions.companyId,
+        },
       });
     }
 
     // Add companyName filter if provided
     if (jobFilterOptions?.companyName) {
       queryBoolMust.push({
-        match: { companyName: jobFilterOptions.companyName },
+        match: {
+          companyName: jobFilterOptions.companyName,
+        }
       });
     }
 
@@ -363,42 +369,50 @@ class JobDao {
     // Add department filter if provided
     if (jobFilterOptions?.department) {
       queryBoolMust.push({
-        match: { department: jobFilterOptions.department },
+        terms: {
+          "department.keyword": jobFilterOptions.department.toLowerCaseArray(),
+        }
       });
     }
 
     // Add core skills filter if provided
     if (jobFilterOptions?.coreSkills) {
       queryBoolMust.push({
-        match: { coreSkills: jobFilterOptions.coreSkills },
+        terms: {
+          "coreSkills.keyword": jobFilterOptions.coreSkills.toLowerCaseArray(),
+        },
       });
     }
 
     // Add soft skills filter if provided
     if (jobFilterOptions?.softSkills) {
       queryBoolMust.push({
-        match: { softSkills: jobFilterOptions.softSkills },
+        terms: {
+          "softSkills.keyword": jobFilterOptions.softSkills.toLowerCaseArray(),
+        },
       });
     }
 
     // Add technical skills filter if provided
     if (jobFilterOptions?.technicalSkills) {
       queryBoolMust.push({
-        match: { technicalSkills: jobFilterOptions.technicalSkills },
+        terms: {
+          "technicalSkills.keyword": jobFilterOptions.technicalSkills.toLowerCaseArray(),
+        },
       });
     }
 
     // Add work mode filter if provided
     if (jobFilterOptions?.workMode) {
       queryBoolMust.push({
-        match: { workMode: jobFilterOptions.workMode },
+        term: { "workMode.keyword": jobFilterOptions.workMode.toUpperCase() },
       });
     }
 
     // Add status filter if provided
     if (jobFilterOptions?.status) {
       queryBoolMust.push({
-        match: { status: jobFilterOptions.status },
+        term: { "status.keyword": jobFilterOptions.status.toUpperCase() },
       });
     }
 
@@ -406,16 +420,17 @@ class JobDao {
      * We are filtering using the `jobTitle` input across both the `jobTitle` and `jobDescription` fields.
      *
      * This is because some job titles may be phrased differently, but relevant keywords might appear in the job description.
-     *
-     * Example:
-     * If a job document has a `jobTitle` as "MERN Stack Developer" and its `jobDescription` contains the phrase "Web Developer",
-     * then searching for "Web Developer" in the `jobTitle` filter will still return this job, as it's contextually relevant.
      */
     if (jobFilterOptions?.jobTitle) {
+      const jobTitle: string = jobFilterOptions.jobTitle;
+
       queryBoolMust.push({
-        multi_match: {
-          query: jobFilterOptions.jobTitle,
-          fields: ["jobTitle", "jobDescription"],
+        bool: {
+          should: [
+            { term: { "jobTitle.keyword": jobTitle.toLowerCase() } },
+            { match_phrase: { jobDescription: jobTitle } },
+          ],
+          minimum_should_match: 1,
         },
       });
     }

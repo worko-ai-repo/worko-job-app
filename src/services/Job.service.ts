@@ -225,9 +225,6 @@ class JobService {
       companyDetails: DbCompanyDetailDto | undefined;
     })[] = await attachCompanyDetails<DbJobAwsOpensearchDto>(jobsWithCompanyId);
 
-    /**
-     * @todo: Check whether the sorting is disturbed or not.
-     */
     const finalResponseWithPagination: AwsOpensearchRecordListingResponseDTO<FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails> =
       {
         data: [...jobsWithCompanyDetails, ...jobsWithoutCompanyId],
@@ -295,10 +292,10 @@ class JobService {
         ? externalJob.employment_type.join(", ").toUpperCase()
         : undefined,
       location: {
-        city: externalJob.cities_derived ?? [],
-        state: externalJob.regions_derived ?? [],
-        country: externalJob.countries_derived ?? [],
-        fullLocation: externalJob.locations_derived ?? [],
+        city: externalJob?.cities_derived?.toLowerCaseArray() ?? [],
+        state: externalJob?.regions_derived?.toLowerCaseArray() ?? [],
+        country: externalJob?.countries_derived?.toLowerCaseArray() ?? [],
+        fullLocation: externalJob?.locations_derived?.toLowerCaseArray() ?? [],
       },
       jobDescription: externalJob.description_html
         ? htmlToTextHelperObj.htmlToText(externalJob.description_html)

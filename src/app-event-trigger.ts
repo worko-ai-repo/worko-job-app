@@ -3,6 +3,7 @@ import { Context, SQSEvent } from "aws-lambda";
 
 // Import extensions
 import "./extensions/string.extension";
+import "./extensions/array.extension";
 
 // Import libraries
 import "./libraries/logger.library";

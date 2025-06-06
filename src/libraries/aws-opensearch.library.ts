@@ -210,7 +210,7 @@ class AwsOpensearchLibrary {
     indexName: string,
     searchRequestBody: Search_RequestBody,
     entityFilterOptions: EntityListingFilterOptions
-  ) {
+  ): Promise<AwsOpensearchRecordListingResponseDTO<EntityDto[]>> {
     // Send the search request
     const awsOpensearchResponse: Search_Response =
       await this.opensearchClient.search({

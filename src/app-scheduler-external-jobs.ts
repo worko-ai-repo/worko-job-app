@@ -6,6 +6,7 @@ import { DeleteByQuery_Response, UpdateByQuery_Response } from "@opensearch-proj
 
 // Import extensions (must be done after natural imports and before any scope-modifying imports)
 import "./extensions/string.extension";
+import "./extensions/array.extension";
 
 // Import logger library
 import "./libraries/logger.library";
@@ -13,19 +14,15 @@ import "./libraries/logger.library";
 // Import database configuration
 import DBConfig from "./db/DB.config";
 
+// import dtos
 import { ScheduledEventDto } from "./dtos/ScheduleJob.dto";
 
 // Import enums
 import { ScheduleJobType } from "./enums/ScheduleJob.enum";
-import { FantasticJobLogApiTypeEnum, FantasticJobLogJobsRetrievedStatusEnum } from "./enums/FantasticJobLog.enum";
-
-// Import models
-import { DbFantasticJobLogDto } from "./db/models/FantasticJobLog.model";
 
 // Import services
 import { jobServiceObj } from "./services/Job.service";
 import { fantasticJobServiceObj } from "./services/FantasticJob.service";
-import { fantasticJobLogServiceObj } from "./services/FantasticJobLog.service";
 
 // Import error handling utilities
 import { BaseError } from "./utils/errors.util";

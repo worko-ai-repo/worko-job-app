@@ -6,7 +6,7 @@ import Joi from "joi";
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
 
 // Import schemas
-import { awsOpensearchCommonSchema } from "./Common.aws-opensearch.schema";
+import { awsOpensearchCommonSchema, optionalCommaSeparatedStringToArray } from "./Common.aws-opensearch.schema";
 
 /**
  * jobCreateApiDtoValidation
@@ -156,7 +156,7 @@ export const jobCreateApiDtoValidation = Joi.object({
 
   location: Joi.object({
     city: Joi.array()
-      .items(Joi.string())
+      .items(Joi.string().lowercase())
       .optional()
       .default([])
       .messages({
@@ -164,7 +164,7 @@ export const jobCreateApiDtoValidation = Joi.object({
         'string.base': 'Each item in the City field must be a string.',
       }),
     state: Joi.array()
-      .items(Joi.string())
+      .items(Joi.string().lowercase())
       .optional()
       .default([])
       .messages({
@@ -172,7 +172,7 @@ export const jobCreateApiDtoValidation = Joi.object({
         'string.base': 'Each item in the State field must be a string.',
       }),
     country: Joi.array()
-      .items(Joi.string())
+      .items(Joi.string().lowercase())
       .optional()
       .default([])
       .messages({
@@ -180,7 +180,7 @@ export const jobCreateApiDtoValidation = Joi.object({
         'string.base': 'Each item in the Country field must be a string.',
       }),
     fullLocation: Joi.array()
-      .items(Joi.string())
+      .items(Joi.string().lowercase())
       .optional()
       .default([])
       .messages({
@@ -208,6 +208,7 @@ export const jobCreateApiDtoValidation = Joi.object({
   // Validate typeofEmployment field
   typeofEmployment: Joi
     .string()
+    .uppercase()
     .required()
     .messages({
       "any.required": "The Type of employment field is required.",
@@ -356,30 +357,41 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
         'number.min': 'The Years of experience field must be a positive integer.',
       }),
 
-    department: Joi
+    department: Joi 
       .string()
       .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
       .messages({
         "string.base": "The Department field must be a string.",
+        "string.commaSeparated": "Please provide valid comma-separated company names.",
       }),
 
-    softSkills: Joi
+    softSkills: Joi 
       .string()
       .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
       .messages({
         "string.base": "The Soft skills field must be a string.",
+        "string.commaSeparated": "Please provide valid comma-separated company names.",
       }),
 
-    coreSkills: Joi
+    coreSkills: Joi 
       .string()
       .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
       .messages({
         "string.base": "The Core skills field must be a string.",
+        "string.commaSeparated": "Please provide valid comma-separated company names.",
       }),
 
-    technicalSkills: Joi
+    technicalSkills: Joi 
       .string()
       .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
       .messages({
         "string.base": "The Technical skills field must be a string.",
       }),
@@ -405,7 +417,9 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
 
     jobTitle: Joi
       .string()
+      .allow("", null)
       .optional()
+      .lowercase()
       .messages({
         "string.base": "The job title field must be a string.",
       }),
@@ -553,28 +567,28 @@ export const jobUpdateApiDtoValidation = Joi.object({
 
     location: Joi.object({
       city: Joi.array()
-        .items(Joi.string())
+        .items(Joi.string().lowercase())
         .optional()
         .messages({
           'array.base': 'The City field must be an array of strings.',
           'string.base': 'Each item in the City field must be a string.',
         }),
       state: Joi.array()
-        .items(Joi.string())
+        .items(Joi.string().lowercase())
         .optional()
         .messages({
           'array.base': 'The State field must be an array of strings.',
           'string.base': 'Each item in the State field must be a string.',
         }),
       country: Joi.array()
-        .items(Joi.string())
+        .items(Joi.string().lowercase())
         .optional()
         .messages({
           'array.base': 'The Country field must be an array of strings.',
           'string.base': 'Each item in the Country field must be a string.',
         }),
       fullLocation: Joi.array()
-        .items(Joi.string())
+        .items(Joi.string().lowercase())
         .optional()
         .messages({
           'array.base': 'The Full Location field must be an array of strings.',
@@ -596,6 +610,7 @@ export const jobUpdateApiDtoValidation = Joi.object({
 
     typeofEmployment: Joi
       .string()
+      .uppercase()
       .optional()
       .messages({
         "string.base": "The Type of employment field must be a string.",

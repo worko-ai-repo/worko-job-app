@@ -56,16 +56,16 @@ export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilte
   maxExperience?: number; // Converted to number datatype by `Joi` schema.
   minSalary?: number; // Converted to number datatype by `Joi` schema.
   maxSalary?: number; // Converted to number datatype by `Joi` schema.
-  department?: string;
-  softSkills?: string;
-  coreSkills?: string;
-  technicalSkills?: string;
+  department?: string[]; // Converted to array datatype by `Joi` schema.
+  softSkills?: string[]; // Converted to array datatype by `Joi` schema.
+  coreSkills?: string[]; // Converted to array datatype by `Joi` schema.
+  technicalSkills?: string[]; // Converted to array datatype by `Joi` schema.
   workMode?: string;
   status?: JobStatusEnum;
   jobTitle? : string
   typeofEmployment?: string;
   companyName?: string;
-  YOE?: number
+  YOE?: number;
 }
 
 /**

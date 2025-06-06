@@ -3,6 +3,7 @@ import { Context } from "aws-lambda";
 
 // Import extensions (must be done after natural imports and before any scope-modifying imports)
 import "./extensions/string.extension";
+import "./extensions/array.extension";
 
 // Import logger library
 import "./libraries/logger.library";

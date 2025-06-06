@@ -256,5 +256,12 @@ export interface DbJobAwsOpensearchDto {
   /**
    * displaySalaryRange
    */
-  displaySalaryRange?: boolean; 
+  displaySalaryRange?: boolean;
+
+  /**
+   * isJobUpdated
+   * 
+   * @reference "isJobUpdated" attribute is being used in "worko-job-batch-inference-update-function" lambda function.
+   */
+  isJobUpdated?: boolean;
 }

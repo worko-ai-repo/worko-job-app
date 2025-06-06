@@ -6,6 +6,7 @@ import cors from "cors";
 
 // Import extensions
 import "./extensions/string.extension";
+import "./extensions/array.extension";
 
 // Import libraries
 import "./libraries/logger.library";
