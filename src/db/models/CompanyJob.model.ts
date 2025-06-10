@@ -55,7 +55,7 @@ class DbCompanyJobDto extends BaseDbDto {
   experienceRange!: MinMaxRange;
   location!: JobLocationDto;
   miscellaneousSkills?: string[];
-  noticePeriod!: number;
+  noticePeriod?: number;
   numOfOpenings!: number;
   otherRequirements?: string;
   salaryRange!: MinMaxRange;
@@ -168,7 +168,7 @@ const CompanyJobSchema = new dynamoose.Schema(
     },
     noticePeriod: {
       type: Number,
-      required: true,
+      required: false,
     },
     numOfOpenings: {
       type: Number,

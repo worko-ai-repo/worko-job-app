@@ -99,9 +99,8 @@ export const jobCreateApiDtoValidation = Joi.object({
    .number()
    .integer()
    .min(0)
-   .required()
+   .optional()
    .messages({
-    "any.required": "The Notice period field is required.",
     "number.base": "The Notice period field must be a number.",
     "number.min": "The Notice period cannot be negative.",
    }),
