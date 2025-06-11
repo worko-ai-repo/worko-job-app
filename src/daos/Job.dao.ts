@@ -308,20 +308,25 @@ class JobDao {
       });
     }
 
-    // Add `YOE` filter if provided
+    /**
+     * `experienceRange.min` should be less than or equal to the candidate's YOE
+     * 
+     * @example
+     * If YOE = 10:
+     *    1. experienceRange.min = 4 
+     *       Logic: 4 <= 10 = true (job document matched)
+     *    2. experienceRange.min = 10 
+     *       Logic: 10 <= 10 = true (job document matched)
+     *    3. experienceRange.min = 15 
+     *       Logic: 15 <= 10 = false (job document not matched)
+     */
     if (jobFilterOptions?.YOE) {
-      queryBoolMust.push(
-        {
-          range: {
-            "experienceRange.min": { lte: jobFilterOptions.YOE },
-          },
+      queryBoolMust.push({
+        range: {
+          // "experienceRange.min" <= YOE
+          "experienceRange.min": { lte: jobFilterOptions.YOE },
         },
-        {
-          range: {
-            "experienceRange.max": { gte: jobFilterOptions.YOE },
-          },
-        }
-      );
+      });
     }
 
     // Add min experience range filter if provided
