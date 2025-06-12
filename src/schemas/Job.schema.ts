@@ -2,6 +2,9 @@
 // Import Joi for validation
 import Joi from "joi";
 
+// Import constants
+import APP_CONSTANTS from "../configs/constants.config";
+
 // Import enums
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
 
@@ -672,4 +675,46 @@ export const jobSoftDeleteApiDtoValidation = Joi.object({
     'string.empty': 'The Company Id field cannot be empty.',
     'any.required': 'The Company Id field is required.',
   }),
+});
+
+/**
+ * jobBulkUpdateApiDtoValidation
+ */
+export const jobBulkUpdateApiDtoValidation = Joi.object({
+  bulkJobUpdate: Joi.array()
+    .min(APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MIN)
+    .max(APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MAX)
+    .items(
+      Joi.object({
+        jobId: Joi.string().required().messages({
+          "string.base": "The Job Id field must be a string.",
+          "string.empty": "The Job Id field cannot be empty.",
+          "any.required": "The Job Id field is required.",
+        }),
+
+        companyId: Joi.string().required().messages({
+          "string.base": "The Company Id field must be a string.",
+          "string.empty": "The Company Id field cannot be empty.",
+          "any.required": "The Company Id field is required.",
+        }),
+
+        status: Joi.string()
+          .required()
+          .valid(...Object.values(JobStatusEnum))
+          .messages({
+            "any.required": "The Status field is required.",
+            "any.only": `The Status field must be one of the allowed values  i.e. ${Object.values(
+              JobStatusEnum
+            ).join(", ")} `,
+          }),
+      })
+    )
+    .required()
+    .messages({
+      "array.base": "The Bulk Job Update field must be an array.",
+      "array.empty": "The Bulk Job Update field cannot be empty.",
+      "any.required": "The Bulk Job Update field is required.",
+      "array.min": `Atleast ${APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MIN} job updates are required.`,
+      "array.max": `Atmost ${APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MAX} job updates are allowed.`,
+    }),
 });

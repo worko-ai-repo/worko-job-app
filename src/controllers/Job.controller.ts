@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 
 // Import dtos
 import { AwsOpensearchRecordListingResponseDTO } from '../dtos/Common.aws-opensearch.dto';
-import { JobCreateApiDto, JobCreateDto, JobListingFilterOptions, JobListingFilterRequestDTO, JobSoftDeleteApiDto, JobUpdateApiDto, JobUpdateDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from '../dtos/Job.dto';
+import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateApiDto, JobCreateDto, JobListingFilterOptions, JobListingFilterRequestDTO, JobSoftDeleteApiDto, JobUpdateApiDto, JobUpdateDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from '../dtos/Job.dto';
 
 // Import helpers
 import { getActionByUserId } from "../helpers/user.helper";
@@ -17,7 +17,7 @@ import { DbJobAwsOpensearchDto } from '../db/OpenSearch-models/OpenSearchJob.mod
 import { jobServiceObj } from '../services/Job.service';
 
 // Import schemas
-import { jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
+import { jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
 
 // Import types
 import { FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails } from '../types/Job.type';
@@ -307,6 +307,49 @@ class JobController {
 
       res.status(HttpStatusCode.OK_200).json(jobDetails ?? {});
     } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * updateBulkJob
+   *
+   * This method is used to bulk update job from "aws opensearch" and "aws dynamodb"
+   *
+   * @param {Request} req - The request object
+   * @param {Response} res - The response object
+   * @param {NextFunction} next - The next function in the middleware chain
+   */
+  updateBulkJob = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      global.logger.info(`Bulk Update Job [Controller]`, {
+        methodName: this.updateBulkJob.name,
+        requestBody: req.body,
+      });
+
+      const requestBody: JobBulkUpdateApiDto = req.body;
+
+      const { error: jobBulkUpdateApiDtoError, value: validatedJobRequestBody } =
+        jobBulkUpdateApiDtoValidation.validate(requestBody, {
+          abortEarly: false,
+        });
+      if (jobBulkUpdateApiDtoError) {
+        throw new RequestValidationError(jobBulkUpdateApiDtoError);
+      }
+
+      const updatedJobs: JobBulkUpdateResponseDto = await jobServiceObj.updateBulkJob(validatedJobRequestBody);
+
+      global.logger.info(`Bulk Update Job Result [Controller]`, {
+        methodName: this.updateBulkJob.name,
+        updatedJobs: updatedJobs,
+      });
+
+      res.status(HttpStatusCode.OK_200).json(updatedJobs);
+    } catch (error) {
+      global.logger.error(`Bulk Update Job Error at Catch Block [Controller]`, {
+        methodName: this.updateBulkJob.name,
+        error: error,
+      });
       next(error);
     }
   };

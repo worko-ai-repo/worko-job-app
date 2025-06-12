@@ -2,7 +2,7 @@
 import { JobLocationDto, MinMaxRange, RecordListingFilterOptions, RecordListingFilterRequestDTO } from '../dtos/Common.dto';
 
 // Import Enums
-import { CompanyJobEmploymentTypeEnum, CompanyJobStatusEnum, CompanyJobWorkModeEnum } from '../enums/CompanyJob.enum';
+import { CompanyJobStatusEnum, CompanyJobWorkModeEnum } from '../enums/CompanyJob.enum';
 import { JobStatusEnum, JobWorkModeEnum } from '../enums/Job.enum';
 
 /**
@@ -95,6 +95,17 @@ export interface CompanyJobUpdateDto extends CompanyJobUpdateApiDto {
   updatedByUserId?: string;
   updatedByCorporateUserId?: string;
   jobDescription?: string;
+  isDeleted?: boolean;
+}
+
+/**
+ * CompanyJobCommonUpdateDto
+ */
+export interface CompanyJobCommonUpdateDto {
+  updatedByUserId: string;
+  updatedByCorporateUserId: string;  
+  status: JobStatusEnum;
+  isDeleted: boolean;
 }
 
 /**

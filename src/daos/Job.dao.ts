@@ -26,7 +26,7 @@ import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opense
 
 // Import enums
 import { AwsOpensearchSortOrderTypeEnum } from "../enums/Common.aws-opensearch.enum";
-import { JobDashboardEnum } from "../enums/Job.enum";
+import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
 import { JobSourcedFromEnum } from "../enums/Common.enum";
 
 // Import helpers
@@ -519,6 +519,10 @@ class JobDao {
       id: jobId,
     });
 
+    if (jobUpdateDto?.status) {
+      jobUpdateDto.isDeleted = jobUpdateDto.status === JobStatusEnum.CLOSED;
+    }
+
     return awsOpensearchLibrary.updateDocumentById<JobUpdateDto>(
       jobId,
       this.IndexName,
@@ -571,6 +575,10 @@ class JobDao {
     global.logger.info(`Update Job By Id From aws opensearch [Service]`, {
       methodName: this.updateJobById.name,
     });
+
+    if (updateDto?.status) {
+      updateDto.isDeleted = updateDto.status === JobStatusEnum.CLOSED;
+    }
 
     return awsOpensearchLibrary.updateDocumentById<Partial<JobUpdateInternalDto>>(
       jobId,

@@ -16,9 +16,9 @@ import { DateTime } from "luxon";
 import { jobDaoObj } from "../daos/Job.dao";
 
 // Import dtos
-import { JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
+import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobBulkUpdateMetricDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
 import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
-import { CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
+import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
 
 // Import enums
@@ -28,6 +28,7 @@ import { JobSourcedFromEnum } from "../enums/Common.enum";
 // Import helpers
 import { attachCompanyDetails } from "../helpers/companyDetailsInjector.helper";
 import { htmlToTextHelperObj } from "../helpers/htmlToText.helper";
+import { getActionByUserId } from "../helpers/user.helper";
 
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
@@ -565,9 +566,141 @@ class JobService {
 
     return jobDaoObj.updateJobById(id, updateDto);
   }
+
+  /**
+   * updateBulkJob
+   *
+   * Updates multiple jobs in the `worko-jobs` index on `AWS Opensearch` and in the `company-jobs` table on `AWS DynamoDB` using the provided array of job updates.
+   *
+   * This method logs the update operation and sends an update request to the OpenSearch client to modify the job document with the given ID.
+   * If the job is internal then it updates the `companyJob` details in dynamodb.
+   *
+   * If the job is external then it returns the updated job details from `worko-jobs` index on `AWS Opensearch`.
+   *
+   * @param {JobBulkUpdateApiDto} validatedJobRequestBody - The validated job update request body.
+   *
+   * @returns {Promise<JobBulkUpdateResponseDto>} - A promise that resolves to the result of the bulk update operation.
+   */
+  async updateBulkJob(
+    validatedJobRequestBody: JobBulkUpdateApiDto
+  ): Promise<JobBulkUpdateResponseDto> {
+    global.logger.info("Bulk update job [Service]", {
+      methodName: this.updateBulkJob.name,
+      validatedJobRequestBody: validatedJobRequestBody,
+    });
+
+    const { bulkJobUpdate } = validatedJobRequestBody;
+
+    // Get action by user id
+    const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
+
+    let opensearchUpdateData: Partial<JobUpdateInternalDto> = {};
+    let dynamodbUpdateData: Partial<CompanyJobCommonUpdateDto> = {};
+
+    if (actionByUserId) {
+      opensearchUpdateData.updatedByUserId = actionByUserId;
+      dynamodbUpdateData.updatedByUserId = actionByUserId;
+    } else {
+      opensearchUpdateData.updatedByCorporateUserId = actionByCorporateUserId;
+      dynamodbUpdateData.updatedByCorporateUserId = actionByCorporateUserId;
+    }
+
+    const opensearchResult: JobBulkUpdateMetricDto = {
+      success: { count: 0, jobIds: [] },
+      failure: { count: 0, jobIds: [] },
+    };
+
+    const dynamodbResult: JobBulkUpdateMetricDto = {
+      success: { count: 0, jobIds: [] },
+      failure: { count: 0, jobIds: [] },
+    };
+
+    const updatedJobsOnDynamoDb: DbCompanyJobDto[] = [];
+
+    // Process each job update
+    for (const jobUpdate of bulkJobUpdate) {
+      const { companyId, jobId, status } = jobUpdate;
+
+      // Prepare update data for OpenSearch
+      opensearchUpdateData.status = status;
+
+      // Prepare update data for DynamoDB
+      dynamodbUpdateData.status = status;
+
+      try {
+        // Update in OpenSearch
+        const opensearchResponse: Update_Response =
+          await jobDaoObj.updateJobById(jobId, opensearchUpdateData);
+
+        if (opensearchResponse.statusCode === HttpStatusCode.OK_200) {
+          opensearchResult.success.count++;
+          opensearchResult.success.jobIds.push(jobId);
+        } else {
+          global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`);
+          opensearchResult.failure.count++;
+          opensearchResult.failure.jobIds.push(jobId);
+        }
+      } catch (error) {
+        global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`);
+        opensearchResult.failure.count++;
+        opensearchResult.failure.jobIds.push(jobId);
+
+        global.logger.error(`Failed to update job in Opensearch`, {
+          error: error,
+          opensearchResult,
+        });
+      }
+
+      try {
+        // Update in DynamoDB
+        const updateResult: DbCompanyJobDto =
+          await companyJobServiceObj.updateCommonCompanyJobById(
+            jobId,
+            companyId,
+            dynamodbUpdateData
+          );
+
+        if (updateResult?.id) {
+          dynamodbResult.success.count++;
+          dynamodbResult.success.jobIds.push(jobId);
+          updatedJobsOnDynamoDb.push(updateResult);
+        } else {
+          global.logger.error(`Failed to update jobId: ${jobId} in DynamoDB`);
+          dynamodbResult.failure.count++;
+          dynamodbResult.failure.jobIds.push(jobId);
+        }
+      } catch (error) {
+        global.logger.error(
+          `Failed to update job ${jobId} in DynamoDB:`,
+          error
+        );
+        dynamodbResult.failure.count++;
+        dynamodbResult.failure.jobIds.push(jobId);
+
+        global.logger.error(`Failed to update job in DynamoDB`, {
+          error: error,
+          dynamodbResult,
+        });
+      }
+    }
+
+    // Attach company details
+    const jobsWithCompanyDetails: (DbCompanyJobDto & {
+      companyDetails: DbCompanyDetailDto | undefined;
+    })[] = await attachCompanyDetails<DbCompanyJobDto>(updatedJobsOnDynamoDb);
+
+    // Prepare the response
+    const bulkJobUpdateResponse: JobBulkUpdateResponseDto = {
+      opensearchResult: opensearchResult,
+      dynamodbResult: dynamodbResult,
+      updatedJobsOnDynamoDb: jobsWithCompanyDetails,
+    };
+
+    return bulkJobUpdateResponse;
+  }
 }
 
-const jobServiceObj = new JobService();
+const jobServiceObj: JobService = new JobService();
 export {
   jobServiceObj,
   JobService

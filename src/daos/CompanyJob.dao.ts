@@ -16,6 +16,7 @@ import {
   ScriptCompanyJobBulkUploadDto,
   CompanyJobCreateDto,
   CompanyJobUpdateDto,
+  CompanyJobCommonUpdateDto,
 } from "../dtos/CompanyJob.dto";
 
 // Import the enums
@@ -40,6 +41,33 @@ class CompanyJobDao implements BaseDao {
   sortKeys: { SK_INIT: string } = { SK_INIT: "JOBS#ID#{id}" };
   GSI1PK: string = "JOBS#";
   GSI1SK = "ID#{id}";
+
+  /**
+   * preparePKAndSKForQuery
+   *
+   * Prepares the partition key and sort key for a query.
+   *
+   * @param {string} companyId - The companyId of the job.
+   * @param {string} jobId - The id of the job.
+   *
+   * @returns {{PK: string, SK: string}} - An object containing the partition key and sort key.
+   */
+  preparePKAndSKForQuery(
+    companyId: string,
+    jobId: string
+  ): {
+    PK: string;
+    SK: string;
+  } {
+    return {
+      PK: this.partitianKey.strtr({
+        "{companyId}": companyId,
+      }),
+      SK: this.sortKeys.SK_INIT.strtr({
+        "{id}": jobId,
+      }),
+    };
+  }
 
   /**
    * createJob
@@ -132,6 +160,38 @@ class CompanyJobDao implements BaseDao {
 
     // Find and delete the Job
     return jobDetails.delete();
+  }
+
+  /**
+   * updateCommonCompanyJobById
+   *
+   * Updates a Job in the database, given its ID and company ID.
+   *
+   * @param {string} jobId - The ID of the Job to update.
+   * @param {string} companyId - The ID of the company associated with the Job.
+   * @param {Partial<CompanyJobCommonUpdateDto>} jobUpdateDto - The updated details of the Job.
+   *
+   * @returns {Promise<DbCompanyJobDto>} - Promise resolving to the updated Job object
+   *
+   * @see {CompanyJobModel} - The model used to interact with the database
+   */
+  async updateCommonCompanyJobById(
+    jobId: string,
+    companyId: string,
+    jobUpdateDto: Partial<CompanyJobCommonUpdateDto>
+  ): Promise<DbCompanyJobDto> {
+    // Logger
+    global.logger.info(`Update job by id [service]`, {
+      methodName: this.updateCommonCompanyJobById.name,
+      companyId,
+      jobId,
+    });
+
+    // Update `job` details in `CompanyJob` model in `worko-job-app` table on `AWS Dynamodb` and return the response.
+    return CompanyJobModel.update(
+      this.preparePKAndSKForQuery(companyId, jobId),
+      jobUpdateDto
+    );
   }
 
   /**

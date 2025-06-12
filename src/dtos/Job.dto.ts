@@ -6,6 +6,10 @@ import { AwsOpensearchRecordListingFilterOptions, AwsOpensearchRecordListingFilt
 // Import enums
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
 
+// Import models
+import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
+import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
+
 /**
  * JobCreateApiDto
  *
@@ -177,6 +181,7 @@ export interface JobUpdateDto extends JobUpdateApiDto {
    * @example "2023-02-01T15:33:14.375184"
    */
   updatedAt?: string;
+  isDeleted?: boolean;
 }
 
 /**
@@ -199,8 +204,29 @@ export interface JobUpdateInternalDto {
    * @example "2023-02-01T15:33:14.375184"
    */
   updatedAt: string;
-  
+
   status: JobStatusEnum;
+
+  /**
+   * updatedByCorporateUserId
+   *
+   * @reference `id` attribute from `CorporateUser.model.ts`
+   *
+   * @description The `updatedByCorporateUserId` attribute represents the ID of the corporate user who updated the job,
+   * While updating a job, the `userId` recieved from the authorizer context will be the `cognito user id`,
+   * In the backend, the `userId` will be converted by using `uuidToULID()` method to access the details of the user
+   * who updated the job from the `CorporateUser` model.
+   */
+  updatedByCorporateUserId: string;
+
+  /**
+   * updatedByUserId
+   *
+   * @reference `id` attribute from `UserDetail.model.ts`
+   *
+   * @description The `updatedByUserId` attribute represents the ID of the worko admin user who updated the job
+   */
+  updatedByUserId: string;
 }
 
 /**
@@ -210,4 +236,42 @@ export interface JobCreateCompanyDetailInternalDto {
   companyName: string;
   companyUrl?: string;
   companyLogoUrl?: string;
+}
+
+/**
+ * JobBulkUpdateApiDto
+ */
+export interface JobBulkUpdateApiDto {
+  bulkJobUpdate: {
+    companyId: string;
+    jobId: string;
+    status: JobStatusEnum;
+  }[]
+}
+
+/**
+ * JobBulkUpdateCountDto
+ */
+export interface JobBulkUpdateCountDto {
+  count: number;
+  jobIds: string[];
+}
+
+/**
+ * JobBulkUpdateMetricDto
+ */
+export interface JobBulkUpdateMetricDto {
+  success: JobBulkUpdateCountDto;
+  failure: JobBulkUpdateCountDto;
+}
+
+/**
+ * JobBulkUpdateResponseDto
+ */
+export interface JobBulkUpdateResponseDto {
+  updatedJobsOnDynamoDb: (DbCompanyJobDto & {
+    companyDetails: DbCompanyDetailDto | undefined;
+  })[];
+  opensearchResult: JobBulkUpdateMetricDto;
+  dynamodbResult: JobBulkUpdateMetricDto;
 }

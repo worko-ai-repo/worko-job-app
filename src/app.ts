@@ -72,7 +72,7 @@ class App {
   registerMiddleWares() {
     // @todo: we should not allow apis to be called by any origin, we must specify known/trusted origins
     this.app.use(cors({ origin: "*" }));
-    this.app.use(express.json());
+    this.app.use(express.json()); // 100 KB default limit
   }
 
   /**

@@ -4,8 +4,9 @@
   "description": "Job Related APIs.",
   "main": "",
   "scripts": {
+    "local": "nodemon",
+    "deploy-offline": "npm run build && npx sls offline --stage=local",
     "build": "rimraf dist && tsc",
-    "deploy-offline": "npm run build && npx sls offline",
     "build-webpack": "webpack",
     "serve": "webpack-dev-server"
   },

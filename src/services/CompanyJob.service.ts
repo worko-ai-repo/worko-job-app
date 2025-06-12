@@ -9,7 +9,11 @@ import {
   ScriptCompanyJobBulkUploadDto,
   CompanyJobCreateDto,
   CompanyJobUpdateDto,
+  CompanyJobCommonUpdateDto,
 } from "../dtos/CompanyJob.dto";
+
+// Import enums
+import { JobStatusEnum } from "../enums/Job.enum";
 
 // import models
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
@@ -163,8 +167,45 @@ class CompanyJobService {
       jobId,
     });
 
+    if (jobUpdateDto?.status) {
+      jobUpdateDto.isDeleted = jobUpdateDto.status === JobStatusEnum.CLOSED;
+    }
+
     // Update `job` details in `CompanyJob` model in `worko-job-app` table on `AWS Dynamodb` and return the response.
     return companyJobDaoObj.updateCompanyJobById(
+      jobId,
+      companyId,
+      jobUpdateDto
+    );
+  }
+
+  /**
+   * updateCommonCompanyJobById
+   *
+   * Updates a company's job in the database by its ID and company ID with the provided update details.
+   *
+   * @param {string} jobId - The ID of the job to update.
+   * @param {string} companyId - The ID of the company associated with the job.
+   * @param {Partial<CompanyJobCommonUpdateDto>} jobUpdateDto - The updated job details.
+   *
+   * @returns {Promise<DbCompanyJobDto>} - A promise that resolves to the updated job object.
+   */
+  async updateCommonCompanyJobById(
+    jobId: string,
+    companyId: string,
+    jobUpdateDto: Partial<CompanyJobCommonUpdateDto>
+  ): Promise<DbCompanyJobDto> {
+    global.logger.info(`Update job by id [service]`, {
+      methodName: this.updateCommonCompanyJobById.name,
+      companyId,
+      jobId,
+    })
+
+    if (jobUpdateDto?.status) {
+      jobUpdateDto.isDeleted = jobUpdateDto.status === JobStatusEnum.CLOSED;
+    }
+    
+    return companyJobDaoObj.updateCommonCompanyJobById(
       jobId,
       companyId,
       jobUpdateDto

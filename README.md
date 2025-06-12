@@ -36,6 +36,11 @@ After copying the environment configurations, review the configurations, update 
 $ npm ci
 ```
 
+# Run Application In Your Local Machine
+```sh
+$ npm run local
+```
+
 # AWS CLI Configuration
 We need to set up the AWS CLI with multiple profiles in order to execute serverless commands for different environments using the corresponding profile.
 

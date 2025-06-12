@@ -144,6 +144,14 @@ const APP_CONSTANTS = {
   },
 
   /**
+   * BULK_JOB_UPDATE_LIMIT
+   */
+  BULK_JOB_UPDATE_LIMIT: {
+    MIN: 1,
+    MAX: 30,
+  },
+
+  /**
    * REFER_AND_EARN_COMMISION_AMOUNT
    *
    * These are the refer and earn commission amounts for different user types.

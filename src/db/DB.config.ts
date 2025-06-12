@@ -65,7 +65,7 @@ class DBConfig {
           secretAccessKey: process.env
             .APP_AWS_DYNAMODB_SECRET_ACCESS_KEY as string,
         },
-        region: APP_CONSTANTS.STAGES.LOCAL,
+        region: process.env.APP_SLS_REGION,
         endpoint: "http://localhost:8000",
       };
     }

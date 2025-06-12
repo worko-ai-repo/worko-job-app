@@ -29,6 +29,20 @@ JobRouter.post("/", jobController.createJob);
 JobRouter.post("/parsejd", jobController.parseJobDescription);
 
 /**
+ * Get job by id
+ * 
+ * @authorisedRoles ["public"]
+ */
+JobRouter.get("/:id", jobController.getJobById);
+
+/**
+ * Get job by filter options 
+ * 
+ * @authorisedRoles ["public"]
+ */
+JobRouter.get("/", jobController.getAllJobsByFilterOptions);
+
+/**
  * Update job by id
  * 
  * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
@@ -43,18 +57,11 @@ JobRouter.put("/:id", jobController.updateInternalOrExternalJobById);
 JobRouter.put("/:jobId/delete", jobController.softDeleteJobById);
 
 /**
- * Get job by id
+ * Update bulk job 
  * 
- * @authorisedRoles ["public"]
+ * @authorisedRoles ["admin", "corporate-admin", "corporate-recruiter"]
  */
-JobRouter.get("/:id", jobController.getJobById);
-
-/**
- * Get job by filter options 
- * 
- * @authorisedRoles ["public"]
- */
-JobRouter.get("/", jobController.getAllJobsByFilterOptions);
+JobRouter.patch("/bulk-update", jobController.updateBulkJob);
 
 // Export the "JobRouter" router
 export default JobRouter;
