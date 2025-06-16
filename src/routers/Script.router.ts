@@ -70,4 +70,11 @@ ScriptRouter.delete("/:id/script-delete-aws-schedule", scriptController.scriptDe
  */
 ScriptRouter.post("/script-to-upload-batch-inference-files-to-s3", scriptController.scriptToUploadBatchInferenceFilesToS3);
 
+/**
+ * scriptToUploadBatchInferenceFilesToS3
+ * 
+ * @authorisedRoles ["admin"]
+ */
+ScriptRouter.post("/script-to-restore-internal-jobs-to-opensearch", scriptController.scriptToRevertInternalJobsToOpensearch);
+
 export default ScriptRouter;

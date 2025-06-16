@@ -1,6 +1,14 @@
 
+// Import opensearch constants
+import {
+  Search_RequestBody,
+  Search_Response,
+} from "@opensearch-project/opensearch/api";
+import { Hit } from "@opensearch-project/opensearch/api/_types/_core.search";
+
 // Import dynamoose types
 import { ObjectType } from "dynamoose/dist/General";
+import { Query } from "dynamoose/dist/ItemRetriever";
 
 // Import aws-sdk related types
 import { PromiseResult } from "aws-sdk/lib/request";
@@ -10,7 +18,7 @@ import { AWSError, Scheduler } from "aws-sdk";
 import { DateTime } from "luxon";
 
 // Import constants
-import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
+import { awsOpensearchLibrary, awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import APP_CONSTANTS from "../configs/constants.config";
 
 // Import daos
@@ -21,10 +29,24 @@ import {
   ScriptCompanyJobBulkUploadDto,
 } from "../dtos/CompanyJob.dto";
 import { UserJobApplicationBulkUploadDto } from "../dtos/UserJobApplication.dto";
-import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
+import { JobLocationDto, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
+
+// Import daos
+import { companyJobDaoObj } from "../daos/CompanyJob.dao";
+
+// Import enums
+import { JobSourcedFromEnum } from "../enums/Common.enum";
+
+// Import models
+import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
+
+// Import helpers
+import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.helper";
+import { attachCompanyDetails } from "../helpers/companyDetailsInjector.helper";
 
 // Import models
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { CompanyJobModel, DbCompanyJobDto } from "../db/models/CompanyJob.model";
 
 // Import services
 import { companyJobServiceObj } from "./CompanyJob.service";
@@ -56,14 +78,16 @@ class ScriptService {
   /**
    * Transforms the DbCompanyJobDto to DbJobAwsOpensearchDto.
    *
-   * This function is used to transform the DbCompanyJobDto (from `worko` dynamodb table) to DbJobAwsOpensearchDto (to `worko-jobs` index in`opensearch`) 
+   * This function is used to transform the DbCompanyJobDto (from `worko` dynamodb table) to DbJobAwsOpensearchDto (to `worko-jobs` index in`opensearch`)
    * by converting `createdAt` and `updatedAt` from timestampts to iso date format
    * and removing PK, SK, GSI1PK, GSI1SK from the data.
    *
    * @param {DbCompanyJobDto} internalJob - The DbCompanyJobDto that needs to be transformed.
    * @returns {DbJobAwsOpensearchDto} - The transformed DbJobAwsOpensearchDto.
    */
-  private transformCompanyJobDtoToOpensearchWorkoJobsDto(internalJob: any): DbJobAwsOpensearchDto {
+  private transformCompanyJobDtoToOpensearchWorkoJobsDto(
+    internalJob: any
+  ): DbJobAwsOpensearchDto {
     /**
      * 1. `createdAt`, `updatedAt` from timestampts to iso date format.
      * 2. remove PK, SK, GSI1PK, GSI1SK from the data.
@@ -80,22 +104,29 @@ class ScriptService {
       ...restInternalJob
     } = internalJob;
 
+    const locationData: JobLocationDto = {
+      city: typeof location === "string" ? [location] : location.city,
+      state: typeof location === "string" ? [] : location.state,
+      country: typeof location === "string" ? [] : location.country,
+      fullLocation: typeof location === "string" ? [location] : location.fullLocation,
+    };
+
     const dbJobDto: DbJobAwsOpensearchDto = {
       ...restInternalJob,
+      sourcedFrom: JobSourcedFromEnum.WORKO,
       createdAt: internalJob.createdAt,
       updatedAt: internalJob.updatedAt,
       miscellaneousSkills: mislaneiousSkills || miscellaneousSkills,
       jobUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_INTERNAL_JOB_URL.strtr({
-        "{companyName}": companyDetails !== undefined ? companyDetails?.name.split(" ").join("_") : "WORKO_10", // Sample Ex:- "TEST WORKO 4.0" to "TEST_WORKO_4.0",
+        "{companyName}":
+          companyDetails !== undefined
+            ? companyDetails?.name.split(" ").join("_")
+            : "WORKO_10", // Sample Ex:- "TEST WORKO 4.0" to "TEST_WORKO_4.0",
         "{jobId}": restInternalJob.id,
       }),
-      companyName: companyDetails !== undefined ? companyDetails?.name : "WORKO_10",
-      location: {
-        city: [location],
-        state: [],
-        country: [],
-        fullLocation: [location],
-      },
+      companyName:
+        companyDetails !== undefined ? companyDetails?.name : "WORKO_10",
+      location: locationData,
     };
 
     return dbJobDto;
@@ -146,9 +177,8 @@ class ScriptService {
     /**
      * Use bulk opensearch method to upload the data to `worko-jobs` index in opensearch
      */
-    const bulkUploadJobsDetails: boolean = await jobServiceObj.scriptBulkUploadJobs(
-      formattedJobListingArray
-    );
+    const bulkUploadJobsDetails: boolean =
+      await jobServiceObj.scriptBulkUploadJobs(formattedJobListingArray);
 
     return bulkUploadJobsDetails;
   }
@@ -188,7 +218,10 @@ class ScriptService {
       jobTitle: eachInternalJob.jobTitle,
       jobDescription: eachInternalJob.jobDescription,
       jobUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_INTERNAL_JOB_URL.strtr({
-        "{companyName}": companyDetails !== undefined ? companyDetails?.name.split(" ").join("_") : "WORKO_10", // Sample Ex:- "TEST WORKO 4.0" to "TEST_WORKO_4.0"
+        "{companyName}":
+          companyDetails !== undefined
+            ? companyDetails?.name.split(" ").join("_")
+            : "WORKO_10", // Sample Ex:- "TEST WORKO 4.0" to "TEST_WORKO_4.0"
         "{jobId}": eachInternalJob.id,
       }),
       location: {
@@ -297,7 +330,9 @@ class ScriptService {
       // Create Each Corporate Bulk Jd Resumes Chunk in Database
       const jobsCreateResponse: {
         unprocessedItems: ObjectType[];
-      } = await companyJobServiceObj.scriptCopyCompanyJobsFromWorkoToJobTable(eachJobsChunk);
+      } = await companyJobServiceObj.scriptCopyCompanyJobsFromWorkoToJobTable(
+        eachJobsChunk
+      );
 
       /**
        * If there are any unprocessed items, add them to the unprocessedItems array,
@@ -431,6 +466,95 @@ class ScriptService {
     );
 
     return fantasticJobServiceObj.initializeTwentyFourHourJobLog();
+  }
+
+  /**
+   * scriptToRevertInternalJobsToOpensearch
+   *
+   * Script to revert internal jobs to opensearch
+   *
+   * @authorisedRoles ["admin"]
+   * @returns {Promise<boolean>} A promise that resolves to true if the fantastic jobs were uploaded successfully.
+   */
+  async scriptToRevertInternalJobsToOpensearch(): Promise<boolean> {
+    // Construct the AWS OpenSearch query based on the filter options
+    let awsOpensearchQuery: Search_RequestBody = {
+      query: {
+        bool: {
+          must: [
+            {
+              exists: {
+                field: "companyId",
+              },
+            },
+          ],
+        },
+      },
+      _source: false, // Only fetch IDs, not the full documents
+      size: 500,
+    };
+    const companyJobsOnOpensearch: Search_Response =
+      await awsOpensearchLibrary.opensearchClient.search({
+        index: jobDaoObj.IndexName,
+        body: awsOpensearchQuery,
+      });
+
+    // extract `id` attributes from the search results
+    const companyJobIdsOnOpensearch: string[] =
+      companyJobsOnOpensearch.body.hits.hits.map((hit: Hit) => hit._id);
+
+    global.logger.debug("companyJobIdsOnOpensearch", {
+      length: companyJobIdsOnOpensearch.length,
+    });
+
+    const EXCLUDED_JOB_IDS: Set<string> = new Set(companyJobIdsOnOpensearch);
+
+    let query: Query<DbCompanyJobDto> = CompanyJobModel.query("GSI1PK")
+      .eq(companyJobDaoObj.GSI1PK)
+      .where("GSI1SK")
+      .beginsWith(companyJobDaoObj.GSI1SK.strtr({ "{id}": "" }));
+
+    const requestBody: RecordListingFilterOptions = {
+      pageSize: 500,
+    };
+
+    const totalCompanyJobs: PaginatedResultsWithMatchingConditionsResponse<DbCompanyJobDto> =
+      await getPaginatedResultsWithMatchingConditions<
+        DbCompanyJobDto,
+        RecordListingFilterOptions
+      >(query, requestBody);
+
+    // Extract referrals data
+    const { lastKey, count, timesQueried, queriedCount, ...companyJobsData } =
+      totalCompanyJobs;
+
+    // Convert to array
+    const companyJobArray: DbCompanyJobDto[] = Object.values(companyJobsData);
+
+    const filteredJobs: DbCompanyJobDto[] = companyJobArray.filter(
+      (item: DbCompanyJobDto) => !EXCLUDED_JOB_IDS.has(item.id)
+    );
+
+    global.logger.debug("filteredJobs", {
+      length: filteredJobs.length,
+    });
+
+    // Only attach company details if there are jobs to process
+    if (filteredJobs.length === 0) {
+      global.logger.info("No new jobs to add to OpenSearch");
+      return true;
+    }
+
+    // Attach company details
+    const jobsWithCompanyDetails: (DbCompanyJobDto & {
+      companyDetails: DbCompanyDetailDto | undefined;
+    })[] = await attachCompanyDetails<DbCompanyJobDto>(filteredJobs);
+
+    global.logger.debug("jobsWithCompanyDetails", {
+      length: jobsWithCompanyDetails.length,
+    });
+
+    return this.scriptWorkoDdbToWorkoJobsOpensearch(jobsWithCompanyDetails);
   }
 }
 

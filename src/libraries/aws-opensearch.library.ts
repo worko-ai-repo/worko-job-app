@@ -160,6 +160,10 @@ class AwsOpensearchLibrary {
       body: bulkData,
       refresh: true,
     });
+    global.logger.info(`Bulk put jobs [LIB]`, {
+      methodName: this.bulkCreateDocument.name,
+      response
+    });
 
     // Returns `true` if all operations in the bulk request succeed and `false` if any operation fails
     return !response.body.errors;

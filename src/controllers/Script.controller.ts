@@ -14,7 +14,6 @@ import { scriptServiceObj } from "../services/Script.service";
 // Import local utils
 import HttpStatusCode from "../utils/http-codes.util";
 import ErrorCodeName from "../utils/error-code-name.util";
-import { BaseError } from "../utils/errors.util";
 
 /**
  * ScriptController
@@ -339,6 +338,43 @@ class ScriptController {
     } catch (error) {
       global.logger.debug(
         `Error at catch block in while upload batch inference files to S3. [Script Controller]`,
+        {
+          error,
+        }
+      );
+      next(error);
+    }
+  };
+
+  /**
+   * scriptToRevertInternalJobsToOpensearch
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @param {NextFunction} next - The Express next middleware function.
+   */
+  scriptToRevertInternalJobsToOpensearch = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Script to revert internal jobs to opensearch [Script Controller]`,
+        {
+          filePath: __filename,
+          methodName: this.scriptToRevertInternalJobsToOpensearch.name,
+        }
+      );
+
+      const revertInternalJobsToOpensearchDetails: boolean = await scriptServiceObj.scriptToRevertInternalJobsToOpensearch();
+
+      res
+        .status(HttpStatusCode.OK_200)
+        .json(revertInternalJobsToOpensearchDetails);
+    } catch (error) {
+      global.logger.debug(
+        `Error at catch block in while Revert internal jobs to opensearch. [Script Controller]`,
         {
           error,
         }
