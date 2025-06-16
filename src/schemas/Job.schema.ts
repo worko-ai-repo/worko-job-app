@@ -7,6 +7,7 @@ import APP_CONSTANTS from "../configs/constants.config";
 
 // Import enums
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
+import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import schemas
 import { awsOpensearchCommonSchema, optionalCommaSeparatedStringToArray } from "./Common.aws-opensearch.schema";
@@ -431,6 +432,25 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
       .optional()
       .messages({
         "string.base": "The type of employment field must be a string.",
+      }),
+
+    userRole: Joi
+      .string()
+      .optional()
+      .valid(...Object.values(CorporateUserTypeEnum))
+      .messages({
+        "any.only": `The user role field must be one of the allowed values i.e. ${Object.values(
+          CorporateUserTypeEnum
+        ).join(", ")}.`,
+        "any.type": "The user role field must be a string.",
+      }),
+
+    corporateRecruiterUserId: Joi
+      .string()
+      .optional()
+      .allow("", null)
+      .messages({
+        "any.type": "The corporate recruiter user id field must be a string.",
       }),
   })
 ) 

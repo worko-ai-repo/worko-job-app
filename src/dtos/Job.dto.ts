@@ -5,6 +5,7 @@ import { AwsOpensearchRecordListingFilterOptions, AwsOpensearchRecordListingFilt
 
 // Import enums
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
+import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import models
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
@@ -53,7 +54,7 @@ export interface JobCreateDto extends JobCreateApiDto {
  * This is the DTO used by Backend to get the Query Params for the Job Listing.Listing.
  */
 export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilterOptions {
-  dashboard?: JobDashboardEnum,
+  dashboard?: JobDashboardEnum;
   companyId?: string;
   location?: string;
   minExperience?: number; // Converted to number datatype by `Joi` schema.
@@ -66,10 +67,12 @@ export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilte
   technicalSkills?: string[]; // Converted to array datatype by `Joi` schema.
   workMode?: string;
   status?: JobStatusEnum;
-  jobTitle? : string
+  jobTitle?: string;
   typeofEmployment?: string;
   companyName?: string;
   YOE?: number;
+  userRole?: CorporateUserTypeEnum;
+  corporateRecruiterUserId?: string; // `id` attribute from `CorporateUser.model.ts`
 }
 
 /**
@@ -81,7 +84,7 @@ export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilte
  * and JobListingFilterOptions contains the fields that are specific to the Job 
  */
 export interface JobListingFilterRequestDTO extends AwsOpensearchRecordListingFilterRequestDTO {
-  dashboard?: JobDashboardEnum,
+  dashboard?: JobDashboardEnum;
   companyId?: string;
   location?: string;
   minExperience?: string; // Sample value : "2" which can be convertable to a number at `Joi` schema.
@@ -94,10 +97,24 @@ export interface JobListingFilterRequestDTO extends AwsOpensearchRecordListingFi
   technicalSkills?: string; // Sample value : "ts,js,react"
   workMode?: string;
   status?: JobStatusEnum;
-  jobTitle? : string
+  jobTitle?: string;
   typeofEmployment?: string;
   companyName?: string;
   YOE?: string;
+
+  /**
+   * @description
+   *  1. As of now we are using "userRole" and "corporateRecruiterUserId" for below scenarios:
+   *     1. For `corporate-admin`:
+   *        1. Only jobs from their `Company`:
+   *           1. Include `corporate-admin` created jobs
+   *           2. Include `corporate-recruiter` created jobs
+   *     2. For `corporate-recruiter`:
+   *        1. Only jobs from their `Company`:
+   *           1. Include `corporate-recruiter` created jobs
+   */
+  userRole?: CorporateUserTypeEnum;
+  corporateRecruiterUserId?: string; // `id` attribute from `CorporateUser.model.ts`
 }
 
 /**

@@ -28,6 +28,7 @@ import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opense
 import { AwsOpensearchSortOrderTypeEnum } from "../enums/Common.aws-opensearch.enum";
 import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
 import { JobSourcedFromEnum } from "../enums/Common.enum";
+import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import helpers
 import { dateHelperObj } from "../helpers/date.helper";
@@ -167,7 +168,13 @@ class JobDao {
     const queryBoolMust = awsOpensearchQuery.query?.bool?.must as QueryContainer[];
     const querySort = awsOpensearchQuery.sort as SortOptions[];
 
-    // If dashboard is provided, only retrieve jobs that contain companyId
+    /**
+     * If dashboard is provided, only retrieve jobs that contain companyId
+     * 
+     * @NOTE: As of now if any value in "JobDashboardEnum" is given 
+     * by frontend we are sending only jobs that contain "companyId",
+     * but in near future if we want to implement different boolean queries, then we need to update this method accordingly.
+     */
     if (
       jobFilterOptions?.dashboard &&
       [...Object.values(JobDashboardEnum)].includes(jobFilterOptions.dashboard)
@@ -194,6 +201,41 @@ class JobDao {
           },
         }
       );
+
+      /**
+       * @description
+       *     1. For `corporate-admin`:
+       *        1. Only jobs from their `Company`:
+       *           1. Include `corporate-admin` created jobs
+       *           2. Include `corporate-recruiter` created jobs
+       *     2. For `corporate-recruiter`:
+       *        1. Only jobs from their `Company`:
+       *           1. Include `corporate-recruiter` created jobs
+       */
+      if (
+        jobFilterOptions.dashboard === JobDashboardEnum.CORPORATE &&
+        jobFilterOptions?.userRole
+      ) {
+        if (
+          jobFilterOptions.userRole ===
+            CorporateUserTypeEnum.CORPORATE_RECRUITER &&
+          jobFilterOptions?.corporateRecruiterUserId
+        ) {
+          queryBoolMust.push({
+            term: {
+              "createdByCorporateUserId.keyword": jobFilterOptions.corporateRecruiterUserId,
+            },
+          });
+        } else if (
+          jobFilterOptions.userRole === CorporateUserTypeEnum.CORPORATE_ADMIN
+        ) {
+          queryBoolMust.push({
+            exists: {
+              field: "createdByCorporateUserId",
+            },
+          });
+        }
+      }
     } else {
       /**
        * @description
