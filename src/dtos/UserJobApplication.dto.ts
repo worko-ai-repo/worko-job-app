@@ -92,6 +92,15 @@ export interface UserJobApplicationUpdateApiDTO {
   reason?: string;
   userComment?: string;
   userType: JobApplicationUserTypeWithAdmin;
+
+  /**
+   * applicantName
+   * 
+   * @reference `name` attribute of `UserDetail.model.ts`
+   * 
+   * @description We use this name for email notifications
+   */
+  applicantName: string;
 }
 
 /**
@@ -225,4 +234,45 @@ export interface UserJobApplicationHiredFromOtherPortal {
  */
 export interface UserJobApplicationCommonUpdateDto {
   rejectionAwsScheduleId: string;
+  status: JobApplicationStatus;
+  statusTracker: JobApplicationStatusTrackerType;
+}
+
+/**
+ * UserJobApplicationBulkUpdateApiDTO
+ */
+export interface UserJobApplicationBulkUpdateApiDTO {
+  bulkJobApplicationUpdate: {
+    emailId: string;
+    jobApplicationId: string;
+
+    // New status to be updated
+    status: JobApplicationStatus;
+
+    oldStatus: JobApplicationStatus;
+
+    /**
+     * oldStatusTracker
+     * 
+     * @description
+     * 1. Whenever the job application is updated by the `corporate-recruiter/admin` or `worko-admin` then
+     * we should update "statusTracker" attribute as well,
+     * so we should preserve the previous status tracker and append the new status tracker to it.
+     * 
+     * 2. The reason we are asking the previous status tracker in the request payload is because
+     * to save the "get job application by ids" in backend.
+     */
+    oldStatusTracker: JobApplicationStatusTrackerType;
+
+    userType: JobApplicationUserTypeWithAdmin;
+
+    /**
+     * applicantName
+     *
+     * @reference `name` attribute of `UserDetail.model.ts`
+     *
+     * @description We use this name for email notifications
+     */
+    applicantName: string;
+  }[];
 }

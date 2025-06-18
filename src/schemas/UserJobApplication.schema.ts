@@ -1,8 +1,11 @@
 // Import the Joi library
 import Joi from "joi";
 
+// Import constants
+import APP_CONSTANTS from "../configs/constants.config";
+
 // import enums
-import { JobApplicationStatus } from "../enums/UserJobApplication.enum";
+import { JobApplicationStatus, JobApplicationValidBulkUpdateStatusEnum } from "../enums/UserJobApplication.enum";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 import { UserType } from "../enums/User.enum";
 import { AdminRoleEnum } from "../enums/Common.enum";
@@ -148,6 +151,11 @@ export const userJobApplicationUpdateValidation = Joi.object({
       "any.required": "User type is required",
       "string.empty": "User type should not be empty",
     }),
+
+  applicantName: Joi.string().required().messages({
+    "any.required": "The Applicant name is required.",
+    "string.empty": "The Applicant name should not be empty.",
+  }),
 });
 
 // Define validation schema for requesting job application
@@ -203,5 +211,132 @@ export const userJobApplicationHiredFromOtherPortalValidationApiDto = Joi.object
       "any.required": "The Hired from Other Portal field is required.",
       "object.base": "The Hired from Other Portal field must be an object.",
       "object.empty": "The Hired from Other Portal field should not be empty.",
+    }),
+});
+
+/**
+ * userJobApplicationBulkUpdateApiDtoValidation
+ */
+export const userJobApplicationBulkUpdateApiDtoValidation = Joi.object({
+  bulkJobApplicationUpdate: Joi.array()
+    .min(APP_CONSTANTS.BULK_JOB_APPLICATION_UPDATE_LIMIT.MIN)
+    .max(APP_CONSTANTS.BULK_JOB_APPLICATION_UPDATE_LIMIT.MAX)
+    .items(
+      Joi.object({
+        userType: Joi.string()
+          .required()
+          .valid(
+            ...Object.values(CorporateUserTypeEnum),
+            ...Object.values(AdminRoleEnum)
+          )
+          .messages({
+            "string.valid": `The User type must be one of: ${Object.values(
+              CorporateUserTypeEnum
+            ).join(", ")}, ${Object.values(AdminRoleEnum).join(", ")}.`,
+            "any.required": "The User type is required.",
+            "string.empty": "The User type should not be empty.",
+          }),
+          
+        emailId: Joi.string().email().required().messages({
+          "any.required": "The Email ID field is required.",
+          "string.empty": "The Email ID field should not be empty.",
+          "string.email": "The Email ID field must be a valid email address.",
+        }),
+
+        jobApplicationId: Joi.string().required().messages({
+          "any.required": "The Job Application ID field is required.",
+          "string.empty": "The Job Application ID field should not be empty.",
+        }),
+
+        status: Joi.string()
+          .required()
+          .valid(...Object.values(JobApplicationValidBulkUpdateStatusEnum))
+          .messages({
+            "any.required": "The Status field is required.",
+            "string.empty": "The Status field should not be empty.",
+            "any.only": `Invalid Job application status. Please provide a valid value from
+          ${Object.values(JobApplicationValidBulkUpdateStatusEnum).join(
+            ", "
+          )}.`,
+          }),
+
+        oldStatus: Joi.string()
+          .valid(...Object.values(JobApplicationStatus))
+          .required()
+          .messages({
+            "any.required": "The oldStatus field is required.",
+            "any.only": `Invalid old status. Please provide a valid value from
+          ${Object.values(JobApplicationStatus).join(", ")}.`,
+          }),
+
+        /**
+         * @reference "JobApplicationStatusTrackerType" in "UserJobApplication.type.ts"
+         */
+        oldStatusTracker: Joi.array()
+          .items(
+            Joi.object({
+              oldStatus: Joi.string()
+                .valid(...Object.values(JobApplicationStatus))
+                .required()
+                .messages({
+                  "any.required": "The oldStatus field is required.",
+                  "any.only": `Invalid old status. Please provide a valid value from
+          ${Object.values(JobApplicationStatus).join(", ")}.`,
+                }),
+
+              newStatus: Joi.string()
+                .valid(...Object.values(JobApplicationStatus))
+                .required()
+                .messages({
+                  "any.required": "The newStatus field is required.",
+                  "any.only": `Invalid new status. Please provide a valid value from
+          ${Object.values(JobApplicationStatus).join(", ")}.`,
+                }),
+
+              actionDate: Joi.string().isoDate().optional().messages({
+                "string.isoDate":
+                  "The actionDate must be a valid ISO date string.",
+              }),
+
+              userId: Joi.string().allow(null).optional(),
+
+              userType: Joi.string()
+                .valid(
+                  ...Object.values(CorporateUserTypeEnum),
+                  ...Object.values(AdminRoleEnum),
+                  ...Object.values(UserType)
+                )
+                .allow(null)
+                .optional()
+                .messages({
+                  "any.only": `The userType must be one of ${Object.values(
+                    CorporateUserTypeEnum
+                  ).join(", ")} or ${Object.values(AdminRoleEnum).join(
+                    ", "
+                  )} or ${Object.values(UserType).join(", ")}.`,
+                }),
+            })
+          )
+          .required()
+          .messages({
+            "any.required": "The Old Status Tracker field is required.",
+            "array.base": "The Old Status Tracker field must be an array.",
+            "array.empty": "The Old Status Tracker field should not be empty.",
+          }),
+        
+        applicantName: Joi.string().required().messages({
+          "any.required": "The Applicant name field is required.",
+          "string.empty": "The Applicant name field should not be empty.",
+        })
+      })
+    )
+    .required()
+    .messages({
+      "any.required": "The Bulk Job Application Update field is required.",
+      "array.base": "The Bulk Job Application Update field must be an array.",
+      "array.empty":
+        "The Bulk Job Application Update field should not be empty.",
+      "array.min": `The Bulk Job Application Update field must contain at least ${APP_CONSTANTS.BULK_JOB_APPLICATION_UPDATE_LIMIT.MIN} item(s).`,
+      "array.max": `The Bulk Job Application Update field must contain at most ${APP_CONSTANTS.BULK_JOB_APPLICATION_UPDATE_LIMIT.MAX} item(s).`,
     }),
 });

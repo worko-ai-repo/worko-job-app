@@ -6,6 +6,7 @@ import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 
 // import dtos
 import {
+  UserJobApplicationBulkUpdateApiDTO,
   UserJobApplicationCreateApiDTO,
   UserJobApplicationDisplayToCorporateApiDTO,
   UserJobApplicationHiredFromOtherPortalApiDTO,
@@ -16,6 +17,7 @@ import {
   UserJobApplicationUpdateApiDTO,
 } from "../dtos/UserJobApplication.dto";
 import {
+  EntityBulkUpdateMetricDto,
   PaginatedResultsWithMatchingConditionsInternalResponse,
   RecordListingResponseDTO,
 } from "../dtos/Common.dto";
@@ -44,6 +46,7 @@ import {
   userJobApplicationRequestFeedbackValidation,
   userJobApplicationUpdateValidation,
   userJobApplicationDisplayToCorporateValidation,
+  userJobApplicationBulkUpdateApiDtoValidation,
 } from "../schemas/UserJobApplication.schema";
 
 // import types
@@ -510,6 +513,66 @@ class UserJobApplicationController {
           }
         )
       }
+      next(error);
+    }
+  };
+
+  /**
+   * updateBulkJobApplication
+   *
+   * Controller for bulk update job application
+   *
+   * @param {Request} req - Express request object:
+   * @param {Response} res - Express response object used to send back the API response.
+   * @param {NextFunction} next - Express next function for error handling.
+   */
+  updateBulkJobApplication = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(`Update Bulk Job Application [Controller]`, {
+        methodName: this.updateBulkJobApplication.name,
+      });
+
+      // Get job application details from the request body and validate it, if not valid throw error
+      const reqBody: UserJobApplicationBulkUpdateApiDTO = req.body;
+      const { error: reqBodyError, value: jobApplicationRequestBody } =
+        userJobApplicationBulkUpdateApiDtoValidation.validate(reqBody, {
+          abortEarly: false,
+        });
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+     
+      const jobApplicationDetails: EntityBulkUpdateMetricDto = await userJobApplicationServiceObj.updateBulkJobApplication(
+        jobApplicationRequestBody
+      );
+
+      /**
+       * @todo: Discuss with "CTO" instead of logging, 
+       * if any single job id is failed to update in DynamoDB or Opensearch,
+       * then we need to store it in new "dynamodb" logs partition.
+       * If all the job Ids are success then we no need to store it in new "dynamodb" logs partition to
+       * save the cost of storing it in new "dynamodb" logs partition.
+       */
+      global.logger.info(
+        `Bulk update job application response. [Controller]`,
+        {
+          jobApplicationDetails,
+        }
+      );
+
+      res.status(HttpStatusCode.OK_200).json(jobApplicationDetails);
+    } catch (error) {
+      global.logger.error(
+        `Error at catch block while bulk update job application. [Controller]`,
+        {
+          error,
+          methodName: this.updateBulkJobApplication.name,
+        }
+      )
       next(error);
     }
   };

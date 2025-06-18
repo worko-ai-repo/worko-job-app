@@ -1,15 +1,11 @@
 
 // Import dtos
-import { JobLocationDto, MinMaxRange } from "./Common.dto";
+import { EntityBulkUpdateMetricDto, JobLocationDto, MinMaxRange } from "./Common.dto";
 import { AwsOpensearchRecordListingFilterOptions, AwsOpensearchRecordListingFilterRequestDTO } from "./Common.aws-opensearch.dto";
 
 // Import enums
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
-
-// Import models
-import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
-import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
 
 /**
  * JobCreateApiDto
@@ -267,28 +263,9 @@ export interface JobBulkUpdateApiDto {
 }
 
 /**
- * JobBulkUpdateCountDto
- */
-export interface JobBulkUpdateCountDto {
-  count: number;
-  jobIds: string[];
-}
-
-/**
- * JobBulkUpdateMetricDto
- */
-export interface JobBulkUpdateMetricDto {
-  success: JobBulkUpdateCountDto;
-  failure: JobBulkUpdateCountDto;
-}
-
-/**
  * JobBulkUpdateResponseDto
  */
 export interface JobBulkUpdateResponseDto {
-  updatedJobsOnDynamoDb: (DbCompanyJobDto & {
-    companyDetails: DbCompanyDetailDto | undefined;
-  })[];
-  opensearchResult: JobBulkUpdateMetricDto;
-  dynamodbResult: JobBulkUpdateMetricDto;
+  opensearchBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
+  dynamodbBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
 }

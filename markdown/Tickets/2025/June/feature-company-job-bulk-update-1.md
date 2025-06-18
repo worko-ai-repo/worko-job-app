@@ -40,38 +40,10 @@
    ```json
    // Response
    {
-      "updatedJobsOnDynamodb": [
-         {
-            "PK": "",
-            "SK": "",
-            //.....
-            "companyDetails": {
-                "website": "",
-                "linkedIn": "https://www.linkedin.com/company/toshiba-transmission-&-distribution-system",
-                "industry": "animation & vfx",
-                "logoUrl": "",
-                "createdAt": "2025-01-30T14:09:05.710Z",
-                "GSI1SK": "ID#01JJVRPHNENTTFFF7M3N6HEQ38",
-                "carrierPage": "https://gooogle.com",
-                "logo": "Test-Worko.png",
-                "name": "TEST WORKO 4.0",
-                "isVerified": true,
-                "teamSize": 20,
-                "GSI1PK": "COMP#INDS#animation & vfx",
-                "updatedAt": "2025-03-20T16:07:06.940Z",
-                "aboutCompany": "<p da.....",
-                "SK": "ID#01JJVRPHNENTTFFF7M3N6HEQ38",
-                "PK": "COMP#",
-                "id": "01JJVRPHNENTTFFF7M3N6HEQ38"
-            }
-         },
-         // ......
-         // ......
-      ],
-      "opensearchResult": {
+      "opensearchBulkJobUpdateMetrics": {
          "success": {
             "count": 4,
-            "jobIds": [
+            "primaryIds": [
                "01JW8G25TTPKDW2A8KNFXY6ESD",
                "01JMEFYTZ9FSN8HSPBE9G64ZC0",
                "01JMCBWQ9FGCC8FHK827WJAM3S",
@@ -80,13 +52,13 @@
          },
          "failure": {
             "count": 0,
-            "jobIds": []
+            "primaryIds": []
          }
       },
-      "dynamodbResult": {
+      "dynamodbBulkJobUpdateMetrics": {
          "success": {
             "count": 4,
-            "jobIds": [
+            "primaryIds": [
                "01JW8G25TTPKDW2A8KNFXY6ESD",
                "01JMEFYTZ9FSN8HSPBE9G64ZC0",
                "01JMCBWQ9FGCC8FHK827WJAM3S",
@@ -95,7 +67,7 @@
          },
          "failure": {
             "count": 0,
-            "jobIds": []
+            "primaryIds": []
          }
       }
    }

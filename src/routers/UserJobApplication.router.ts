@@ -62,6 +62,12 @@ UserJobApplicationRouter.patch("/:id/request-feedback", userJobApplicationContro
 UserJobApplicationRouter.patch("/:id/display-to-corporate", userJobApplicationController.updateJobApplicationDisplayToCorporate);
 
 /**
+ * Bulk update job applications
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ */
+UserJobApplicationRouter.patch("/bulk-update", userJobApplicationController.updateBulkJobApplication);
+
+/**
  * Update job application based on the provided parameters in route
  * 
  * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]

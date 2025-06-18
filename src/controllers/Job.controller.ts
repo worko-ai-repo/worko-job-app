@@ -339,6 +339,13 @@ class JobController {
 
       const updatedJobs: JobBulkUpdateResponseDto = await jobServiceObj.updateBulkJob(validatedJobRequestBody);
 
+      /**
+       * @todo: Discuss with "CTO" instead of logging, 
+       * if any single job id is failed to update in DynamoDB or Opensearch,
+       * then we need to store it in new "dynamodb" logs partition.
+       * If all the job Ids are success then we no need to store it in new "dynamodb" logs partition to
+       * save the cost of storing it in new "dynamodb" logs partition.
+       */
       global.logger.info(`Bulk Update Job Result [Controller]`, {
         methodName: this.updateBulkJob.name,
         updatedJobs: updatedJobs,

@@ -21,8 +21,8 @@ import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 
 // import dtos
-import { UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
-import { PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
+import { UserJobApplicationBulkUpdateApiDTO, UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
+import { EntityBulkUpdateMetricDto, PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
 import { EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
 import { ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
 import { ReferAndEarnStatusTrackerDto, UpdateReferAndEarnInternalDto } from "../dtos/ReferAndEarn.dto";
@@ -38,7 +38,8 @@ import { ReferAndEarnJobApplicationStatusEnum, ReferAndEarnStatusEnum } from "..
 
 // import helpers
 import { injectCompanyJobDetails } from "../helpers/injectCompanyJobDetails.helper";
-import { getEmailFromPK } from "../helpers/user.helper";
+import { getActionByUserId, getEmailFromPK } from "../helpers/user.helper";
+import { dateHelperObj } from "../helpers/date.helper";
 
 // import libraries
 import { emailLibrary, EmailSourceDestinationAddress } from "../libraries/email.library";
@@ -936,17 +937,19 @@ class UserJobApplicationService {
    * Sends an email to the candidate when their job application status is updated.
    *
    * @param {DbUserJobApplicationDto} updatedJobApplication - The updated job application data.
-   * @param {DbUserDetailDto} candidateDetails - The parsed candidate details.
+   * @param {string} applicantName - The name of the candidate.
    * @returns {Promise<boolean>} A promise that resolves to true if the email was sent successfully.
    */
   async sendEmailToCandidateOnJobApplicationUpdate(
     updatedJobApplication: DbUserJobApplicationDto,
-    candidateDetails: DbUserDetailDto
+    applicantName: string, // Refer "name" attribute in "UserDetail.model.ts"
   ): Promise<boolean> {
     const toAddress: EmailSourceDestinationAddress = {
       email: updatedJobApplication.PK.split("#")[2],
-      fullName: candidateDetails.name,
+      fullName: applicantName,
     };
+
+    const applicantNameToTitleCase: string = applicantName.toTitleCase();
 
     // Get company job details query response
     const companyJobDetailsQueryResponse: QueryResponse<DbCompanyJobDto> =
@@ -961,7 +964,7 @@ class UserJobApplicationService {
         // Construct the email placeholders object
         const cvDownloadedEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE =
           {
-            candName: candidateDetails.name.toTitleCase(),
+            candName: applicantNameToTitleCase,
             companyName: updatedJobApplication.companyName.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
@@ -980,7 +983,7 @@ class UserJobApplicationService {
         // Construct the email placeholders object
         const underEvaluationEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE =
           {
-            candName: candidateDetails.name.toTitleCase(),
+            candName: applicantNameToTitleCase,
             companyName: updatedJobApplication.companyName.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
@@ -999,7 +1002,7 @@ class UserJobApplicationService {
         // Construct the email placeholders object
         const hiredEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE =
           {
-            candName: candidateDetails.name.toTitleCase(),
+            candName: applicantNameToTitleCase,
             companyName: updatedJobApplication.companyName.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
@@ -1017,7 +1020,7 @@ class UserJobApplicationService {
         // Construct the email placeholders object
         const rejectedEmailPlaceholders: EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE =
           {
-            candName: candidateDetails.name.toTitleCase(),
+            candName: applicantNameToTitleCase,
             companyName: updatedJobApplication.companyName.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             hrFeedback:
@@ -1092,10 +1095,12 @@ class UserJobApplicationService {
    * Sends an email to the job poster when a candidate's job application status is updated.
    *
    * @param {DbUserJobApplicationDto} updatedJobApplication - The updated job application data.
+   * @param {string} applicantName - The name of the candidate.
    * @returns {Promise<boolean>} A promise that resolves to true if the email was sent successfully.
    */
   async sendEmailToJobPosterOnJobApplicationUpdate(
-    updatedJobApplication: DbUserJobApplicationDto
+    updatedJobApplication: DbUserJobApplicationDto,
+    applicantName: string,
   ): Promise<boolean> {
     global.logger.info(
       "Send Email To Job Poster On Job Application Update [Service]",
@@ -1109,7 +1114,8 @@ class UserJobApplicationService {
     // Send email to the job poster placeholder details
     const sendEmailPlaceholderDetailsToJobPoster: EmailPlaceholderDetailsToJobPosterType =
       await this.preparePlaceholdersToSendEmailToJobPoster(
-        updatedJobApplication
+        updatedJobApplication,
+        applicantName,
       );
     
     if(!sendEmailPlaceholderDetailsToJobPoster) {
@@ -1158,16 +1164,13 @@ class UserJobApplicationService {
    * the job poster's email address, name, job title, job application status, candidate name, and candidate email id.
    *
    * @param {DbUserJobApplicationDto} parsedJobApplicationDetails - The parsed job application data.
+   * @param {string} applicantName - The name of the applicant.
    * @returns {Promise<EmailPlaceholderDetailsToJobPosterType>} A promise that resolves to an object containing the placeholders for the email template.
    */
   async preparePlaceholdersToSendEmailToJobPoster(
-    parsedJobApplicationDetails: DbUserJobApplicationDto
+    parsedJobApplicationDetails: DbUserJobApplicationDto,
+    applicantName: string,
   ): Promise<EmailPlaceholderDetailsToJobPosterType> {
-    // get candidate details by email
-    const candidateDetails: DbUserDetailDto =
-      await userDetailServiceObj.getUserDetailsByEmail(
-        parsedJobApplicationDetails.PK.split("#")[2]
-      );
 
     // get job id from jobApplicationDetails
     const jobId: string = parsedJobApplicationDetails.jobId;
@@ -1233,8 +1236,8 @@ class UserJobApplicationService {
       jobPosterName,
       jobTitle: postedJobDetails.jobTitle.toTitleCase(),
       status: parsedJobApplicationDetails.status,
-      candidateName: candidateDetails.name.toTitleCase(),
-      candidateEmailId: candidateDetails.PK.split("#")[2],
+      candidateName: applicantName.toTitleCase(),
+      candidateEmailId: parsedJobApplicationDetails.PK.split("#")[2],
     };
 
     global.logger.debug(
@@ -1247,6 +1250,113 @@ class UserJobApplicationService {
     );
 
     return placeholderDetails;
+  }
+
+  /**
+   * handleReferAndEarnAndNotificationOnJobApplicationUpdate
+   * 
+   * Handles refer and earn and notification on job application update.
+   *
+   * It checks if the job application is for a refer and earn id and if yes, it updates the refer and earn status accordingly.
+   * It also sends an email to the candidate and job poster about the job application update.
+   *
+   * @param {DbUserJobApplicationDto} updatedJobApplication - The updated job application details.
+   * @param {string} currentActionDateTime - The current date and time in ISO format.
+   * @param {string} applicantName - The name of the applicant.
+   *
+   * @returns {Promise<void>} A promise that resolves when the function is done.
+   */
+  private async handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    currentActionDateTime: string,
+    applicantName: string,
+  ): Promise<void> {
+    // Check if the job application is for a refer and earn id
+    if (updatedJobApplication?.referAndEarnId) {
+      // Retrieve refer and earn details by refer and earn id
+      const referAndEarnDetails: QueryResponse<DbReferAndEarnDto> =
+        await referAndEarnServiceObj.getReferAndEarnById(
+          updatedJobApplication.referAndEarnId
+        );
+      if (referAndEarnDetails.count) {
+        // Parse the refer and earn details
+        const parsedReferAndEarnDetails: DbReferAndEarnDto =
+          referAndEarnDetails[0];
+
+        let referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto>;
+
+        if (updatedJobApplication.status === JobApplicationStatus.REJECTED) {
+          // Prepare statusTracker Data to update
+          const referAndEarnUpdatedStatusTracker: ReferAndEarnStatusTrackerDto[] =
+            [
+              ...parsedReferAndEarnDetails.statusTracker,
+              {
+                oldStatus: parsedReferAndEarnDetails.status,
+                newStatus: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+                actionDate: currentActionDateTime,
+                actionByUserId: undefined,
+                description: undefined,
+              },
+            ];
+
+          // Prepare refer and earn update dto
+          referAndEarnUpdateDto = {
+            status: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+            statusTracker: referAndEarnUpdatedStatusTracker,
+            jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.REJECTED,
+          };
+
+          // Update refer and earn status
+          await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+            parsedReferAndEarnDetails.id,
+            getEmailFromPK(parsedReferAndEarnDetails.PK),
+            referAndEarnUpdateDto
+          );
+        } else if (
+          updatedJobApplication.status ===
+          JobApplicationStatus.PROCESSING_INTERVIEW
+        ) {
+          // Prepare refer and earn update dto
+          referAndEarnUpdateDto = {
+            jobApplicationStatus:
+              ReferAndEarnJobApplicationStatusEnum.PROCESSING_INTERVIEW,
+          };
+
+          // Update refer and earn status
+          await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+            parsedReferAndEarnDetails.id,
+            getEmailFromPK(parsedReferAndEarnDetails.PK),
+            referAndEarnUpdateDto
+          );
+        } else if (
+          updatedJobApplication.status === JobApplicationStatus.HIRED
+        ) {
+          // Prepare refer and earn update dto
+          referAndEarnUpdateDto = {
+            jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.HIRED,
+          };
+
+          // Update refer and earn status
+          await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+            parsedReferAndEarnDetails.id,
+            getEmailFromPK(parsedReferAndEarnDetails.PK),
+            referAndEarnUpdateDto
+          );
+        }
+      }
+    }
+
+    // send email to candidate
+    await this.sendEmailToCandidateOnJobApplicationUpdate(
+      updatedJobApplication,
+      applicantName,
+    );
+
+    // send email to job poster on job application update
+    await this.sendEmailToJobPosterOnJobApplicationUpdate(
+      updatedJobApplication,
+      applicantName,
+    );
   }
 
   /**
@@ -1375,118 +1485,117 @@ class UserJobApplicationService {
       );
 
     // Send email to candidate on job application update
-    if (updatedJobApplication) {
-      // Check if the job application is for a refer and earn id
-      if (updatedJobApplication.referAndEarnId) {
-        // Retrieve refer and earn details by refer and earn id
-        const referAndEarnDetails: QueryResponse<DbReferAndEarnDto> =
-          await referAndEarnServiceObj.getReferAndEarnById(
-            updatedJobApplication.referAndEarnId
-          );
-        if (referAndEarnDetails.count) {
-          // Parse the refer and earn details
-          const parsedReferAndEarnDetails: DbReferAndEarnDto =
-            referAndEarnDetails[0];
-
-          let referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto>;
-
-          if (updatedJobApplication.status === JobApplicationStatus.REJECTED) {
-            // Prepare statusTracker Data to update
-            const referAndEarnUpdatedStatusTracker: ReferAndEarnStatusTrackerDto[] =
-              [
-                ...parsedReferAndEarnDetails.statusTracker,
-                {
-                  oldStatus: parsedReferAndEarnDetails.status,
-                  newStatus: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
-                  actionDate: currentActionDateTime,
-                  actionByUserId: undefined,
-                  description: undefined,
-                },
-              ];
-
-            // Prepare refer and earn update dto
-            referAndEarnUpdateDto = {
-              status: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
-              statusTracker: referAndEarnUpdatedStatusTracker,
-              jobApplicationStatus:
-                ReferAndEarnJobApplicationStatusEnum.REJECTED,
-            };
-
-            // Update refer and earn status
-            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
-              parsedReferAndEarnDetails.id,
-              getEmailFromPK(parsedReferAndEarnDetails.PK),
-              referAndEarnUpdateDto
-            );
-          } else if (
-            updatedJobApplication.status === JobApplicationStatus.PROCESSING_INTERVIEW
-          ) {
-            // Prepare refer and earn update dto
-            referAndEarnUpdateDto = {
-              jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.PROCESSING_INTERVIEW,
-            };
-
-            // Update refer and earn status
-            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
-              parsedReferAndEarnDetails.id,
-              getEmailFromPK(parsedReferAndEarnDetails.PK),
-              referAndEarnUpdateDto
-            );
-          } else if (updatedJobApplication.status === JobApplicationStatus.HIRED) {
-            // Prepare refer and earn update dto
-            referAndEarnUpdateDto = {
-              jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.HIRED,
-            };
-
-            // Update refer and earn status
-            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
-              parsedReferAndEarnDetails.id,
-              getEmailFromPK(parsedReferAndEarnDetails.PK),
-              referAndEarnUpdateDto
-            );           
-          }
-        }
-      }
-
-      const candidateEmail: string = updatedJobApplication.PK.split("#")[2];
-
-      // parse candidate details
-      const candidateDetails: DbUserDetailDto =
-        await userDetailServiceObj.getUserDetailsByEmail(candidateEmail);
-
-      // send email to candidate
-      const sendEmailToCandidateOnJobApplicationUpdate: boolean =
-        await this.sendEmailToCandidateOnJobApplicationUpdate(
-          updatedJobApplication,
-          candidateDetails
-        );
-      global.logger.debug(`Send Email To Candidate On Job Application Update`, {
-        filePath: __filename,
-        methodName: this.updateJobApplicationByCorpUser.name,
-        status: updatedJobApplication.status,
-        sendEmailToCandidateOnJobApplicationUpdate:
-          sendEmailToCandidateOnJobApplicationUpdate,
-        email: candidateEmail,
-      });
-
-      // send email to job poster on job application update
-      const sendEmailToJobPosterOnJobApplicationUpdate: boolean =
-        await this.sendEmailToJobPosterOnJobApplicationUpdate(
-          updatedJobApplication
-        );
-      global.logger.debug(
-        `Send Email To Job Poster On Job Application Update`,
-        {
-          filePath: __filename,
-          methodName: this.updateJobApplicationByCorpUser.name,
-          status: updatedJobApplication.status,
-          sendEmailToJobPosterOnJobApplicationUpdate:
-            sendEmailToJobPosterOnJobApplicationUpdate,
-        }
+    if (updatedJobApplication?.id) {
+      await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+        updatedJobApplication,
+        currentActionDateTime,
+        jobApplicationRequestBody.applicantName,
       );
     }
 
     return updatedJobApplication;
+  }
+
+  /**
+   * updateBulkJobApplication
+   *
+   * Updates multiple job applications in the database using the provided update data.
+   *
+   * @param {UserJobApplicationBulkUpdateApiDTO} reqBody - The update data for the job applications.
+   * @returns {Promise<EntityBulkUpdateMetricDto>} A promise that resolves to the metric details of the updated job applications.
+   */
+  async updateBulkJobApplication(
+    reqBody: UserJobApplicationBulkUpdateApiDTO
+  ): Promise<EntityBulkUpdateMetricDto> {
+    global.logger.info(`Update Bulk Job Application [Service]`, {
+      methodName: this.updateBulkJobApplication.name,
+    });
+
+    const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
+
+    const jobApplicationMetric: EntityBulkUpdateMetricDto = {
+      success: {
+        count: 0,
+        primaryIds: [],
+      },
+      failure: {
+        count: 0,
+        primaryIds: [],
+      },
+    };
+
+    const currentActionDateTime: string = dateHelperObj.getISODate();
+
+    for (const eachUpdateObj of reqBody.bulkJobApplicationUpdate) {
+      const {
+        emailId,
+        jobApplicationId,
+        status,
+        oldStatus,
+        oldStatusTracker,
+        userType,
+        applicantName,
+      } = eachUpdateObj;
+
+      // Prepare status tracker data to update
+      const newStatusTracker: JobApplicationStatusTrackerType = [
+        ...oldStatusTracker,
+        {
+          oldStatus: oldStatus,
+          newStatus: status,
+          actionDate: currentActionDateTime,
+          userId: actionByCorporateUserId || actionByUserId,
+          userType: userType,
+        },
+      ];
+
+      // Prepare update data
+      const updateData: Partial<UserJobApplicationCommonUpdateDto> = {
+        status: status,
+        statusTracker: newStatusTracker,
+      };
+
+      try {
+        const updatedJobApplication: DbUserJobApplicationDto =
+          await this.updateJobApplicationByIdAndPrimaryEmail(
+            jobApplicationId,
+            emailId,
+            updateData
+          );
+        if (updatedJobApplication?.id) {
+          jobApplicationMetric.success.count++;
+          jobApplicationMetric.success.primaryIds.push(jobApplicationId);
+          
+          await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+            updatedJobApplication,
+            currentActionDateTime,
+            applicantName,
+          );
+        } else {
+          jobApplicationMetric.failure.count++;
+          jobApplicationMetric.failure.primaryIds.push(jobApplicationId);
+
+          global.logger.error(
+            `Failed to update jobApplicationId: ${jobApplicationId} in DynamoDB`,
+            {
+              updatedJobApplication,
+            }
+          );
+        }
+      } catch (error) {
+        jobApplicationMetric.failure.count++;
+        jobApplicationMetric.failure.primaryIds.push(jobApplicationId);
+
+        global.logger.error(
+          `Failed to update job application id: ${jobApplicationId}`,
+          {
+            error,
+          }
+        );
+      }
+    }
+
+    return jobApplicationMetric;
   }
 
   /**
@@ -1644,9 +1753,13 @@ class UserJobApplicationService {
     const jobApplicationDetails: DbUserJobApplicationDto =
       await this.getJobApplicationById(jobApplicationId);
 
+    // Retrieve Candidate details
+    const candidateDetails: DbUserDetailDto = await UserDetailService.getUserDetailsByEmail(getEmailFromPK(jobApplicationDetails.PK));
+
     const sendEmailPlaceholderDetailsToJobPoster: EmailPlaceholderDetailsToJobPosterType =
       await this.preparePlaceholdersToSendEmailToJobPoster(
-        jobApplicationDetails
+        jobApplicationDetails,
+        candidateDetails.name
       );
 
     // If sendEmailPlaceholderDetailsToJobPoster is undefined, return false

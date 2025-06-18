@@ -16,10 +16,11 @@ import { DateTime } from "luxon";
 import { jobDaoObj } from "../daos/Job.dao";
 
 // Import dtos
-import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobBulkUpdateMetricDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
+import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
 import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
+import { EntityBulkUpdateMetricDto } from "../dtos/Common.dto";
 
 // Import enums
 import { JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
@@ -570,16 +571,14 @@ class JobService {
   /**
    * updateBulkJob
    *
-   * Updates multiple jobs in the `worko-jobs` index on `AWS Opensearch` and in the `company-jobs` table on `AWS DynamoDB` using the provided array of job updates.
+   * Updates multiple jobs in the OpenSearch index and DynamoDB table by their IDs.
    *
-   * This method logs the update operation and sends an update request to the OpenSearch client to modify the job document with the given ID.
-   * If the job is internal then it updates the `companyJob` details in dynamodb.
+   * This method logs the update operation, processes each job update in the request body, and sends update requests to the OpenSearch client and DynamoDB.
+   * It also keeps metrics of the success and failure of the update operations on both OpenSearch and DynamoDB.
    *
-   * If the job is external then it returns the updated job details from `worko-jobs` index on `AWS Opensearch`.
+   * @param {JobBulkUpdateApiDto} validatedJobRequestBody - The validated request body containing the bulk job update data.
    *
-   * @param {JobBulkUpdateApiDto} validatedJobRequestBody - The validated job update request body.
-   *
-   * @returns {Promise<JobBulkUpdateResponseDto>} - A promise that resolves to the result of the bulk update operation.
+   * @returns {Promise<JobBulkUpdateResponseDto>} - A promise that resolves to the bulk job update response containing metrics of the update operations on both OpenSearch and DynamoDB.
    */
   async updateBulkJob(
     validatedJobRequestBody: JobBulkUpdateApiDto
@@ -588,8 +587,6 @@ class JobService {
       methodName: this.updateBulkJob.name,
       validatedJobRequestBody: validatedJobRequestBody,
     });
-
-    const { bulkJobUpdate } = validatedJobRequestBody;
 
     // Get action by user id
     const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
@@ -605,20 +602,18 @@ class JobService {
       dynamodbUpdateData.updatedByCorporateUserId = actionByCorporateUserId;
     }
 
-    const opensearchResult: JobBulkUpdateMetricDto = {
-      success: { count: 0, jobIds: [] },
-      failure: { count: 0, jobIds: [] },
+    const opensearchResult: EntityBulkUpdateMetricDto = {
+      success: { count: 0, primaryIds: [] },
+      failure: { count: 0, primaryIds: [] },
     };
 
-    const dynamodbResult: JobBulkUpdateMetricDto = {
-      success: { count: 0, jobIds: [] },
-      failure: { count: 0, jobIds: [] },
+    const dynamodbResult: EntityBulkUpdateMetricDto = {
+      success: { count: 0, primaryIds: [] },
+      failure: { count: 0, primaryIds: [] },
     };
-
-    const updatedJobsOnDynamoDb: DbCompanyJobDto[] = [];
 
     // Process each job update
-    for (const jobUpdate of bulkJobUpdate) {
+    for (const jobUpdate of validatedJobRequestBody.bulkJobUpdate) {
       const { companyId, jobId, status } = jobUpdate;
 
       // Prepare update data for OpenSearch
@@ -634,20 +629,21 @@ class JobService {
 
         if (opensearchResponse.statusCode === HttpStatusCode.OK_200) {
           opensearchResult.success.count++;
-          opensearchResult.success.jobIds.push(jobId);
+          opensearchResult.success.primaryIds.push(jobId);
         } else {
-          global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`);
           opensearchResult.failure.count++;
-          opensearchResult.failure.jobIds.push(jobId);
+          opensearchResult.failure.primaryIds.push(jobId);
+
+          global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`,{
+            opensearchResponse
+          });
         }
       } catch (error) {
-        global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`);
         opensearchResult.failure.count++;
-        opensearchResult.failure.jobIds.push(jobId);
+        opensearchResult.failure.primaryIds.push(jobId);
 
-        global.logger.error(`Failed to update job in Opensearch`, {
+        global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`, {
           error: error,
-          opensearchResult,
         });
       }
 
@@ -662,38 +658,29 @@ class JobService {
 
         if (updateResult?.id) {
           dynamodbResult.success.count++;
-          dynamodbResult.success.jobIds.push(jobId);
-          updatedJobsOnDynamoDb.push(updateResult);
+          dynamodbResult.success.primaryIds.push(jobId);
         } else {
-          global.logger.error(`Failed to update jobId: ${jobId} in DynamoDB`);
           dynamodbResult.failure.count++;
-          dynamodbResult.failure.jobIds.push(jobId);
+          dynamodbResult.failure.primaryIds.push(jobId);
+
+          global.logger.error(`Failed to update jobId: ${jobId} in DynamoDB`, {
+            updateResult,
+          });
         }
       } catch (error) {
-        global.logger.error(
-          `Failed to update job ${jobId} in DynamoDB:`,
-          error
-        );
         dynamodbResult.failure.count++;
-        dynamodbResult.failure.jobIds.push(jobId);
+        dynamodbResult.failure.primaryIds.push(jobId);
 
-        global.logger.error(`Failed to update job in DynamoDB`, {
+        global.logger.error(`Failed to update job ${jobId} in DynamoDB:`, {
           error: error,
-          dynamodbResult,
         });
       }
     }
 
-    // Attach company details
-    const jobsWithCompanyDetails: (DbCompanyJobDto & {
-      companyDetails: DbCompanyDetailDto | undefined;
-    })[] = await attachCompanyDetails<DbCompanyJobDto>(updatedJobsOnDynamoDb);
-
     // Prepare the response
     const bulkJobUpdateResponse: JobBulkUpdateResponseDto = {
-      opensearchResult: opensearchResult,
-      dynamodbResult: dynamodbResult,
-      updatedJobsOnDynamoDb: jobsWithCompanyDetails,
+      opensearchBulkJobUpdateMetrics: opensearchResult,
+      dynamodbBulkJobUpdateMetrics: dynamodbResult,
     };
 
     return bulkJobUpdateResponse;

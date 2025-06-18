@@ -254,3 +254,19 @@ export interface JobLocationDto {
   country?: string[]; // ["India"]
   fullLocation?: string[]; // ["Bangalore, Karnataka, India"]
 }
+
+/**
+ * EntityBulkUpdateCountDto
+ */
+export interface EntityBulkUpdateCountDto {
+  count: number;
+  primaryIds: string[];
+}
+
+/**
+ * EntityBulkUpdateMetricDto
+ */
+export interface EntityBulkUpdateMetricDto {
+  success: EntityBulkUpdateCountDto;
+  failure: EntityBulkUpdateCountDto;
+}

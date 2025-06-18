@@ -76,6 +76,18 @@ class DateHelper {
   getCurrentDayMonthYearFormattedDate(): string {
     return DateTime.now().toFormat("dd-MM-yyyy");
   }
+
+  /**
+   * getISODate
+   * 
+   * Gets the current date and time as an ISO 8601 string in the format
+   * "YYYY-MM-DDTHH:mm:ss.sssZ".
+   *
+   * @returns {string} The current date and time as an ISO 8601 string.
+   */
+  getISODate(): string {
+    return DateTime.now().toISO();
+  }
 }
 
 const dateHelperObj = new DateHelper();

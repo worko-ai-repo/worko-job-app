@@ -694,3 +694,52 @@ User: arn:aws:sts::211125353899:assumed-role/worko-job-app-dev-ap-south-1-lambda
 ```sh
 Batch inference is not supported for model arn:aws:bedrock:ap-south-1::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0 in region ap-south-1
 ```
+
+
+
+34. 
+```ts
+/**
+ * Tip-1: Check whether "NAT Gateway" is exists in aws or not.
+ * 
+ * 1. How do I troubleshoot an ETIMEDOUT error in my Lambda function?
+ *    @see https://repost.aws/knowledge-center/lambda-function-etimedout-error
+ * 
+ * 2. Enable internet access for VPC-connected Lambda functions
+ *    @see https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc-internet.html
+ */
+```
+```json
+{
+   "errorType": "Runtime.UnhandledPromiseRejection",
+   "errorMessage": "TimeoutError: connect ETIMEDOUT 35.71.100.133:443",
+   "reason": {
+       "errorType": "TimeoutError",
+       "errorMessage": "connect ETIMEDOUT 35.71.100.133:443",
+       "code": "ETIMEDOUT",
+       "errno": -110,
+       "syscall": "connect",
+       "address": "35.71.100.133",
+       "port": 443,
+       "name": "TimeoutError",
+       "$metadata": {
+           "attempts": 3,
+           "totalRetryDelay": 159
+       },
+       "stack": [
+           "Error: connect ETIMEDOUT 35.71.100.133:443",
+           "    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1555:16)"
+       ]
+   },
+   "promise": {},
+   "stack": [
+       "Runtime.UnhandledPromiseRejection: TimeoutError: connect ETIMEDOUT 35.71.100.133:443",
+       "    at process.<anonymous> (file:///var/runtime/index.mjs:1294:17)",
+       "    at process.emit (node:events:529:35)",
+       "    at process.emit (node:domain:489:12)",
+       "    at emit (node:internal/process/promises:149:20)",
+       "    at processPromiseRejections (node:internal/process/promises:283:27)",
+       "    at process.processTicksAndRejections (node:internal/process/task_queues:96:32)"
+   ]
+}
+```

@@ -90,7 +90,7 @@ class DbUserJobApplicationDto extends BaseDbDto {
 
   /**
    * Attributes Being set after comparing `Job description` and `CV`
-   * from `Python script` by Automation Architect Team
+   * from `Python script` by AI/ML Team
    */
   cvExtract?: string;
   jdMatchErrorCode?: number;
