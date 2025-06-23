@@ -1,3 +1,7 @@
+
+// Import constants
+import APP_CONSTANTS from "../configs/constants.config";
+
 // Import services
 import CompanyService from "../services/Company.service";
 
@@ -36,8 +40,15 @@ export async function attachCompanyDetails<T extends { companyId?: string }>(dat
     // Get unique company IDs
     const uniqueCompanyIds: string[] = Array.from(new Set(data.map(item => item.companyId!)));
 
-    // Fetch company details for all unique IDs
-    const companiesDetails = await CompanyService.getCompanyDetailsByIds(uniqueCompanyIds);
+    // Fetch company details in batches (DynamoDB limit: 100 items per batch)
+    const batchSize: number = APP_CONSTANTS.AWS_DYNAMODB_BATCH_ACTION_LIMIT.GET;
+    const companiesDetails: DbCompanyDetailDto[] = [];
+    
+    for (let i = 0; i < uniqueCompanyIds.length; i += batchSize) {
+        const batch: string[] = uniqueCompanyIds.slice(i, i + batchSize);
+        const batchResults = await CompanyService.getCompanyDetailsByIds(batch);
+        companiesDetails.push(...batchResults);
+    }
 
     // Convert company details to a Map for easy access
     const companiesMap: Map<string, DbCompanyDetailDto> = new Map(companiesDetails.map((company: DbCompanyDetailDto) => [company.id, company]));

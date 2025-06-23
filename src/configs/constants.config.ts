@@ -65,10 +65,19 @@ const APP_CONSTANTS = {
 
   /**
    * AWS Opensearch bulk create count
-   * 
+   *
    * This is the maximum number of documents that can be created in a single bulk request to the OpenSearch index.
    */
   AWS_OPENSEARCH_BULK_CREATE_COUNT: 300,
+
+  /**
+   * AWS_DYNAMODB_BATCH_ACTION_LIMIT
+   * 
+   * This is the maximum number of actions that can be performed in a single batch request to the DynamoDB table.
+   */
+  AWS_DYNAMODB_BATCH_ACTION_LIMIT: {
+    GET: 100,
+  },
 
   // The possible options for the page sizes that is expected in the request payload.
   PAGE_LENGTH_OPTIONS: [10, 25, 50, 100, 150, 200, 250],
