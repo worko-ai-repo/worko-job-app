@@ -29,118 +29,20 @@ import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.
 
 // UserDetailDao class implementing the BaseDao interface
 class UserDetailDao implements BaseDao {
-  modelName = "UserDetail";
-  partitianKey = "USR#EML#{primaryEmail}"; // Partition key structure for user emails
+  modelName: string = "UserDetail";
+  partitianKey: string = "USR#EML#{primaryEmail}"; // Partition key structure for user emails
   sortKeys = {
     SK_ID: "ID#{userId}", // where userId is cognito provided userId for registered user
   };
   GSI1PK: string = "USR#";
-  GSI1SK = "ID#{userId}"; // where userId is cognito provided userId for registered user
+  GSI1SK: string = "ID#{userId}"; // where userId is cognito provided userId for registered user
+  GSI2PK: string = "USR#";
 
   /**
-   * getUsers
-   *
-   * Retrieves user details based on the provided filter options.
-   *
-   * @param {UsersListingFilterOptions} usersRecordListingFilterRequest - The filter options for user details.
-   * @return {Promise<PaginatedResultsWithMatchingConditionsResponse<DbUserDetailDto>>} A promise that resolves to the user details.
+   * GSI2SK
+   * const isoString = new Date().toISOString(); //[LOG]: "2025-06-11T16:15:36.0678Z"
    */
-  async getUsers(
-    usersRecordListingFilterRequest: UsersListingFilterOptions
-  ): Promise<PaginatedResultsWithMatchingConditionsResponse<DbUserDetailDto>> {
-    // Log the action of getting user details
-    global.logger.info("Get user details [DAO]");
-
-    // Get all the user details including candidates and employees
-    let query = UserDetailModel.query("GSI1PK")
-      .eq(this.GSI1PK)
-      .where("GSI1SK")
-      .beginsWith("ID#");
-
-    // if userType is provided then get only users of that type
-    if (usersRecordListingFilterRequest.userType) {
-      query = query
-        .where("userType")
-        .contains(usersRecordListingFilterRequest.userType);
-    }
-
-    /**
-     * query.sort(order) sorts the items you receive back by the rangeKey. By default, if not provided, it will sort in ascending order.
-     * The order parameter must be a string either equal to ascending or descending.
-     *
-     * By default query.sort() method sorts the items in "ascending" order but we are sorting by default in descending order
-     * and if sortOrder(ascending or descending) is provided then we are sorting by that
-     *
-     * When you use the sort() method in Dynamoose,
-     * it sorts the items based on the sort key of the index you're querying.
-     *
-     */
-    query = query.sort(
-      usersRecordListingFilterRequest.sortOrder as SortOrderTypeEnum
-    );
-
-    // Apply date range filter if provided
-    if (
-      usersRecordListingFilterRequest.fromDate ||
-      usersRecordListingFilterRequest.toDate
-    ) {
-      query = query.and().parenthesis((condition) => {
-        if (usersRecordListingFilterRequest.fromDate) {
-          condition
-            .where("createdAt")
-            .ge(usersRecordListingFilterRequest.fromDate);
-        }
-        if (usersRecordListingFilterRequest.toDate) {
-          condition
-            .where("createdAt")
-            .le(usersRecordListingFilterRequest.toDate);
-        }
-        return condition;
-      });
-    }
-
-    // search by searchText if provided
-    if (usersRecordListingFilterRequest.searchText) {
-      // remove trailing and leading spaces from the search text
-      let searchTextValue = usersRecordListingFilterRequest.searchText
-        .trim()
-        .toLowerCase();
-
-      /* 
-      The and() method initiates a condition block where all conditions within it must be satisfied.
-      The parenthesis() method allows grouping of conditions for complex queries.
-      */
-      query = query.and().parenthesis((condition) => {
-        condition
-          .where("name")
-          .contains(searchTextValue)
-          .or()
-          .where("PK")
-          .contains(`USR#EML#${searchTextValue}`);
-
-        // If user type is not provided or if user type is candidate,
-        // search by candidate experience company name
-        if (
-          !usersRecordListingFilterRequest.userType ||
-          usersRecordListingFilterRequest.userType === UserType.CAND
-        ) {
-          condition
-            .or()
-            .where("candidateExperience.companyName")
-            .contains(searchTextValue.toUpperCase());
-        }
-
-        // Return the built condition
-        return condition;
-      });
-    }
-
-    // Execute the query by applying the paginateQuery helper and return the results
-    return getPaginatedResultsWithMatchingConditions<
-      DbUserDetailDto,
-      UsersListingFilterOptions
-    >(query, usersRecordListingFilterRequest);
-  }
+  GSI2SK: string = "{createdAt}";
 
   /**
    * get
@@ -259,6 +161,8 @@ class UserDetailDao implements BaseDao {
       GSI1SK: this.GSI1SK.strtr({
         "{userId}": userSignUpDTO.id,
       }),
+      GSI2PK: this.GSI2PK,
+      GSI2SK: new Date().toISOString(), // Sample value: "2025-06-11T16:15:36.0678Z"
     };
     return UserDetailModel.create(newUserSignUpDTO);
   }
