@@ -10,9 +10,6 @@ import { ObjectType } from "dynamoose/dist/General";
 // import luxon
 import { DateTime } from "luxon";
 
-// Import marked library
-import { marked } from "marked";
-
 // import constants
 import APP_CONSTANTS from "../configs/constants.config";
 import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
@@ -1666,7 +1663,9 @@ class UserJobApplicationService {
             candidateName: candidateDetails.name.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             matchingScore: parsedJobApplication.matchingScore!,
-            scoreDetails: parsedJobApplication.scoreDetails !== undefined ? await marked(parsedJobApplication.scoreDetails) : `Overall Matching Score: ${parsedJobApplication.matchingScore}`,
+
+            // If email feedback is not falsy then use it, otherwise use the overall matching score
+            scoreDetails: parsedJobApplication?.emailFeedback ? parsedJobApplication.emailFeedback : `Overall Matching Score is ${parsedJobApplication.matchingScore}.`,
             companyJobApplicantsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL.strtr({
               "{jobId}": parsedJobApplication.jobId,
             }),
