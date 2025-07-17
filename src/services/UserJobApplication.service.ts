@@ -220,9 +220,13 @@ class UserJobApplicationService {
     const jobApplicationDetails: DbUserJobApplicationDto =
       await this.getJobApplicationById(userJobApplicationId);
 
+    const matchingScore: number = jobApplicationDetails.matchingScore!
+
+    const { MIN, MAX } = APP_CONSTANTS.MATCHING_SCORES.CORPORATE_JOB_APPLICATION_MATCHING_SCORE_RANGE
+
     // Check if the job application has a matching score less than the minimum matching score and perform the appropriate action
     if (
-      jobApplicationDetails.matchingScore! <
+      matchingScore <
       APP_CONSTANTS.MATCHING_SCORES.JOB_APPLICATION_MINIMUM_MATCHING_SCORE
     ) {
       await this.scheduleUserJobApplicationStatusUpdateToRejected(
@@ -230,7 +234,7 @@ class UserJobApplicationService {
         userEmail,
         userId
       );
-    } else {
+    } else if (matchingScore >= MIN && matchingScore <= MAX) {
       // Fetch candidate details using user ID
       const candidateDetails: DbUserDetailDto =
         await UserDetailService.getUserByIdOne(userId);

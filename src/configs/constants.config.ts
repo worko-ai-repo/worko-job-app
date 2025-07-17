@@ -273,6 +273,17 @@ const APP_CONSTANTS = {
     JOB_APPLICATION_MINIMUM_MATCHING_SCORE: 70,
 
     /**
+     * CORPORATE_JOB_APPLICATION_MATCHING_SCORE_RANGE
+     *
+     * If the matching score is between `70`(included) and `89`(included) then list
+     * the job applications to the "corporate-admin/recruiter"
+     */
+    CORPORATE_JOB_APPLICATION_MATCHING_SCORE_RANGE: {
+      MIN: 70,
+      MAX: 89,
+    },
+
+    /**
      * CORPORATE_BULK_JD_RESUME_MINIMUM_MATCHING_SCORE
      *
      * Whenever the corporate admin/recruiter uploads resumes for a particular job description, this is the minimum matching score required for

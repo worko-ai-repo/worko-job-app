@@ -360,6 +360,7 @@ class UserJobApplicationDao implements BaseDao {
       jobApplicationRequestBody.userType ===
         CorporateUserTypeEnum.CORPORATE_RECRUITER
     ) {
+      const {MIN, MAX} = APP_CONSTANTS.MATCHING_SCORES.CORPORATE_JOB_APPLICATION_MATCHING_SCORE_RANGE;
       query = query.and().parenthesis((condition: Condition) => {
         return condition
           .where("displayToCorporate")
@@ -370,9 +371,9 @@ class UserJobApplicationDao implements BaseDao {
               .where("rejectionFeedbackBySystem")
               .eq("")
               .where("matchingScore")
-              .ge(
-                APP_CONSTANTS.MATCHING_SCORES
-                  .JOB_APPLICATION_MINIMUM_MATCHING_SCORE
+              .between(
+                MIN,
+                MAX,
               );
           });
       });
