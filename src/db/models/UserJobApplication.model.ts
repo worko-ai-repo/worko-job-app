@@ -28,6 +28,8 @@ class DbUserJobApplicationDto extends BaseDbDto {
   GSI1SK!: string;
   GSI2PK!: string;
   GSI2SK!: string;
+  GSI3PK!: string;
+  GSI3SK!: string;
 
   // references
   companyId!: string;
@@ -148,6 +150,23 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
         name: "GSI2",
         type: "global",
       },
+    },
+    GSI3PK: {
+      type: String,
+      index: {
+        name: "GSI3",
+        type: "global",
+        rangeKey: "GSI3SK",
+      },
+      required: true,
+    },
+    GSI3SK: {
+      type: String,
+      index: {
+        name: "GSI3",
+        type: "global",
+      },
+      required: true,
     },
     status: {
       type: String,

@@ -382,6 +382,42 @@ class ScriptController {
       next(error);
     }
   };
+
+  /**
+   * scriptToAddGsi3ToJobApplications
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @param {NextFunction} next - The Express next middleware function.
+   */
+  scriptToAddGsi3ToJobApplications = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Script to add gsi3 to job applications [Script Controller]`,
+        {
+          methodName: this.scriptToAddGsi3ToJobApplications.name,
+        }
+      );
+
+      const addGsi3ToJobApplicationsDetails: { totalUpdatedCount: number } = await scriptServiceObj.scriptToAddGsi3ToJobApplications();
+
+      res
+        .status(HttpStatusCode.OK_200)
+        .json(addGsi3ToJobApplicationsDetails);
+    } catch (error) {
+      global.logger.error(
+        `Error at catch block in while add gsi3 to job applications. [Script Controller]`,
+        {
+          error,
+        }
+      );
+      next(error);
+    }
+  };
 }
 
 export default ScriptController;

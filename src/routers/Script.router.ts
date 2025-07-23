@@ -77,4 +77,11 @@ ScriptRouter.post("/script-to-upload-batch-inference-files-to-s3", scriptControl
  */
 ScriptRouter.post("/script-to-restore-internal-jobs-to-opensearch", scriptController.scriptToRevertInternalJobsToOpensearch);
 
+/**
+ * scriptToAddGsi3ToJobApplications
+ * 
+ * @authorisedRoles ["admin"]
+ */
+ScriptRouter.post("/script-to-add-gsi3-to-job-applications", scriptController.scriptToAddGsi3ToJobApplications);
+
 export default ScriptRouter;

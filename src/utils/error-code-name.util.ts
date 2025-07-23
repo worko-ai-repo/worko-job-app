@@ -11,7 +11,12 @@ enum ErrorCodeName {
    /**
     * "ValidationException" is known AWS error code
     */
-   VALIDATION_EXCEPTION = "ValidationException"
+   VALIDATION_EXCEPTION = "ValidationException",
+
+  /**
+   * "ProvisionedThroughputExceededException" is known AWS error code
+   */
+  PROVISIONED_THROUGHPUT_EXCEEDED_EXCEPTION = "ProvisionedThroughputExceededException",
 }
 
 export default ErrorCodeName;

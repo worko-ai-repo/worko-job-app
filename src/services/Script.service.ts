@@ -8,7 +8,7 @@ import { Hit } from "@opensearch-project/opensearch/api/_types/_core.search";
 
 // Import dynamoose types
 import { ObjectType } from "dynamoose/dist/General";
-import { Query } from "dynamoose/dist/ItemRetriever";
+import { Query, QueryResponse } from "dynamoose/dist/ItemRetriever";
 
 // Import aws-sdk related types
 import { PromiseResult } from "aws-sdk/lib/request";
@@ -33,12 +33,14 @@ import { JobLocationDto, PaginatedResultsWithMatchingConditionsResponse, RecordL
 
 // Import daos
 import { companyJobDaoObj } from "../daos/CompanyJob.dao";
+import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 
 // Import enums
 import { JobSourcedFromEnum } from "../enums/Common.enum";
 
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
+import { DbUserJobApplicationDto, UserJobApplicationModel } from "../db/models/UserJobApplication.model";
 
 // Import helpers
 import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.helper";
@@ -53,6 +55,11 @@ import { companyJobServiceObj } from "./CompanyJob.service";
 import { jobServiceObj } from "./Job.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { fantasticJobServiceObj } from "./FantasticJob.service";
+
+// Import utils
+import HttpStatusCode from "../utils/http-codes.util";
+import { BaseError } from "../utils/errors.util";
+import ErrorCodeName from "../utils/error-code-name.util";
 
 /**
  * ScriptService
@@ -555,6 +562,169 @@ class ScriptService {
     });
 
     return this.scriptWorkoDdbToWorkoJobsOpensearch(jobsWithCompanyDetails);
+  }
+
+  async scriptToAddGsi3ToJobApplications(): Promise<{ totalUpdatedCount: number }> {
+    // log
+    global.logger.info(
+      `Script to add gsi3 to job applications [Script Service]`,
+      {
+        methodName: this.scriptToAddGsi3ToJobApplications.name,
+      }
+    );
+
+    let lastKey: ObjectType | undefined;
+    let totalUpdatedCount: number = 0;
+
+    do {
+      let result: ObjectType[] = [];
+      let resultQueryResponse = {} as QueryResponse<DbUserJobApplicationDto>;
+
+      // Retry logic for query with exponential backoff
+      let queryRetries: number = 0;
+      const maxQueryRetries: number = 4;
+      let retrievedSuccess: boolean = false;
+
+      while (queryRetries < maxQueryRetries && !retrievedSuccess) {
+        try {
+          let query: Query<DbUserJobApplicationDto> = UserJobApplicationModel.query("GSI2PK")
+            .eq(userJobApplicationDao.GSI2PK)
+            .where("GSI2SK")
+            .beginsWith("ID#");
+
+          if (lastKey) {
+            query = query.startAt(lastKey);
+          }
+
+          resultQueryResponse = await query.exec();
+          result = resultQueryResponse.toJSON();
+
+          retrievedSuccess = true;
+        } catch (error: any) {
+          if (
+            error.name ===
+              ErrorCodeName.PROVISIONED_THROUGHPUT_EXCEEDED_EXCEPTION &&
+            queryRetries < maxQueryRetries
+          ) {
+            queryRetries++;
+            const delay: number = Math.pow(2, queryRetries) * 1000; // Exponential backoff
+            global.logger.warn(
+              `Query throttled, retrying in ${delay}ms (attempt ${queryRetries})`
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          } else {
+            global.logger.error(`Error retrieving job application details`, {
+              error,
+              methodName: this.scriptToAddGsi3ToJobApplications.name,
+            });
+
+            throw new BaseError(
+              "Error retrieving job application details",
+              HttpStatusCode.INTERNAL_SERVER_ERROR_500
+            );
+          }
+        }
+      }
+
+      if (!retrievedSuccess) {
+        global.logger.error(
+          `Failed to retrieve job application details after ${maxQueryRetries} retries`,
+        );
+        throw new BaseError(
+          "Failed to retrieve job application details",
+          HttpStatusCode.INTERNAL_SERVER_ERROR_500
+        );
+      }
+
+      // Process the results with retry logic for updates
+      for (const jobApplication of result) {
+        try {
+          // Skip if already updated
+          if (
+            jobApplication?.GSI3PK &&
+            jobApplication?.GSI3SK 
+          ) {
+            totalUpdatedCount++;
+            continue;
+          }
+
+          // Retry logic for update with exponential backoff
+          let updateRetries: number = 0;
+          const maxUpdateRetries: number = 4;
+          let updateSuccess: boolean = false;
+
+          while (updateRetries < maxUpdateRetries && !updateSuccess) {
+            try {
+              const updatedJobApplicationDetail: DbUserJobApplicationDto =
+                await UserJobApplicationModel.update(
+                  { PK: jobApplication.PK, SK: jobApplication.SK },
+                  {
+                    GSI3PK: userJobApplicationDao.GSI3PK.strtr({
+                      "{jobId}": jobApplication.jobId,
+                    }),
+                    GSI3SK: userJobApplicationDao.GSI3SK.strtr({
+                      "{id}": jobApplication.id,
+                    }),
+                  }
+                );
+
+              if (updatedJobApplicationDetail?.id) {
+                updateSuccess = true;
+                totalUpdatedCount++;
+              }
+            } catch (updateError: any) {
+              if (
+                updateError.name ===
+                  ErrorCodeName.PROVISIONED_THROUGHPUT_EXCEEDED_EXCEPTION &&
+                updateRetries < maxUpdateRetries
+              ) {
+                global.logger.warn(
+                  `Update throttled for user job application ${jobApplication.PK}`
+                );
+                updateRetries++;
+                const delay: number = Math.pow(2, updateRetries) * 1000; // Exponential backoff
+                global.logger.warn(
+                  `Update throttled for user job application ${jobApplication.PK}, retrying in ${delay}ms (attempt ${updateRetries})`
+                );
+                await new Promise((resolve) => setTimeout(resolve, delay));
+              } else {
+                global.logger.error(
+                  `Other Error while updating user job application: ${jobApplication.PK}`,
+                  {
+                    error: updateError,
+                  }
+                );
+                updateRetries = maxUpdateRetries;
+              }
+            }
+
+            if (!updateSuccess) {
+              global.logger.warn(
+                `Max retries reached for user job application ${jobApplication.PK}`
+              );
+            }
+          }
+        } catch (error) {
+          global.logger.error(
+            `Failed to update user job application with PK: ${jobApplication.PK} at main catch block`,
+            {
+              error,
+            }
+          );
+        }
+      }
+
+      lastKey = resultQueryResponse.lastKey;
+
+      // Add delay between pages to avoid overwhelming DynamoDB
+      if (lastKey) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    } while (lastKey);
+
+    return {
+      totalUpdatedCount,
+    };
   }
 }
 

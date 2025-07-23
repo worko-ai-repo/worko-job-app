@@ -743,3 +743,18 @@ Batch inference is not supported for model arn:aws:bedrock:ap-south-1::foundatio
    ]
 }
 ```
+
+35. 
+```ts
+/**
+ * Update dynamodb GSI3 below in `iamRoleStatements`:-
+ * "arn:aws:dynamodb:${self:custom.aws.APP_SLS_REGION}:*:table/worko-job-app/index/GSI3"
+ */
+```
+```json
+{
+    "errorCode": 500,
+    "errorMsg": "User: arn:aws:sts::211125353899:assumed-role/worko-job-app-dev-ap-south-1-lambdaRole/worko-job-app-dev-workoJobApp is not authorized to perform: dynamodb:Query on resource: arn:aws:dynamodb:ap-south-1:211125353899:table/worko-job-app/index/GSI3 because no identity-based policy allows the dynamodb:Query action",
+    "timeStamp": "2025-07-22T11:30:10.306Z"
+}
+```

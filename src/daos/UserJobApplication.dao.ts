@@ -42,6 +42,8 @@ class UserJobApplicationDao implements BaseDao {
   GSI1SK = "ID#{id}"; // `id` is the `job application id` which is generated when a job application is created
   GSI2PK = "JOB#APP#";
   GSI2SK = "ID#{id}"; // `id` is the `job application id` which is generated when a job application is created
+  GSI3PK = "JOB#ID#{jobId}" // "jobId" will be the "id" attribute of the internal job
+  GSI3SK = "JOB#APP#ID#{id}" // `id` is the `job application id` which is generated when a job application is created
 
   /**
    * preparePKAndSKForQuery
@@ -146,6 +148,12 @@ class UserJobApplicationDao implements BaseDao {
       }),
       GSI2PK: this.GSI2PK,
       GSI2SK: this.GSI2SK.strtr({
+        "{id}": ulidId,
+      }),
+      GSI3PK: this.GSI3PK.strtr({
+        "{jobId}": jobApplicationRequestBody.jobId,
+      }),
+      GSI3SK: this.GSI3SK.strtr({
         "{id}": ulidId,
       }),
     };
@@ -310,11 +318,7 @@ class UserJobApplicationDao implements BaseDao {
     // Initialize the query
     let query: Query<DbUserJobApplicationDto>;
 
-    /**
-     * If `companyId` is provided, then use GSI1PK and GSI1SK
-     * when `companyId` is provided then we are assuming that the user is a corporate admin
-     * or corporate recruiter who requesting the data
-     */
+    // Retrieve all the job applications for a specific company
     if (jobApplicationRequestBody.companyId) {
       let GSI1PK: string = this.GSI1PK.strtr({
         "{companyId}": jobApplicationRequestBody.companyId,
@@ -325,10 +329,7 @@ class UserJobApplicationDao implements BaseDao {
         .where("GSI1SK")
         .beginsWith("ID#");
     } else if (jobApplicationRequestBody.userEmail) {
-      /**
-       * If `userEmail` is provided, then use PK and SK
-       * when `userEmail` is provided then we are assuming that the user is a candidate who requesting the data
-       */
+      // Retrieve all the job applications for a specific user(candidate)
       query = UserJobApplicationModel.query("PK")
         .eq(
           this.partitianKey.strtr({
@@ -337,10 +338,15 @@ class UserJobApplicationDao implements BaseDao {
         )
         .where("SK")
         .beginsWith("JOB#APP#ID#");
+    } else if(jobApplicationRequestBody?.jobId) {
+      // Retrieve all the job applications for a specific job
+      query = UserJobApplicationModel.query("GSI3PK")
+        .eq(this.GSI3PK.strtr({ "{jobId}": jobApplicationRequestBody.jobId }))
+        .where("GSI3SK")
+        .beginsWith(this.GSI3SK.strtr({ "{id}": "" }));
     } else {
       /**
-       * If neither `companyId` nor `userEmail` is provided, then use `GSI2PK` and `GSI2SK`
-       * when neither `companyId` nor `userEmail` is provided then we are assuming that the user is a worko admin who requesting the data
+       * If neither `companyId` nor `userEmail` nor `jobId` is provided, then use `GSI2PK` and `GSI2SK`
        */
       query = UserJobApplicationModel.query("GSI2PK")
         .eq(this.GSI2PK)
@@ -386,11 +392,6 @@ class UserJobApplicationDao implements BaseDao {
 
     if(jobApplicationRequestBody.referAndEarnId) {
       query = query.where("referAndEarnId").eq(jobApplicationRequestBody.referAndEarnId);
-    }
-
-    // Apply jobId filter if provided
-    if (jobApplicationRequestBody.jobId) {
-      query = query.where("jobId").eq(jobApplicationRequestBody.jobId);
     }
 
     // Apply date range filter if provided
