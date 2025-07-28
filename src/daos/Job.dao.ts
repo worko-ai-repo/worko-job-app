@@ -690,6 +690,11 @@ class JobDao {
           field: "externalJobId",
         },
       },
+      {
+        term: {
+          "sourcedFrom.keyword": JobSourcedFromEnum.FANTASTIC_JOB,
+        },
+      },
     ];
 
     if (isAppliedBySomeone) {
@@ -756,11 +761,6 @@ class JobDao {
     // Prepare delete request body
     const deleteOldUnappliedExternalJobsQueryRequestBody: DeleteByQuery_RequestBody =
       {
-        /**
-         * @todo: Observe the flow of deleting documents and decide whether to use `max_docs` or not.
-         */
-        // max_docs: 1000,
-
         query: this.buildSoftDeleteOrHardDeleteExternalJobBoolQuery<
             DeleteByQuery_RequestBody["query"]
           >(false),
@@ -799,11 +799,6 @@ class JobDao {
      */
     const softDeleteOldAppliedExternalJobsQueryRequestBody: UpdateByQuery_RequestBody =
       {
-        /**
-         * @todo: Observe the flow of deleting documents and decide whether to use `max_docs` or not.
-         */
-        // max_docs: 1000,
-
         query: this.buildSoftDeleteOrHardDeleteExternalJobBoolQuery<
             UpdateByQuery_RequestBody["query"]
           >(true),

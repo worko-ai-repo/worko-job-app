@@ -20,7 +20,8 @@ import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateCompanyDetailIn
 import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
-import { EntityBulkUpdateMetricDto } from "../dtos/Common.dto";
+import { EntityBulkUpdateMetricDto, MinMaxRange } from "../dtos/Common.dto";
+import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
 
 // Import enums
 import { JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
@@ -314,6 +315,95 @@ class JobService {
       companyUrl: externalJob.organization_url ?? undefined,
       companyLogoUrl: externalJob.organization_logo ?? undefined,
       isDeleted: false,
+    };
+
+    return dbJobDto;
+  }
+
+  /**
+   * transformBrightDataJobToAwsOpensearchJobDto
+   * 
+   * Transforms a BrightData job response to the DbJobAwsOpensearchDto format.
+   *
+   * This function takes the external job response from BrightData and maps it to
+   * the internal DbJobAwsOpensearchDto structure, which is used for indexing in
+   * AWS OpenSearch.
+   *
+   * @param {string} ulidId - A unique ULID identifier for the job.
+   * @param {BrightDataJobApiResponse} externalJob - The BrightData job response object.
+   * @returns {DbJobAwsOpensearchDto} - The transformed job data in the internal DTO format.
+   */
+  transformBrightDataJobToAwsOpensearchJobDto(
+    ulidId: string,
+    externalJob: BrightDataJobApiResponse
+  ): DbJobAwsOpensearchDto {
+    const {
+      job_posting_id,
+      job_posted_date,
+      job_description_formatted,
+      job_title,
+      job_employment_type,
+      job_location,
+      job_summary,
+      url,
+      company_name,
+      company_url,
+      company_logo,
+      job_function,
+      base_salary,
+      job_poster,
+      job_industries,
+      job_seniority_level,
+    } = externalJob;
+
+    const jobLocation: string[] = job_location ? [job_location.toLowerCase()] : [];
+
+    let salaryRange: MinMaxRange | undefined;
+    if(base_salary?.min_amount && base_salary?.max_amount) {
+      salaryRange = {
+        min: base_salary.min_amount,
+        max: base_salary.max_amount,
+      };
+    } else if (base_salary?.min_amount) {
+      salaryRange = {
+        min: base_salary.min_amount,
+      };
+    } else if (base_salary?.max_amount) {
+      salaryRange = {
+        max: base_salary.max_amount,
+      };
+    } else {
+      salaryRange = undefined;
+    }
+
+    const dbJobDto: DbJobAwsOpensearchDto = {
+      id: ulidId,
+      externalJobId: job_posting_id ?? ulidId,
+      sourcedFrom: JobSourcedFromEnum.BRIGHT_DATA_JOB,
+      createdAt: DateTime.now().toISO(),
+      updatedAt: DateTime.now().toISO(),
+      jobTitle: job_title ? job_title.toLowerCase() : "",
+      typeofEmployment: job_employment_type ?? undefined,
+      location: {
+        city: jobLocation,
+        state: jobLocation,
+        country: jobLocation,
+        fullLocation: jobLocation,
+      },
+      jobDescription: job_summary ?? undefined,
+      htmlJobDescription: job_description_formatted ?? undefined,
+      jobPostedDate: job_posted_date ?? undefined,
+      jobUrl: url ?? undefined,
+      status: JobStatusEnum.PUBLISHED,
+      companyName: company_name ? company_name.toUpperCase() : undefined,
+      companyUrl: company_url ?? undefined,
+      companyLogoUrl: company_logo ?? undefined,
+      isDeleted: false,
+      department: job_function ?? undefined,
+      salaryRange: salaryRange,
+      brightDataJobPoster: job_poster ?? undefined,
+      industry: job_industries ?? undefined,
+      brightDataJobSeniorityLevel: job_seniority_level ?? undefined,
     };
 
     return dbJobDto;

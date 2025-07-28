@@ -22,13 +22,14 @@ Actions:
     Configuration:
       # Required - Steps are sequential instructions that run shell commands
       Steps:
+        - Run: export NODE_OPTIONS="--max-old-space-size=8192"
         - Run: npm install -g n
         - Run: npm i -g serverless@3.40.0
         - Run: npm i
         - Run: npm run build
         - Run: export AWS_REGION=ap-south-1
         - Run: cp environments/.env.dev .env
-        - Run: sls deploy --stage=dev
+        - Run: sls deploy --stage=dev --verbose # Added "--verbose" flag to the serverless deploy command for better debugging visibility
       Container:
         Registry: CODECATALYST
         Image: CodeCatalystLinuxLambda_Arm64:2024_03

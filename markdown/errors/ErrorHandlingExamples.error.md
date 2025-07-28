@@ -454,14 +454,29 @@ Unknown application error occurred
 ```
 
 15. 
+```ts
+/**
+ * Increase the payload size limit of API Gateway
+ * @see https://repost.aws/questions/QUuinc6g08T2iRQQd03PHjbQ/increase-the-payload-size-limit-of-api-gateway
+ * 
+ * 
+ */
+```
 ```json
 // 413 Payload Too Large
 // Request is too large for the server to process.
+// PayloadTooLargeError
 {
   "errorCode": 413,
   "errorMsg": "request entity too large",
   "timeStamp": "2025-03-06T10:57:42.655Z"
 }
+```
+```sh
+413 Request Entity Too Large
+Request is too large for the server to process.
+
+HTTP content length exceeded 10485760 bytes.
 ```
 
 16. 
@@ -757,4 +772,9 @@ Batch inference is not supported for model arn:aws:bedrock:ap-south-1::foundatio
     "errorMsg": "User: arn:aws:sts::211125353899:assumed-role/worko-job-app-dev-ap-south-1-lambdaRole/worko-job-app-dev-workoJobApp is not authorized to perform: dynamodb:Query on resource: arn:aws:dynamodb:ap-south-1:211125353899:table/worko-job-app/index/GSI3 because no identity-based policy allows the dynamodb:Query action",
     "timeStamp": "2025-07-22T11:30:10.306Z"
 }
+```
+
+36. 
+```sh
+Error: connect ETIMEDOUT 2406:da1a:93d:8500:9dee:a635:da3c:dc24:443
 ```

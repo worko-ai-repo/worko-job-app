@@ -2,6 +2,7 @@
 // Import constant and configs
 import APP_CONSTANTS from "../configs/constants.config";
 import { FANTASTIC_JOB_APP_CONSTANTS } from "../configs/constants/FantasticJob.constant";
+import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJob.constant";
 
 // Import dtos
 import { FantasticJobApiResponse, FantasticJobCloudApiDto } from "../dtos/FantasticJob.dto";
@@ -20,8 +21,9 @@ import { fantasticJobCloudApiLibraryObj } from "../libraries/FantasticJobCloudAp
 import { DbFantasticJobLogDto } from "../db/models/FantasticJobLog.model";
 
 // Import services
-import { batchInferenceServiceObj } from "./BatchInference.service";
 import { fantasticJobLogServiceObj } from "./FantasticJobLog.service";
+import { brightDataJobServiceObj } from "./BrightDataJob.service";
+import { fantasticJobBatchInferenceServiceObj } from "./FantasticJobBatchInference.service";
 
 /**
  * FantasticJobService
@@ -53,29 +55,32 @@ class FantasticJobService {
       methodName: "handler",
     });
 
-    return this.getAndProcessFantasticJobs(
-      fantasticJobLogDetails.id
-    );
+    return this.getAndProcessFantasticJobs(fantasticJobLogDetails.id);
   }
-  
+
   /**
    * prepareAndGetTwentyFourHourJobs
    *
-   * Prepares argument for "getFantasticJobTwentyFourHours" method of
-   * "FantasticJobCloudApiLibrary" and fetches jobs with the given offset.
+   * Prepares and executes a request to the external FantasticJob Cloud API
+   * to fetch jobs posted during the last 24 hours. The request is prepared
+   * with the current offset and the company names are passed as a
+   * comma-delimited list without spaces.
    *
-   * @param {number} offset - The offset value for fetching jobs from
-   * the fantastic job cloud api.
+   * @param {number} offset - The current offset for the request.
+   * @param {string} companyNames - A comma-delimited list of company names
+   * without spaces. For example: "NVIDIA,Walmart"
    * @returns {Promise<FantasticJobApiResponse[]>} A promise that resolves to
    * an array of fantastic job API responses.
    */
   private async prepareAndGetTwentyFourHourJobs(
-    offset: number
+    offset: number,
+    companyNames: string // more than one company with a comma delimited list without spaces!. For example:"NVIDIA,Walmart"
   ): Promise<FantasticJobApiResponse[]> {
     // Prepare Argument for external job API call
     const fantasticJobCloudApiArgument: FantasticJobCloudApiDto = {
       offSet: offset,
       descriptionType: FANTASTIC_JOB_APP_CONSTANTS.HTML_DESCRIPTION_TYPE, // @NOTE: In near future this may be dynamically passed
+      companyNames: companyNames,
     };
 
     // Fetch jobs with the current offset
@@ -96,7 +101,9 @@ class FantasticJobService {
    * @returns {FantasticJobApiResponse[]} An array of valid fantastic job API
    * responses.
    */
-  private validateAndFilterFantasticJobs(jobs: FantasticJobApiResponse[]): FantasticJobApiResponse[] {
+  private validateAndFilterFantasticJobs(
+    jobs: FantasticJobApiResponse[]
+  ): FantasticJobApiResponse[] {
     return jobs.filter((eachExternalJob: FantasticJobApiResponse) => {
       const givenJobDescription: string | undefined =
         eachExternalJob.description_text || eachExternalJob.description_html;
@@ -133,7 +140,7 @@ class FantasticJobService {
     fantasticTwentyFourHourJobApiCallsCount: number,
     fantasticTwentyFourHourJobsRetrievedCount: number,
     fantasticTwentyFourHourJobsValidatedCount: number,
-    error?: any,
+    error?: any
   ): Promise<DbFantasticJobLogDto> {
     // Prepare the update data for fantastic job log
     const updateData: Partial<FantasticJobLogCommonUpdateDto> = {
@@ -145,15 +152,16 @@ class FantasticJobService {
       jobsValidatedTotalCount: fantasticTwentyFourHourJobsValidatedCount,
     };
 
-    if(isError) {
+    if (isError && error) {
       updateData.errorDetails = {
         error: error,
         methodName: this.getAndProcessFantasticJobs.name,
         className: FantasticJobService.name,
       };
-    };
+    }
 
-    const updatedLog: DbFantasticJobLogDto = await fantasticJobLogServiceObj.updateFantasticJobLogById(
+    const updatedLog: DbFantasticJobLogDto =
+      await fantasticJobLogServiceObj.updateFantasticJobLogById(
         fantasticJobLogId,
         updateData
       );
@@ -166,11 +174,60 @@ class FantasticJobService {
   }
 
   /**
-   * getAndProcessFantasticJobs
+   * validateAndCreateBrightDataSnapshot
    *
-   * Fetches jobs from the fantastic job API, validates and filters them and
-   * then indexes them in the OpenSearch index using the batch inference
-   * service.
+   * Validates and creates a snapshot with Bright Data Job API based on the retrieved fantastic jobs.
+   * If the jobs length is 0, then it creates a snapshot with all company names. Otherwise, it creates a snapshot
+   * with the company names that are not found in the retrieved jobs.
+   *
+   * @param {FantasticJobApiResponse[]} fantasticJobDetails - The array of fantastic job details.
+   * @returns {Promise<boolean>} A promise that resolves to true if the snapshot creation and scheduling
+   *   are successful, false otherwise.
+   */
+  private async validateAndCreateBrightDataSnapshot(
+    fantasticJobDetails: FantasticJobApiResponse[]
+  ): Promise<boolean> {
+    const brightDataLimit: number =
+      process.env.APP_STAGE === APP_CONSTANTS.STAGES.DEV
+        ? BRIGHT_DATA_JOB_APP_CONSTANTS.ENVIRONMENT_RETRIEVAL_LIMIT.DEV
+        : BRIGHT_DATA_JOB_APP_CONSTANTS.ENVIRONMENT_RETRIEVAL_LIMIT.PROD;
+
+    // If jobs length is 0, then use all company names to create bright data snapshot
+    if (fantasticJobDetails.length === 0) {
+      global.logger.info(
+        "As jobs length is 0, no more fantastic jobs for this batch, so create bright data snapshot with all company names.",
+        {
+          jobsLength: fantasticJobDetails.length,
+          methodName: this.getAndProcessFantasticJobs.name,
+        }
+      );
+
+      return brightDataJobServiceObj.createAndScheduleBrightDataSnapshotRetrieval(
+        BRIGHT_DATA_JOB_APP_CONSTANTS.COMPANIES,
+        BRIGHT_DATA_JOB_APP_CONSTANTS.LOCATIONS,
+        brightDataLimit
+      );
+    }
+
+    const foundSet: Set<string> = new Set(
+      fantasticJobDetails.map((item: FantasticJobApiResponse) => item.organization.trim())
+    );
+
+    // Return company names that are not found in the data
+    const filteredCompanyNames: string[] =
+      BRIGHT_DATA_JOB_APP_CONSTANTS.COMPANIES.filter(
+        (company: string) => !foundSet.has(company)
+      );
+
+    return brightDataJobServiceObj.createAndScheduleBrightDataSnapshotRetrieval(
+      filteredCompanyNames,
+      BRIGHT_DATA_JOB_APP_CONSTANTS.LOCATIONS,
+      brightDataLimit
+    );
+  }
+
+  /**
+   * getAndProcessFantasticJobs
    *
    * @param {string} fantasticJobLogId - The id of the fantastic job log in the
    * DynamoDB table.
@@ -178,56 +235,128 @@ class FantasticJobService {
    * @returns {Promise<boolean>} A promise that resolves to `true` if all
    * operations in the bulk request succeed, or `false` if any operation fails.
    */
-  async getAndProcessFantasticJobs(fantasticJobLogId: string): Promise<boolean> {
+  async getAndProcessFantasticJobs(
+    fantasticJobLogId: string
+  ): Promise<boolean> {
     // Initialize count variables
     let fantasticTwentyFourHourJobApiCallsCount: number = 0;
     let fantasticTwentyFourHourJobsRetrievedCount: number = 0;
     let fantasticTwentyFourHourJobsValidatedCount: number = 0;
-    
+
     try {
-      // Fantastic job API call with pagination
       const fantasticJobDetails: FantasticJobApiResponse[] = [];
-      let offset: number = FANTASTIC_JOB_APP_CONSTANTS.OFF_SET;
       const limit: number = FANTASTIC_JOB_APP_CONSTANTS.LIMIT;
+      const allCompanyNames: string[] =
+        FANTASTIC_JOB_APP_CONSTANTS.ATS_COMPANY_NAMES;
+      const companyBatchSize: number =
+        FANTASTIC_JOB_APP_CONSTANTS.COMPANY_NAME_BATCH_SIZE;
 
-      while (true) {
-        // Check if we have already fetched some jobs from fantastic api. Break the loop if dev stage
-        if (process.env.APP_STAGE === APP_CONSTANTS.STAGES.DEV) {
-          global.logger.info("Dev stage");
-          if (fantasticJobDetails?.length > 100) {
-            global.logger.info(
-              "Dev stage, breaking the loop because already fetched some jobs from fantastic job api"
-            );
-            break;
-          }
-
-          global.logger.info("Dev stage, fetching jobs from fantastic job api");
-        }
-
-        // Prepare and fetch jobs
-        const jobs: FantasticJobApiResponse[] = await this.prepareAndGetTwentyFourHourJobs(offset);
-
-        fantasticTwentyFourHourJobApiCallsCount += 1;
-        fantasticTwentyFourHourJobsRetrievedCount += jobs?.length ?? 0;
-
-        // If no more jobs, stop the loop
-        if (!jobs || jobs?.length === 0) {
-          break;
-        }
-
-        // Retrieve jobs which have valid job description
-        const filteredJobs: FantasticJobApiResponse[] = this.validateAndFilterFantasticJobs(jobs);
-
-        fantasticTwentyFourHourJobsValidatedCount += filteredJobs?.length ?? 0;
-
-        // Add fetched jobs to the array
-        fantasticJobDetails.push(...filteredJobs);
-
-        // Increment the offset
-        offset += limit;
+      // Split company names into batches of given size
+      const companyBatches: string[][] = []; // Example: [["NVIDIA", "Walmart",...], ["Google", "Amazon",...]]
+      for (let i = 0; i < allCompanyNames.length; i += companyBatchSize) {
+        companyBatches.push(allCompanyNames.slice(i, i + companyBatchSize));
       }
 
-      // Prepare the update data for fantastic job log
+      // Track offset for each batch
+      const batchOffsets: number[] = new Array(companyBatches.length).fill(0); // Example: [0, 0]
+      const activeBatches: Set<number> = new Set(
+        Array.from(
+          { length: companyBatches.length },
+          (_, index: number) => index
+        )
+      ); // Example: Set {0, 1}
+
+      const { ENVIRONMENT_RETRIEVAL_LIMIT } = FANTASTIC_JOB_APP_CONSTANTS;
+
+      const retrievalFantasticJobLimit: number =
+        process.env.APP_STAGE === APP_CONSTANTS.STAGES.DEV
+          ? ENVIRONMENT_RETRIEVAL_LIMIT.DEV
+          : ENVIRONMENT_RETRIEVAL_LIMIT.PROD;
+
+      while (
+        activeBatches.size > 0 &&
+        fantasticJobDetails.length < retrievalFantasticJobLimit
+      ) {
+        const batchPromises: Promise<{
+          batchIndex: number;
+          jobs: FantasticJobApiResponse[];
+        }>[] = [];
+
+        // Process all active batches in parallel
+        for (const batchIndex of activeBatches) {
+          const companyBatch: string[] = companyBatches[batchIndex];
+          const companyNamesString: string = companyBatch.join(","); // Example: "NVIDIA,Walmart,...."
+          const offset: number = batchOffsets[batchIndex];
+
+          batchPromises.push(
+            this.prepareAndGetTwentyFourHourJobs(
+              offset,
+              companyNamesString
+            ).then((jobs: FantasticJobApiResponse[]) => ({ batchIndex, jobs }))
+          );
+        }
+
+        const results: {
+          batchIndex: number;
+          jobs: FantasticJobApiResponse[];
+        }[] = await Promise.all(batchPromises);
+        const batchesToRemove: number[] = [];
+
+        for (const { batchIndex, jobs } of results) {
+          fantasticTwentyFourHourJobApiCallsCount += 1;
+          fantasticTwentyFourHourJobsRetrievedCount += jobs?.length ?? 0;
+
+          if (!jobs || jobs.length === 0) {
+            global.logger.info(
+              "As jobs length is 0, no more jobs for this batch",
+              {
+                jobsLength: jobs.length,
+                batchIndex,
+                methodName: this.getAndProcessFantasticJobs.name,
+              }
+            );
+            // No more jobs for this batch, remove it from active batches
+            batchesToRemove.push(batchIndex);
+          } else if (jobs.length < limit) {
+            global.logger.info(
+              "As jobs length is between 0 and limit, no more jobs for this batch",
+              {
+                jobsLength: jobs.length,
+                batchIndex,
+                methodName: this.getAndProcessFantasticJobs.name,
+              }
+            );
+
+            // Process and add jobs
+            const filteredJobs: FantasticJobApiResponse[] =
+              this.validateAndFilterFantasticJobs(jobs);
+            fantasticTwentyFourHourJobsValidatedCount +=
+              filteredJobs?.length ?? 0;
+            fantasticJobDetails.push(...filteredJobs);
+
+            // No more jobs for this batch, remove it from active batches
+            batchesToRemove.push(batchIndex);
+          } else {
+            // Process and add jobs
+            const filteredJobs: FantasticJobApiResponse[] =
+              this.validateAndFilterFantasticJobs(jobs);
+            fantasticTwentyFourHourJobsValidatedCount +=
+              filteredJobs?.length ?? 0;
+            fantasticJobDetails.push(...filteredJobs);
+
+            // Update offset for this batch
+            batchOffsets[batchIndex] += limit;
+          }
+        }
+
+        // Remove inactive batches
+        // If `batchesToRemove` is empty, then the callback function is never executed.
+        batchesToRemove.forEach((batchIndex: number) =>
+          activeBatches.delete(batchIndex)
+        );
+      }
+
+      // Update log and process jobs
       await this.updateRetrievedFantasticJobLog(
         false,
         fantasticJobLogId,
@@ -236,25 +365,33 @@ class FantasticJobService {
         fantasticTwentyFourHourJobsValidatedCount
       );
 
-      // Bulk index jobs in opensearch
-      return batchInferenceServiceObj.processBatchInferenceForFantasticJobs(
+      // Validate and create snapshot
+      await this.validateAndCreateBrightDataSnapshot(fantasticJobDetails);
+
+      if(fantasticJobDetails.length === 0) {
+        return false;
+      }
+
+      return fantasticJobBatchInferenceServiceObj.processFantasticJobBatchInference(
         fantasticJobLogId,
         fantasticJobDetails
       );
     } catch (error: any) {
-      global.logger.error("Error at catc block while fetching fantastic jobs", {
-        error,
-        methodName: this.getAndProcessFantasticJobs.name,
-      });
+      global.logger.error(
+        "Error at catch block while fetching fantastic jobs",
+        {
+          error,
+          methodName: this.getAndProcessFantasticJobs.name,
+        }
+      );
 
-      // Prepare the update data for fantastic job log
       await this.updateRetrievedFantasticJobLog(
         true,
         fantasticJobLogId,
         fantasticTwentyFourHourJobApiCallsCount,
         fantasticTwentyFourHourJobsRetrievedCount,
         fantasticTwentyFourHourJobsValidatedCount,
-        error,
+        error
       );
 
       return false;

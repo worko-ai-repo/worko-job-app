@@ -56,6 +56,7 @@ class DbCompanyJobDto extends BaseDbDto {
   location!: JobLocationDto;
   miscellaneousSkills?: string[];
   noticePeriod?: number;
+  industry?: string;
   numOfOpenings!: number;
   otherRequirements?: string;
   salaryRange!: MinMaxRange;
@@ -64,7 +65,7 @@ class DbCompanyJobDto extends BaseDbDto {
   technicalSkills!: string[];
   typeofEmployment!: string;
   workMode!: JobWorkModeEnum;
-  displaySalaryRange?: boolean; 
+  displaySalaryRange?: boolean;
 
   isDeleted!: boolean;
 }
@@ -111,6 +112,10 @@ const CompanyJobSchema = new dynamoose.Schema(
       required: false,
     },
     updatedByUserId: {
+      type: String,
+      required: false,
+    },
+    industry: {
       type: String,
       required: false,
     },

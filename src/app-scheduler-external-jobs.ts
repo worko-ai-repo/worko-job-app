@@ -77,7 +77,7 @@ export const handler = async (
       global.logger.info(`"scheduleJob" property is present in "event" object`);
 
       switch (event.scheduleJob?.type) {
-        case ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS: {
+        case ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS: {
           // Logger for Hard and soft delete old jobs
           global.logger.info(
             `Processing scheduled job for hard and soft deleting old jobs and old initial matching score jobs [app scheduler handler]`,
@@ -85,7 +85,7 @@ export const handler = async (
               filePath: __filename,
               methodName: "handler",
               scheduleJobType:
-                ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS,
+                ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
             }
           );
 

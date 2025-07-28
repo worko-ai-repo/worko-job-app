@@ -45,6 +45,7 @@
     "@opensearch-project/opensearch": "^3.2.0",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
     "dynamoose": "^4.0.3",
     "express": "^4.21.2",
     "html-to-text": "^9.0.5",

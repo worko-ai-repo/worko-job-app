@@ -55,28 +55,16 @@ class FantasticJobCloudApiLibrary {
      *
      * Build the query parameters for the Fantastic Job Cloud API
      */
-    let fantasticJobCloudApiParamDto: FantasticJobCloudApiQueryParamDTO;
-
-    if (fantasticJobCloudApiDto?.offSet) {
-      fantasticJobCloudApiParamDto = {
-        description_type:
-          fantasticJobCloudApiDto?.descriptionType ??
-          FANTASTIC_JOB_APP_CONSTANTS.DESCRIPTION_TYPE,
-        location_filter:
-          fantasticJobCloudApiDto?.locationFilter ??
-          FANTASTIC_JOB_APP_CONSTANTS.LOCATION_FILTER,
-        offset: fantasticJobCloudApiDto?.offSet?.toString(),
-      };
-    } else {
-      fantasticJobCloudApiParamDto = {
-        description_type:
-          fantasticJobCloudApiDto?.descriptionType ??
-          FANTASTIC_JOB_APP_CONSTANTS.DESCRIPTION_TYPE,
-        location_filter:
-          fantasticJobCloudApiDto?.locationFilter ??
-          FANTASTIC_JOB_APP_CONSTANTS.LOCATION_FILTER,
-      };
-    }
+    let fantasticJobCloudApiParamDto: FantasticJobCloudApiQueryParamDTO = {
+      offset: fantasticJobCloudApiDto?.offSet?.toString(),
+      description_type:
+        fantasticJobCloudApiDto?.descriptionType ??
+        FANTASTIC_JOB_APP_CONSTANTS.DESCRIPTION_TYPE,
+      location_filter:
+        fantasticJobCloudApiDto?.locationFilter ??
+        FANTASTIC_JOB_APP_CONSTANTS.LOCATION_FILTER,
+      organization_filter: fantasticJobCloudApiDto?.companyNames,
+    };
 
     // Set up the request options
     const options = {

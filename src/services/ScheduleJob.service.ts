@@ -3,6 +3,8 @@
 import { AWSError, Scheduler } from "aws-sdk";
 import { PromiseResult } from "aws-sdk/lib/request";
 
+// Import constants
+import APP_CONSTANTS from "../configs/constants.config";
 
 // Import DAOs
 import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
@@ -22,17 +24,14 @@ import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
 
 class ScheduleJobService {
-  private readonly schedulerLambdaArn: string;
   private readonly schedulerRoleArn: string;
 
   constructor() {
-    this.schedulerLambdaArn = process.env.APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN ?? '';
-    this.schedulerRoleArn = process.env.APP_AWS_SCHEDULER_HANDLER_ROLE_ARN ?? '';
+    this.schedulerRoleArn = APP_CONSTANTS.AWS_EVENT_BRIDGE_SCHEDULER_ARNS.ROLE_ARN;
 
-    if (!this.schedulerLambdaArn || !this.schedulerRoleArn) {
+    if (!this.schedulerRoleArn) {
       // Log the error
       global.logger.error('Scheduler ARNs are not properly configured', {
-        schedulerLambdaArn: this.schedulerLambdaArn,
         schedulerRoleArn: this.schedulerRoleArn,
       });
 
@@ -45,10 +44,11 @@ class ScheduleJobService {
   * Creates a new schedule job and schedules it with AWS Scheduler.
   *
   * @param {ScheduleJobCreateDto} scheduleBody - The schedule job creation DTO.
+  * @param {string} schedulerLambdaArn - The ARN of the scheduler Lambda function.
   * @return {Promise<DbScheduleJobDto>} The created schedule job DTO.
   * @throws {BaseError} If the job creation fails or if an unsupported job type is provided.
   */
-  async createScheduleJob(scheduleBody: ScheduleJobCreateDto): Promise<DbScheduleJobDto> {
+  async createScheduleJob(scheduleBody: ScheduleJobCreateDto, schedulerLambdaArn: string): Promise<DbScheduleJobDto> {
     // Log the attempt to create a new schedule job
     global.logger.info("Creating new scheduler job [ScheduleJob Service].", { scheduleBody });
 
@@ -56,13 +56,7 @@ class ScheduleJobService {
     let createdJob: DbScheduleJobDto | null = null;
 
     try {
-      // Determine the appropriate Lambda function and role ARNs based on job type,
-      let schedulerLambdaFunctionArn: string;
-      let schedulerLambdaRoleArn: string;
-
-      schedulerLambdaFunctionArn = this.schedulerLambdaArn;
-      schedulerLambdaRoleArn = this.schedulerRoleArn;
-      
+      let schedulerLambdaRoleArn: string = this.schedulerRoleArn;
 
       // Create the schedule job in the database
       createdJob = await scheduleJobDaoObj.create(scheduleBody);
@@ -79,7 +73,7 @@ class ScheduleJobService {
           Mode: "OFF",
         },
         Target: {
-          Arn: schedulerLambdaFunctionArn,
+          Arn: schedulerLambdaArn,
           RoleArn: schedulerLambdaRoleArn,
           Input: JSON.stringify({ scheduleJobId: createdJob.id, ...scheduleBody.input }),
         },

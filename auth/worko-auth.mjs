@@ -15,10 +15,13 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import UrlPattern from "url-pattern";
 
 // Verifier that expects valid access tokens:
+/**
+ * @see https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html#amazon-cognito-user-pools-using-tokens-manually-inspect
+ */
 const verifier = CognitoJwtVerifier.create({
   userPoolId: process.env.USER_POOL,
   tokenUse: "access",
-  clientId: process.env.CLIENT_ID,
+  clientId: process.env.CLIENT_ID, // Optional, only if you need to verify the token audience
 });
 
 // Constants for HTTP methods
@@ -121,7 +124,7 @@ export const handler = async function (event, context, callback) {
       }
 
       /*
-      Sample Output:- 
+      Sample Outputs:- 
       {
         sub: 'b1d35daa-c061-7023-4ae8-22c6c97548a4',
         'cognito:groups': [ 'ap-south-1_xGreJKkNc_LinkedIn' ],
@@ -137,6 +140,24 @@ export const handler = async function (event, context, callback) {
         jti: 'd1905d55-4ae8-4222-8e04-5876294da3bd',
         username: 'linkedin_6dm2uthdb8'
       }, */
+      /*
+      {
+        sub: 'REDACTED',
+        'cognito:groups': [ 'admin' ],
+        iss: 'https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_xGreJKkNc',
+        version: 2,
+        client_id: '16sh5s2bo3169886fdm8gtp0e4',
+        origin_jti: 'c395bd80-00a6-4711-a612-8c3f17a24816',
+        event_id: 'db8ae270-20c8-4e7c-8ce4-a3fbfe8f5a34',
+        token_use: 'access',
+        scope: 'phone openid email',
+        auth_time: 1753360707,
+        exp: 1753447107,
+        iat: 1753360707,
+        jti: '3b9940b1-872f-4eaf-8986-4113cd674a37',
+        username: 'REDACTED'
+      }
+      */
       console.log("payload:", {
         payload,
       });
@@ -144,9 +165,7 @@ export const handler = async function (event, context, callback) {
       // get groups from token
       groups = payload["cognito:groups"] || [];
 
-      username = payload?.username.includes("linkedin")
-        ? payload?.sub
-        : payload?.username;
+      username = payload.sub;
       email = payload?.email;
 
       access = "allow";
@@ -283,6 +302,9 @@ var checkWhitelistedUrl = function (url, httpMethod) {
     { path: "/company/:beginsWith", method: HttpMethodsConstants.GET },
     { path: "/company/request", method: HttpMethodsConstants.POST },
 
+    // blog routes
+    { path: "/blog*", method: HttpMethodsConstants.GET },
+
     // user routes
     { path: "/user/register/candidate", method: HttpMethodsConstants.ANY },
     { path: "/user/register/employee", method: HttpMethodsConstants.ANY },
@@ -340,9 +362,19 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
       path: "/job-application/:id/corp-action",
       method: HttpMethodsConstants.PATCH,
     },
+    {
+      path: "/job-application/:id/hired-from-other-portal",
+      method: HttpMethodsConstants.PUT,
+    },
+    {
+      path: "/job-application/bulk-update",
+      method: HttpMethodsConstants.PATCH,
+    },
 
     // job routes
     { path: "/job/", method: HttpMethodsConstants.POST },
+    { path: "/job/parsejd", method: HttpMethodsConstants.POST },
+    { path: "/job/bulk-update", method: HttpMethodsConstants.PATCH },
 
     // corporate user routes
     { path: "/corporate-user/*", method: HttpMethodsConstants.GET },
@@ -379,10 +411,20 @@ var isCorporateAdminUrl = function (url, httpMethod) {
       path: "/job-application/:id/corp-action",
       method: HttpMethodsConstants.PATCH,
     },
+    {
+      path: "/job-application/:id/hired-from-other-portal",
+      method: HttpMethodsConstants.PUT,
+    },
+    {
+      path: "/job-application/bulk-update",
+      method: HttpMethodsConstants.PATCH,
+    },
 
     // job routes
     { path: "/job/:jobId/delete", method: HttpMethodsConstants.PUT },
     { path: "/job/", method: HttpMethodsConstants.POST },
+    { path: "/job/parsejd", method: HttpMethodsConstants.POST },
+    { path: "/job/bulk-update", method: HttpMethodsConstants.PATCH },
 
     // corporate user routes
     { path: "/corporate-user/*", method: HttpMethodsConstants.GET },
@@ -430,10 +472,24 @@ var isAdminUrl = function (url, httpMethod) {
       path: "/job-application/:id",
       method: HttpMethodsConstants.DELETE,
     },
+    {
+      path: "/job-application/:id/hired-from-other-portal",
+      method: HttpMethodsConstants.PUT,
+    },
+    {
+      path: "/job-application/:id/display-to-corporate",
+      method: HttpMethodsConstants.PATCH,
+    },
+    {
+      path: "/job-application/bulk-update",
+      method: HttpMethodsConstants.PATCH,
+    },
 
     // job routes
     { path: "/job/", method: HttpMethodsConstants.POST },
     { path: "/job/:jobId/delete", method: HttpMethodsConstants.PUT },
+    { path: "/job/parsejd", method: HttpMethodsConstants.POST },
+    { path: "/job/bulk-update", method: HttpMethodsConstants.PATCH },
 
     // corporate user routes
     { path: "/corporate-user/*", method: HttpMethodsConstants.GET },
@@ -459,9 +515,24 @@ var isAdminUrl = function (url, httpMethod) {
     { path: "/company/:id/request", method: HttpMethodsConstants.DELETE },
     { path: "/company/request/list/*", method: HttpMethodsConstants.GET },
     { path: "/company/:id*", method: HttpMethodsConstants.PUT },
+    { path: "/company/:id/company-logo", method: HttpMethodsConstants.PATCH },
 
     // User Matching Score Job Routers
-    { path: "/user-matching-score-job/:id", method: HttpMethodsConstants.DELETE },
+    {
+      path: "/user-matching-score-job/:id",
+      method: HttpMethodsConstants.DELETE,
+    },
+
+    // Refer and Earn Routers
+    { path: "/refer-and-earn/:id", method: HttpMethodsConstants.PATCH },
+
+    // Blog routers
+    { path: "/blog/", method: HttpMethodsConstants.POST },
+    { path: "/blog/:id", method: HttpMethodsConstants.PATCH },
+
+    // File routers
+    { path: "/file/gsu2u/COMPANY_LOGO", method: HttpMethodsConstants.POST },
+    { path: "/file/gsu2u/BLOG_COVER_IMAGE", method: HttpMethodsConstants.POST },
   ];
 
   const result = checkMatchingPattern(url, adminUrlList, httpMethod);

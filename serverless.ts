@@ -16,6 +16,13 @@
  */
 import type { AWS } from "@serverless/typescript";
 
+// Import dotenv
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+// Import constants
+import APP_CONSTANTS from "./src/configs/constants.config";
+
 // Import enums
 import { ScheduleJobType } from "./src/enums/ScheduleJob.enum";
 
@@ -61,25 +68,8 @@ const serverlessConfiguration: AWS = {
       APP_OPENSEARCH_SERVICE: "${env:APP_OPENSEARCH_SERVICE}",
       APP_AWS_BEDROCK_MODEL_NAME: "${env:APP_AWS_BEDROCK_MODEL_NAME}",
       APP_AWS_BEDROCK_SERVICE_ROLE: "${env:APP_AWS_BEDROCK_SERVICE_ROLE}",
-    },
-
-    /**
-     * awsLambdaFunctions
-     *
-     * This `awsLambdaFunctions` object is used to define the ARNs (Amazon Resource Names) of AWS Lambda functions.
-     */
-    awsLambdaFunctions: {
-      /**
-       * APP_SCHEDULER_HANDLER
-       *
-       * In "APP_SCHEDULER_HANDLER", The details of "app-scheduler-handler" AWS Lambda function are stored.
-       */
-      APP_SCHEDULER_HANDLER: {
-        APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN:
-          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-scheduler-handler",
-        APP_AWS_SCHEDULER_HANDLER_ROLE_ARN:
-          "arn:aws:iam::${self:custom.aws.APP_AWS_ACCOUNT_ID}:role/worko-schedule-invoke-lambda-role",
-      },
+      APP_AWS_EVENT_BRIDGE_SCHEDULE_INVOKE_LAMBDA_ROLE:
+        "${env:APP_AWS_EVENT_BRIDGE_SCHEDULE_INVOKE_LAMBDA_ROLE}",
     },
   },
 
@@ -102,16 +92,6 @@ const serverlessConfiguration: AWS = {
      *       2. sls deploy --stage=prod
      */
     stage: process.env.APP_SLS_STAGE,
-
-    environment: {
-      /**
-       * Environment variables for "app-scheduler-handler" function
-       */
-      APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN:
-        "${self:custom.awsLambdaFunctions.APP_SCHEDULER_HANDLER.APP_AWS_SCHEDULER_HANDLER_LAMBDA_ARN}",
-      APP_AWS_SCHEDULER_HANDLER_ROLE_ARN:
-        "${self:custom.awsLambdaFunctions.APP_SCHEDULER_HANDLER.APP_AWS_SCHEDULER_HANDLER_ROLE_ARN}",
-    },
 
     /**
      * region
@@ -201,7 +181,7 @@ const serverlessConfiguration: AWS = {
           "scheduler:DeleteSchedule",
         ],
         Resource: [
-          "arn:aws:iam::${self:custom.aws.APP_AWS_ACCOUNT_ID}:role/worko-schedule-invoke-lambda-role",
+          "arn:aws:iam::${self:custom.aws.APP_AWS_ACCOUNT_ID}:role/${self:custom.aws.APP_AWS_EVENT_BRIDGE_SCHEDULE_INVOKE_LAMBDA_ROLE}",
           "arn:aws:scheduler:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:schedule/*/*",
         ],
       },
@@ -215,17 +195,6 @@ const serverlessConfiguration: AWS = {
         ],
         Resource:
           "arn:aws:scheduler:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:schedule-group/*",
-      },
-
-      {
-        Effect: "Allow",
-        Action: [
-          "cognito-idp:AdminAddUserToGroup",
-          "cognito-idp:AdminUpdateUserAttributes",
-          "cognito-idp:AdminConfirmSignUp",
-        ],
-        Resource:
-          "arn:aws:cognito-idp:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:userpool/${self:custom.aws.APP_AWS_COGNITO_USER_POOL_ID}",
       },
 
       /**
@@ -361,6 +330,30 @@ const serverlessConfiguration: AWS = {
     },
 
     /**
+     * app-scheduler-bright-data-external-jobs
+     *
+     * Using `AWS EventBridge` service to schedule jobs
+     *
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
+     * Ex:
+     *  1. `worko-job-app-local-app-scheduler-bright-data-external-jobs`
+     *  2. `worko-job-app-dev-app-scheduler-bright-data-external-jobs`
+     *  3. `worko-job-app-prod-app-scheduler-bright-data-external-jobs`
+     */
+    "app-scheduler-bright-data-external-jobs": {
+      handler: "dist/src/app-scheduler-bright-data-external-jobs.handler",
+      timeout: 900, // Set timeout to 900 seconds (15 minutes)
+
+      vpc: {
+        securityGroupIds: ["${self:custom.aws.APP_AWS_SECURITY_GROUP}"],
+        subnetIds: [
+          "${self:custom.aws.APP_AWS_SUBNET1}",
+          "${self:custom.aws.APP_AWS_SUBNET2}",
+        ],
+      },
+    },
+
+    /**
      * app-scheduler-external-jobs
      *
      * Using `AWS EventBridge` service
@@ -386,70 +379,73 @@ const serverlessConfiguration: AWS = {
       /**
        * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-name-and-description
        */
-      events: [
-        {
-          schedule: {
-            name: "cleanup-old-unapplied-jobs-schedule", // Name can be specified for a schedule event. This is not a required property.
-            description:
-              "Triggers to hard and soft delete old unapplied external jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+      events:
+        process.env.APP_SLS_STAGE === APP_CONSTANTS.STAGES.PROD
+          ? [
+              {
+                schedule: {
+                  name: "cleanup-old-unapplied-jobs-schedule", // Name can be specified for a schedule event. This is not a required property.
+                  description:
+                    "Triggers to hard and soft delete old unapplied external jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
 
-            /**
-             * Cron expressions
-             *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
-             * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
-             *
-             * @reference "Amazon EventBridge" > "Buses" > "Rules" > {name} > Event schedule
-             */
-            rate: ["cron(30 14 ? * 1 *)"],
-            enabled: true,
+                  /**
+                   * Cron expressions
+                   *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
+                   * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
+                   *
+                   * @reference "Amazon EventBridge" > "Buses" > "Rules" > {name} > Event schedule
+                   */
+                  rate: ["cron(30 14 ? * SUN *)"],
+                  enabled: true,
 
-            /**
-             * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
-             *
-             * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
-             *
-             * @description Whatever input you provide, that will be passed to the handler function as input,
-             *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
-             */
-            input: {
-              scheduleJob: {
-                type: ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS,
+                  /**
+                   * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
+                   *
+                   * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
+                   *
+                   * @description Whatever input you provide, that will be passed to the handler function as input,
+                   *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
+                   */
+                  input: {
+                    scheduleJob: {
+                      type: ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+                    },
+                  },
+                },
               },
-            },
-          },
-        },
-        {
-          schedule: {
-            name: "fantastic-job-twenty-four-hours-schedule", // Name can be specified for a schedule event. This is not a required property.
-            description:
-              "Triggers to retrieve fantastic job twenty four hours according to cron expression", // Description can be specified for a schedule event. This is not a required property.
-            /**
-             * Cron expressions
-             *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
-             * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
-             *
-             * @reference "Amazon EventBridge" > "Buses" > "Rules" > {Rule name} > Event schedule
-             */
-            rate: ["cron(30 14 ? * TUE,FRI *)"],
+              {
+                schedule: {
+                  name: "fantastic-job-twenty-four-hours-schedule", // Name can be specified for a schedule event. This is not a required property.
+                  description:
+                    "Triggers to retrieve fantastic job twenty four hours according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+                  /**
+                   * Cron expressions
+                   *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
+                   * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
+                   *
+                   * @reference "Amazon EventBridge" > "Buses" > "Rules" > {Rule name} > Event schedule
+                   */
+                  rate: ["cron(0 13 ? * TUE *)"],
 
-            enabled: true,
+                  enabled: true,
 
-            /**
-             * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
-             *
-             * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
-             *
-             * @description Whatever input you provide, that will be passed to the handler function as input,
-             *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
-             */
-            input: {
-              scheduleJob: {
-                type: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
+                  /**
+                   * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
+                   *
+                   * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
+                   *
+                   * @description Whatever input you provide, that will be passed to the handler function as input,
+                   *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
+                   */
+                  input: {
+                    scheduleJob: {
+                      type: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
+                    },
+                  },
+                },
               },
-            },
-          },
-        },
-      ],
+            ]
+          : [],
     },
 
     /**

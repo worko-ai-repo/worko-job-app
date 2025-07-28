@@ -143,6 +143,18 @@ export interface ScheduleUserJobApplicationStatusUpdateToRejectedInputDto {
 }
 
 /**
+ * ScheduleUserJobApplicationStatusUpdateToRejectedInputDto
+ */
+export interface ScheduleBrightDataJobToRetrieveInputDto {
+  snapshotId: string;
+
+  /**
+   * @reference `id` attribute of `ScheduleJob.model.ts`
+   */
+  scheduleJobId?: string;
+}
+
+/**
  * ScheduleJobInternalUpdateDto
  * 
  * This dto is used as reusable for updating `ScheduleJob.model.ts` by using `Partial` typescript feature

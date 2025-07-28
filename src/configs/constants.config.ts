@@ -46,8 +46,8 @@ const APP_CONSTANTS = {
     CAREER_RESUME: "career-resumes", // To upload the resumes uplaoded via career page
     COMPANY_JOB_DESCRIPTION: "companies/{companyId}/company-job-descriptions", // To upload the company job description uplaoded via `corporate dashboard` or `admin dashboard`
     BULK_CVS: "companies/{companyId}/bulk-cvs/{corporateBulkJdId}", // To upload the bulk cvs uplaoded via `corporate dashboard` or `admin dashboard`
-    BATCH_INFERENCE_INPUT: "input/{date}/", // This is used to store the `id` attributes of the `OpenSearchJob.model.ts` and some batch inference related files in to s3
-    BATCH_INFERENCE_OUTPUT: "output/{date}/", // This is used to store the batch inference output files in to s3
+    BATCH_INFERENCE_INPUT: "input/{externalJobSource}/{date}/{ulidId}/", // This is used to store the `id` attributes of the `OpenSearchJob.model.ts` and some batch inference related files in to s3
+    BATCH_INFERENCE_OUTPUT: "output/{externalJobSource}/{date}/{ulidId}/", // This is used to store the batch inference output files in to s3
   },
 
   /**
@@ -55,6 +55,7 @@ const APP_CONSTANTS = {
    */
   APP_TEMPORARY_FOLDER_NAMES: {
     FANTASTIC_JOBS_BATCH_INFERENCE: "fantastic-jobs-batch-inference",
+    BRIGHT_DATA_JOBS_BATCH_INFERENCE: "bright-data-jobs-batch-inference",
   },
 
   /**
@@ -223,6 +224,24 @@ const APP_CONSTANTS = {
      *  1. "{jobId}" is the `id` attribute of `CompanyJob.model.ts` and `OpenSearchJob.model.ts`
      */
     WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/v1/corporate/cApplicants/{jobId}`,
+  },
+
+  /**
+   * SERVERLESS_FUNCTION_NAMES
+   * 
+   * @description These are the function names in `serverless.ts` file
+   */
+  SERVERLESS_FUNCTION_NAMES: {
+    APP_SCHEDULER_HANDLER: "app-scheduler-handler",
+    APP_SCHEDULER_BRIGHT_DATA_EXTERNAL_JOBS: "app-scheduler-bright-data-external-jobs",
+  },
+
+  /**
+   * AWS_EVENT_BRIDGE_SCHEDULER_ARNS
+   */
+  AWS_EVENT_BRIDGE_SCHEDULER_ARNS: {
+    LAMBDA_ARN: `arn:aws:lambda:${process.env.APP_SLS_REGION}:${process.env.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${process.env.APP_SLS_STAGE}-{serverlessFunctionName}`,
+    ROLE_ARN: `arn:aws:iam::${process.env.APP_AWS_ACCOUNT_ID}:role/${process.env.APP_AWS_EVENT_BRIDGE_SCHEDULE_INVOKE_LAMBDA_ROLE}`,
   },
 
   /**

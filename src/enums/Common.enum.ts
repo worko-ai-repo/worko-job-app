@@ -40,10 +40,9 @@ export enum InternalUserRoleEnum {
 
 /**
  * JobSourcedFromEnum
- * 
- * @todo: explain comment
  */
 export enum JobSourcedFromEnum {
   FANTASTIC_JOB = "FANTASTIC_JOB",
   WORKO = "WORKO",
+  BRIGHT_DATA_JOB = "BRIGHT_DATA_JOB",
 }

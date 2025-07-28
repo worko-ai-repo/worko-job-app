@@ -6,6 +6,7 @@ export interface FantasticJobCloudApiDto {
   locationFilter?: string; // 'United States', 'London', 'New York', 'India'
   descriptionType?: string; // 'text' or 'html'
   offSet?: number;
+  companyNames?: string;
 }
 
 /**

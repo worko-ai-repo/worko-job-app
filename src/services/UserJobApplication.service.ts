@@ -158,9 +158,14 @@ class UserJobApplicationService {
       scheduleJobPayload,
     });
 
+    // Prepare scheduler lambda arn
+    const schedulerLambdaArn: string = APP_CONSTANTS.AWS_EVENT_BRIDGE_SCHEDULER_ARNS.LAMBDA_ARN.strtr({
+      "{serverlessFunctionName}": APP_CONSTANTS.SERVERLESS_FUNCTION_NAMES.APP_SCHEDULER_HANDLER
+    });
+
     // Create the scheduled job
     let scheduleJobCreated: DbScheduleJobDto =
-      await ScheduleJobService.createScheduleJob(scheduleJobPayload);
+      await ScheduleJobService.createScheduleJob(scheduleJobPayload,schedulerLambdaArn);
 
     // Log the result of the scheduled job creation
     if (scheduleJobCreated) {

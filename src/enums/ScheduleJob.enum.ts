@@ -15,11 +15,11 @@ export enum ScheduleJobType {
   FANTASTIC_JOB_TWENTY_FOUR_HOURS = "FANTASTIC_JOB_TWENTY_FOUR_HOURS",
 
   /**
-   * FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS
+   * FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS
    * 
-   * When this schedule job is triggered we need to hard and soft delete old unapplied fantastic jobs and old initial matching score jobs.
+   * When this schedule job is triggered we need to hard and soft delete old unapplied fantastic jobs.
    */
-  FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS = "FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS_AND_OLD_INITIAL_MATCHING_SCORE_JOBS",
+  FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS = "FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS",
 
   /**
    * USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED
@@ -28,6 +28,13 @@ export enum ScheduleJobType {
    * user job application status as `APPLIED` but after `24` hours we update the status to `REJECTED`.
    */
   USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED = "USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED",
+
+  /**
+   * BRIGHT_DATA_JOB_TO_RETRIEVE
+   * 
+   * Whenever we create a bright data snapshot, we are scheduling a job to retrieve the data from the snapshot after certain hours.
+   */
+  BRIGHT_DATA_JOB_TO_RETRIEVE = "BRIGHT_DATA_JOB_TO_RETRIEVE",
 }
 
 /**

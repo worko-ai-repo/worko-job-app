@@ -151,6 +151,11 @@ export interface DbJobAwsOpensearchDto {
   department?: string;
 
   /**
+   * industry
+   */
+  industry?: string;
+
+  /**
    * salaryRange
    *
    * @see {MinMaxRange}
@@ -264,4 +269,7 @@ export interface DbJobAwsOpensearchDto {
    * @reference "isJobUpdated" attribute is being used in "worko-job-batch-inference-update-function" lambda function.
    */
   isJobUpdated?: boolean;
+
+  brightDataJobPoster?: object;
+  brightDataJobSeniorityLevel?: string; // "Entry level", "Mid senior level"
 }

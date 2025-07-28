@@ -20,6 +20,7 @@ import { DateTime } from "luxon";
 // Import constants
 import { awsOpensearchLibrary, awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import APP_CONSTANTS from "../configs/constants.config";
+import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJob.constant";
 
 // Import daos
 import { jobDaoObj } from "../daos/Job.dao";
@@ -55,6 +56,7 @@ import { companyJobServiceObj } from "./CompanyJob.service";
 import { jobServiceObj } from "./Job.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { fantasticJobServiceObj } from "./FantasticJob.service";
+import { brightDataJobServiceObj } from "./BrightDataJob.service";
 
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
@@ -79,7 +81,7 @@ class ScriptService {
       `Script to schedule job for external job api [Script Service]`
     );
 
-    return false;
+    return true;
   }
 
   /**

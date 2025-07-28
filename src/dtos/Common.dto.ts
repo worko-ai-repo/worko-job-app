@@ -239,8 +239,8 @@ export interface RequestLocalContextDto {
  * MinMaxRange
  */
 export interface MinMaxRange {
-  min: number;
-  max: number;
+  min?: number;
+  max?: number;
 }
 
 /**
