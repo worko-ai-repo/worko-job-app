@@ -118,6 +118,14 @@ const APP_CONSTANTS = {
      * AWS Lambada Configurations related to triggering "User Matching Score Job"
      */
     USER_MATCHING_SCORE_JOB_LAMBDA_NAME: "worko-user-matching-score-job",
+
+    /**
+     * WORKO_JOB_APP_OPENSEARCH_OPERATIONS
+     * 
+     * This lambda function is used to perform opensearch operations 
+     * This is VPC attached lambda which is used to communicate with VPC-attached OpenSearch
+     */
+    WORKO_JOB_APP_OPENSEARCH_OPERATIONS: `worko-job-app-${process.env.APP_SLS_STAGE}-app-opensearch-operations`,
   },
 
   MATCHING_SCORE_PROMPT:

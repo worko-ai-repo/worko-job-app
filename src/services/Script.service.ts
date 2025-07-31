@@ -81,7 +81,7 @@ class ScriptService {
       `Script to schedule job for external job api [Script Service]`
     );
 
-    return true;
+    return false;
   }
 
   /**

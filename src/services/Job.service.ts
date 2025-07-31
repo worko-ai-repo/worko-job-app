@@ -7,7 +7,6 @@ import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 
 // Import opensearch types
 import { DeleteByQuery_Response, Index_Response, Update_Response, UpdateByQuery_Response } from "@opensearch-project/opensearch/api";
-import { TransportRequestPromise } from "@opensearch-project/opensearch/lib/Transport";
 
 // Import luxon
 import { DateTime } from "luxon";
@@ -450,9 +449,9 @@ class JobService {
    * This method logs the deletion process and calls the JobDao's deleteOldUnappliedExternalJobs method
    * to perform the delete by query operation in OpenSearch.
    *
-   * @returns {Promise<TransportRequestPromise<DeleteByQuery_Response>>} - A promise resolving to the result of the delete by query operation.
+   * @returns {Promise<DeleteByQuery_Response>} - A promise resolving to the result of the delete by query operation.
    */
-  async deleteOldUnappliedExternalJobs(): Promise<TransportRequestPromise<DeleteByQuery_Response>> {
+  async deleteOldUnappliedExternalJobs(): Promise<DeleteByQuery_Response> {
     global.logger.info("Delete old unapplied external jobs [Service]", {
       methodName: this.deleteOldUnappliedExternalJobs.name,
     });
@@ -468,9 +467,9 @@ class JobService {
    * This method logs the soft deletion process and calls the JobDao's softDeleteOldAppliedExternalJobs method
    * to perform the update by query operation in OpenSearch.
    *
-   * @returns {Promise<TransportRequestPromise<UpdateByQuery_Response>>} - A promise resolving to the result of the update by query operation.
+   * @returns {Promise<UpdateByQuery_Response>} - A promise resolving to the result of the update by query operation.
    */
-  async softDeleteOldAppliedExternalJobs(): Promise<TransportRequestPromise<UpdateByQuery_Response>> {
+  async softDeleteOldAppliedExternalJobs(): Promise<UpdateByQuery_Response> {
     global.logger.info("Soft delete old applied external jobs [Service]", {
       methodName: this.softDeleteOldAppliedExternalJobs.name,
     });

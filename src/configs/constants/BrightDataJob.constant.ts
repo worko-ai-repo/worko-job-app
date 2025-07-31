@@ -21,7 +21,7 @@ const BRIGHT_DATA_JOB_APP_CONSTANTS = {
 
   // ENVIRONMENT_RETRIEVAL_LIMIT
   ENVIRONMENT_RETRIEVAL_LIMIT: {
-    DEV: 150,
+    DEV: 110,
     PROD: 1000,
   },
 
@@ -198,7 +198,7 @@ const BRIGHT_DATA_JOB_APP_CONSTANTS = {
    */
   get BRIGHT_DATA_JOB_RETRIEVAL_AFTER_X_HOURS(): number {
     const PROD_HOURS = 3; // 3 hours
-    const DEV_HOURS = 30 / 60; // 30 minutes converted to hours
+    const DEV_HOURS = 45/60; // 45 minutes in hours
 
     // return the time based on the environment
     return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_HOURS : DEV_HOURS;

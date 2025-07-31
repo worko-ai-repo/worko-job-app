@@ -1,3 +1,4 @@
+
 // Import opensearch types
 import { Search_RequestBody } from "@opensearch-project/opensearch/api/_core/search";
 import { QueryContainer } from "@opensearch-project/opensearch/api/_types/_common.query_dsl";
@@ -7,9 +8,6 @@ import { TransportRequestPromise } from "@opensearch-project/opensearch/lib/Tran
 
 // import luxon
 import { DateTime } from "luxon";
-
-// Import Aws opensearch client
-import { awsOpensearchLibrary } from "../configs/aws-sdk.config";
 
 // Import configs
 import APP_CONSTANTS from "../configs/constants.config";
@@ -27,7 +25,7 @@ import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opense
 // Import enums
 import { AwsOpensearchSortOrderTypeEnum } from "../enums/Common.aws-opensearch.enum";
 import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
-import { JobSourcedFromEnum } from "../enums/Common.enum";
+import { JobSourcedFromEnum, OpenSearchOperationsEnum } from "../enums/Common.enum";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import helpers
@@ -35,6 +33,9 @@ import { dateHelperObj } from "../helpers/date.helper";
 
 // Import models
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+
+// Import utils
+import { invokeVpcLambdaOpenSearchUtilObj } from "../utils/invoke-vpc-lambda-opensearch.util";
 
 /**
  * JobDao
@@ -59,14 +60,22 @@ class JobDao {
     return updateObject;
   }
 
+
+
   /**
    * createJob
-   *
-   * Creates a new Job request.
-   *
-   * @param {string} id - `id` attribute from `CompanyJob.model.ts` from aws dynamodb.
-   * @param {JobCreateDto} JobDetailsData - Data for the Job to be created.
-   * @returns {Promise<Index_Response>} - Promise resolving to the newly created Job.
+   * 
+   * Creates a Job in the OpenSearch index.
+   * 
+   * @param {string} id - The ID of the job to be created.
+   * @param {string} jobUrl - The URL of the job description.
+   * @param {JobSourcedFromEnum} sourcedFrom - The source of the job.
+   * @param {JobCreateCompanyDetailInternalDto} companyDetailsDto - The company details of the job.
+   * @param {JobCreateDto} jobCreateData - The job details to be created.
+   * 
+   * @returns {Promise<Index_Response>} - A promise that resolves to the result of the create operation.
+   * 
+   * @throws {BaseError} 500 - If the Job is not created successfully.
    */
   async createJob(
     id: string,
@@ -76,7 +85,6 @@ class JobDao {
     jobCreateData: JobCreateDto
   ): Promise<Index_Response> {
     global.logger.debug(`Create Job in aws opensearch [DAO]`, {
-      filePath: __filename,
       methodName: this.createJob.name,
       id,
     });
@@ -93,10 +101,13 @@ class JobDao {
       isDeleted: false,
     };
 
-    return awsOpensearchLibrary.createDocument<DbJobAwsOpensearchDto>(
-      id,
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<DbJobAwsOpensearchDto, Index_Response>(
       this.IndexName,
-      jobCreateRequest
+      jobCreateRequest,
+      OpenSearchOperationsEnum.CREATE_DOCUMENT,
+      "create job",
+      this.createJob.name,
+      { id }
     );
   }
 
@@ -296,19 +307,24 @@ class JobDao {
     if (jobFilterOptions?.searchText) {
       const searchText: string = jobFilterOptions.searchText;
 
+      const lowerCaseSearchText: string = searchText.toLowerCase();
+
       queryBoolMust.push({
         bool: {
           should: [
-            { term: { "jobTitle.keyword": searchText.toLowerCase() } },
-            { term: { "department.keyword": searchText.toLowerCase() } },
-
+            { term: { "jobTitle.keyword": lowerCaseSearchText } },
+            { term: { "department.keyword": lowerCaseSearchText } },
             { term: { "workMode.keyword": searchText.toUpperCase() } },
-
             { match: { companyName: searchText } },
+
+            // Search in location
             { match: { "location.city": searchText } },
             { match: { "location.state": searchText } },
 
-            { match_phrase: { jobDescription: searchText } },
+            // Search in skills
+            { terms: { "coreSkills.keyword": [lowerCaseSearchText] }},
+            { terms: { "softSkills.keyword": [lowerCaseSearchText] }},
+            { terms: { "technicalSkills.keyword": [lowerCaseSearchText] }},
           ],
           minimum_should_match: 1,
         },
@@ -524,18 +540,22 @@ class JobDao {
 
     // log the query object
     global.logger.debug("Aws OpenSearch Query Details", {
-      filePath: __filename,
       methodName: this.getAllJobsByFilterOptions.name,
       awsOpensearchQuery,
     });
 
-    return awsOpensearchLibrary.getDocuments<
-      DbJobAwsOpensearchDto,
-      JobListingFilterOptions
-    >(
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<{
+      awsOpensearchQuery: Search_RequestBody,
+      filterOptions: JobListingFilterOptions,
+    },AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>>(
       this.IndexName,
-      awsOpensearchQuery,
-      jobFilterOptions
+      {
+        awsOpensearchQuery,
+        filterOptions: jobFilterOptions,
+      },
+      OpenSearchOperationsEnum.GET_DOCUMENTS,
+      "list jobs",
+      this.getAllJobsByFilterOptions.name
     );
   }
 
@@ -565,10 +585,20 @@ class JobDao {
       jobUpdateDto.isDeleted = jobUpdateDto.status === JobStatusEnum.CLOSED;
     }
 
-    return awsOpensearchLibrary.updateDocumentById<JobUpdateDto>(
-      jobId,
+    const updatedDto: JobUpdateDto = this.modifyUpdatedAtFieldWithCurrentDateTime<JobUpdateDto>(jobUpdateDto); // Will add `updatedAt` field to jobUpdateDto object.
+
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<{
+      id: string,
+      updatedDto: JobUpdateDto
+    },Update_Response>(
       this.IndexName,
-      this.modifyUpdatedAtFieldWithCurrentDateTime<JobUpdateDto>(jobUpdateDto) // Will add `updatedAt` field to jobUpdateDto object.
+      {
+        id: jobId,
+        updatedDto: updatedDto,
+      },
+      OpenSearchOperationsEnum.UPDATE_DOCUMENT_BY_ID,
+      "update job by id",
+      this.updateInternalOrExternalJobById.name
     );
   }
 
@@ -591,10 +621,20 @@ class JobDao {
       id: jobId,
     });
 
-    return awsOpensearchLibrary.updateDocumentById<Partial<JobUpdateInternalDto>>(
-      jobId, 
-      this.IndexName, 
-      this.modifyUpdatedAtFieldWithCurrentDateTime<Partial<JobUpdateInternalDto>>(updateObject) // Add `updatedAt` field to "updateObject".
+    const updatedDto: Partial<JobUpdateInternalDto> = this.modifyUpdatedAtFieldWithCurrentDateTime<Partial<JobUpdateInternalDto>>(updateObject) // Add `updatedAt` field to "updateObject".
+
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<{
+      id: string,
+      updatedDto: Partial<JobUpdateInternalDto>
+    },Update_Response>(
+      this.IndexName,
+      {
+        id: jobId,
+        updatedDto: updatedDto,
+      },
+      OpenSearchOperationsEnum.UPDATE_DOCUMENT_BY_ID,
+      "soft delete job by id",
+      this.softDeleteJobById.name
     );
   }
 
@@ -622,10 +662,23 @@ class JobDao {
       updateDto.isDeleted = updateDto.status === JobStatusEnum.CLOSED;
     }
 
-    return awsOpensearchLibrary.updateDocumentById<Partial<JobUpdateInternalDto>>(
-      jobId,
+    const updatedDto: Partial<JobUpdateInternalDto> =
+      this.modifyUpdatedAtFieldWithCurrentDateTime<
+        Partial<JobUpdateInternalDto>
+      >(updateDto); // Add `updatedAt` field to "updateObject".
+
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<{
+      id: string,
+      updatedDto: Partial<JobUpdateInternalDto>
+    },Update_Response>(
       this.IndexName,
-      this.modifyUpdatedAtFieldWithCurrentDateTime<Partial<JobUpdateInternalDto>>(updateDto) // Add `updatedAt` field to "updateDto".
+      {
+        id: jobId,
+        updatedDto: updatedDto,
+      },
+      OpenSearchOperationsEnum.UPDATE_DOCUMENT_BY_ID,
+      "update job by id",
+      this.updateJobById.name
     );
   }
 
@@ -647,9 +700,16 @@ class JobDao {
       methodName: this.getJobById.name,
     });
 
-    return awsOpensearchLibrary.getDocumentById<DbJobAwsOpensearchDto>(
-      id,
-      this.IndexName
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<{
+      documentId: string
+    },DbJobAwsOpensearchDto | undefined>(
+      this.IndexName,
+      {
+        documentId: id,
+      },
+      OpenSearchOperationsEnum.GET_DOCUMENT_BY_ID,
+      "get job by id",
+      this.getJobById.name
     );
   }
 
@@ -747,10 +807,10 @@ class JobDao {
    *
    * The method logs the deletion operation and returns a promise that resolves to the result of the delete by query operation.
    *
-   * @returns {Promise<TransportRequestPromise<DeleteByQuery_Response>>} - A promise resolving to the result of the delete by query operation.
+   * @returns {Promise<DeleteByQuery_Response>} - A promise resolving to the result of the delete by query operation.
    */
   async deleteOldUnappliedExternalJobs(): Promise<
-    TransportRequestPromise<DeleteByQuery_Response>
+    DeleteByQuery_Response
   > {
     // logger
     global.logger.info(`Delete old unapplied external jobs by query [Dao]`, {
@@ -766,9 +826,15 @@ class JobDao {
           >(false),
       };
 
-    return awsOpensearchLibrary.deleteDocumentsByQuery(
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<
+      DeleteByQuery_RequestBody,
+      DeleteByQuery_Response
+    >(
       this.IndexName,
-      deleteOldUnappliedExternalJobsQueryRequestBody
+      deleteOldUnappliedExternalJobsQueryRequestBody,
+      OpenSearchOperationsEnum.DELETE_DOCUMENTS_BY_QUERY,
+      "delete jobs by query",
+      this.deleteOldUnappliedExternalJobs.name
     );
   }
 
@@ -781,11 +847,11 @@ class JobDao {
    * to perform the update by query operation in OpenSearch.
    *
    * @param {Partial<JobUpdateInternalDto>} updateObject - The data transfer object containing the updated details of the job.
-   * @returns {Promise<TransportRequestPromise<UpdateByQuery_Response>>} - A promise resolving to the result of the update by query operation.
+   * @returns {Promise<UpdateByQuery_Response>} - A promise resolving to the result of the update by query operation.
    */
   async softDeleteOldAppliedExternalJobs(
     updateObject: Partial<JobUpdateInternalDto>
-  ): Promise<TransportRequestPromise<UpdateByQuery_Response>> {
+  ): Promise<UpdateByQuery_Response> {
     global.logger.info(`Soft delete old applied external jobs [Dao]`, {
       fileName: __filename,
       methodName: this.softDeleteOldAppliedExternalJobs.name,
@@ -821,9 +887,15 @@ class JobDao {
         },
       };
 
-    return awsOpensearchLibrary.updateDocumentsByQuery(
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<
+      UpdateByQuery_RequestBody,
+      UpdateByQuery_Response
+    >(
       this.IndexName,
-      softDeleteOldAppliedExternalJobsQueryRequestBody
+      softDeleteOldAppliedExternalJobsQueryRequestBody,
+      OpenSearchOperationsEnum.UPDATE_DOCUMENTS_BY_QUERY,
+      "soft delete jobs by query",
+      this.softDeleteOldAppliedExternalJobs.name
     );
   }
 
@@ -877,8 +949,24 @@ class JobDao {
       methodName: this.createBulkJobs.name,
     });
 
-    // Returns `true` if all operations in the bulk request succeed and `false` if any operation fails
-    return awsOpensearchLibrary.bulkCreateDocument(bulkJobData);
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<
+      (
+        | DbJobAwsOpensearchDto
+        | {
+            index: {
+              _index: string;
+              _id: string;
+            };
+          }
+      )[],
+      boolean
+    >(
+      this.IndexName,
+      bulkJobData,
+      OpenSearchOperationsEnum.BULK_CREATE_DOCUMENT,
+      "bulk index jobs",
+      this.createBulkJobs.name
+    );
   }
 }
 

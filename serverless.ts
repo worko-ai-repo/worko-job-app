@@ -168,6 +168,7 @@ const serverlessConfiguration: AWS = {
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:resume-parser",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-description-parser",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-user-matching-score-job",
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-opensearch-operations",
         ],
       },
 
@@ -258,13 +259,6 @@ const serverlessConfiguration: AWS = {
     workoJobApp: {
       handler: "dist/src/app.handler",
       timeout: 900, // Set timeout to 900 seconds (15 minutes)
-      vpc: {
-        securityGroupIds: ["${self:custom.aws.APP_AWS_SECURITY_GROUP}"],
-        subnetIds: [
-          "${self:custom.aws.APP_AWS_SUBNET1}",
-          "${self:custom.aws.APP_AWS_SUBNET2}",
-        ],
-      },
 
       /**
        * events: REST (API Gateway v1)
@@ -319,14 +313,6 @@ const serverlessConfiguration: AWS = {
     "app-scheduler-handler": {
       handler: "dist/src/app-scheduler.handler",
       timeout: 900, // Set timeout to 900 seconds (15 minutes)
-
-      vpc: {
-        securityGroupIds: ["${self:custom.aws.APP_AWS_SECURITY_GROUP}"],
-        subnetIds: [
-          "${self:custom.aws.APP_AWS_SUBNET1}",
-          "${self:custom.aws.APP_AWS_SUBNET2}",
-        ],
-      },
     },
 
     /**
@@ -343,14 +329,6 @@ const serverlessConfiguration: AWS = {
     "app-scheduler-bright-data-external-jobs": {
       handler: "dist/src/app-scheduler-bright-data-external-jobs.handler",
       timeout: 900, // Set timeout to 900 seconds (15 minutes)
-
-      vpc: {
-        securityGroupIds: ["${self:custom.aws.APP_AWS_SECURITY_GROUP}"],
-        subnetIds: [
-          "${self:custom.aws.APP_AWS_SUBNET1}",
-          "${self:custom.aws.APP_AWS_SUBNET2}",
-        ],
-      },
     },
 
     /**
@@ -367,14 +345,6 @@ const serverlessConfiguration: AWS = {
     "app-scheduler-external-jobs": {
       handler: "dist/src/app-scheduler-external-jobs.handler",
       timeout: 900, // Set timeout to 900 seconds (15 minutes)
-
-      vpc: {
-        securityGroupIds: ["${self:custom.aws.APP_AWS_SECURITY_GROUP}"],
-        subnetIds: [
-          "${self:custom.aws.APP_AWS_SUBNET1}",
-          "${self:custom.aws.APP_AWS_SUBNET2}",
-        ],
-      },
 
       /**
        * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-name-and-description
@@ -470,6 +440,30 @@ const serverlessConfiguration: AWS = {
           },
         },
       ],
+    },
+
+    /**
+     * app-opensearch-operations
+     *
+     * Using to interact with `AWS OpenSearch` service
+     *
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
+     * Ex:
+     *  1. `worko-job-app-local-app-opensearch-operations`
+     *  2. `worko-job-app-dev-app-opensearch-operations`
+     *  3. `worko-job-app-prod-app-opensearch-operations`
+     */
+    "app-opensearch-operations": {
+      handler: "dist/src/app-opensearch-operations.handler",
+      timeout: 900, // Set timeout to 900 seconds (15 minutes)
+
+      vpc: {
+        securityGroupIds: ["${self:custom.aws.APP_AWS_SECURITY_GROUP}"],
+        subnetIds: [
+          "${self:custom.aws.APP_AWS_SUBNET1}",
+          "${self:custom.aws.APP_AWS_SUBNET2}",
+        ],
+      },
     },
   },
 };

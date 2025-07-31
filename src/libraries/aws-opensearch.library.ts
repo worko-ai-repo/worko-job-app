@@ -88,7 +88,7 @@ class AwsOpensearchLibrary {
           return credentialsProvider();
         },
       }),
-      node: process.env.APP_OPENSEARCH_ENDPOINT,
+      node: process.env.APP_OPENSEARCH_ENDPOINT, // 'https://search-xxx.region.es.amazonaws.com',
     };
 
     return opensearchClientOptions;

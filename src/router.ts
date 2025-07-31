@@ -7,7 +7,6 @@ import ReferAndEarnRouter from "./routers/ReferAndEarn.router";
 import ScriptRouter from "./routers/Script.router";
 import UserExternalJobApplicationRouter from "./routers/UserExternalJobApplication.router";
 import UserJobApplicationRouter from "./routers/UserJobApplication.router";
-import UserMatchingScoreJobRouter from "./routers/UserMatchingScoreJob.router";
 
 // Router that contains all the routes/endpoints in the application
 const router = Router();
@@ -75,6 +74,6 @@ router.use("/job-application", UserJobApplicationRouter);
  * 
  * @authorisedRoles ["loggedInUser"]
  */
-router.use("/user-matching-score-job", UserMatchingScoreJobRouter);
+// router.use("/user-matching-score-job", UserMatchingScoreJobRouter);
 
 export default router;

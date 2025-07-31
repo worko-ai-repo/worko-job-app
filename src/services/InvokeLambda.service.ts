@@ -292,6 +292,68 @@ class InvokeLambdaService {
   }
 
   /**
+   * triggerOpenSearchOperation
+   *
+   * Triggers an AWS Lambda function to perform operations on an OpenSearch
+   * cluster. This method sends a payload to the Lambda function specified
+   * in the configuration and handles the response.
+   *
+   * @param {OpensearchPayload} payload - The payload containing details of the
+   * OpenSearch operation to be performed.
+   * @returns {Promise<APIGatewayProxyResult>} The response object containing
+   * the status code and message indicating the success or failure of the
+   * operation.
+   */
+  async triggerOpenSearchOperation<OpensearchPayload>(payload: OpensearchPayload): Promise<APIGatewayProxyResult> {
+    try {
+      // log the info
+      global.logger.info("Trigger OpenSearch Operation Lambda [service]", {
+        methodName: this.triggerOpenSearchOperation.name,
+      });
+
+      const command: InvokeCommand = new InvokeCommand({
+        FunctionName:
+          APP_CONSTANTS.LAMBDA_FUNCTION_NAMES
+            .WORKO_JOB_APP_OPENSEARCH_OPERATIONS,
+        Payload: JSON.stringify(payload),
+        InvocationType: InvocationTypeEnum.RequestResponseType,
+      });
+
+      let response: InvokeCommandOutput = await this.client.send(command);
+
+      // Decode the Payload
+      let decodedPayload: APIGatewayProxyResult;
+
+      if (response["Payload"]) {
+        const buffer: Buffer = Buffer.from(response["Payload"]);
+
+        const decodedString: string = buffer.toString("utf8");
+
+        decodedPayload = JSON.parse(decodedString);
+      } else {
+        global.logger.warn(`No Payload found in the Lambda response`);
+        decodedPayload = {
+          statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR_500,
+          body: "No Payload found in the Lambda response",
+        };
+      }
+
+      // return the decoded payload as response
+      return decodedPayload;
+    } catch (error) {
+      global.logger.debug(`Error message while triggering OpenSearch Operation`, {
+        errorMessage: error,
+      });
+
+      // return the error response
+      return {
+        statusCode: HttpStatusCode.INTERNAL_SERVER_ERROR_500,
+        body: `Unable to parse OpenSearch Operation response.`,
+      };
+    }
+  }
+
+  /**
    * triggerMatchingScoreCalculation
    * 
    * Triggers the AWS Lambda function to calculate matching scores for a user.

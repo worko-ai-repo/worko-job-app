@@ -1,4 +1,7 @@
 
+// Import lambda
+import { APIGatewayProxyResult } from "aws-lambda";
+
 // Import utils
 import HttpStatusCode from "./http-codes.util";
 
@@ -66,6 +69,29 @@ class ResponseHandlerUtil {
     }
 
     return response;
+  }
+
+  /**
+   * sendSuccessResponseForInvokedLambda
+   * 
+   * Sends a success response for an invoked Lambda function.
+   *
+   * This method returns an API Gateway proxy result with a 200 OK status code,
+   * content type header set to "application/json", and the given response
+   * serialized as the response body.
+   *
+   * @template SuccessResponse - The type of the success response.
+   * @param {SuccessResponse} response - The success response object to be serialized
+   * and included in the response body.
+   * @returns {APIGatewayProxyResult} The formatted API Gateway proxy response
+   * object containing the success response.
+   */
+  sendSuccessResponseForInvokedLambda<SuccessResponse>(response: SuccessResponse): APIGatewayProxyResult {
+    return {
+      statusCode: HttpStatusCode.OK_200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(response),
+    };
   }
 }
 
