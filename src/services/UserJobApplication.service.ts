@@ -1277,77 +1277,80 @@ class UserJobApplicationService {
     currentActionDateTime: string,
     applicantName: string,
   ): Promise<void> {
-    // Check if the job application is for a refer and earn id
-    if (updatedJobApplication?.referAndEarnId) {
-      // Retrieve refer and earn details by refer and earn id
-      const referAndEarnDetails: QueryResponse<DbReferAndEarnDto> =
-        await referAndEarnServiceObj.getReferAndEarnById(
-          updatedJobApplication.referAndEarnId
-        );
-      if (referAndEarnDetails.count) {
-        // Parse the refer and earn details
-        const parsedReferAndEarnDetails: DbReferAndEarnDto =
-          referAndEarnDetails[0];
-
-        let referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto>;
-
-        if (updatedJobApplication.status === JobApplicationStatus.REJECTED) {
-          // Prepare statusTracker Data to update
-          const referAndEarnUpdatedStatusTracker: ReferAndEarnStatusTrackerDto[] =
-            [
-              ...parsedReferAndEarnDetails.statusTracker,
-              {
-                oldStatus: parsedReferAndEarnDetails.status,
-                newStatus: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
-                actionDate: currentActionDateTime,
-                actionByUserId: undefined,
-                description: undefined,
-              },
-            ];
-
-          // Prepare refer and earn update dto
-          referAndEarnUpdateDto = {
-            status: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
-            statusTracker: referAndEarnUpdatedStatusTracker,
-            jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.REJECTED,
-          };
-
-          // Update refer and earn status
-          await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
-            parsedReferAndEarnDetails.id,
-            getEmailFromPK(parsedReferAndEarnDetails.PK),
-            referAndEarnUpdateDto
+    if ([JobApplicationStatus.REJECTED, JobApplicationStatus.PROCESSING_INTERVIEW, JobApplicationStatus.HIRED].includes(updatedJobApplication.status)) {
+      // Check if the job application is for a refer and earn id
+      if (updatedJobApplication?.referAndEarnId) {
+        // Retrieve refer and earn details by refer and earn id
+        const referAndEarnDetails: QueryResponse<DbReferAndEarnDto> =
+          await referAndEarnServiceObj.getReferAndEarnById(
+            updatedJobApplication.referAndEarnId
           );
-        } else if (
-          updatedJobApplication.status ===
-          JobApplicationStatus.PROCESSING_INTERVIEW
-        ) {
-          // Prepare refer and earn update dto
-          referAndEarnUpdateDto = {
-            jobApplicationStatus:
-              ReferAndEarnJobApplicationStatusEnum.PROCESSING_INTERVIEW,
-          };
+        if (referAndEarnDetails.count) {
+          // Parse the refer and earn details
+          const parsedReferAndEarnDetails: DbReferAndEarnDto =
+            referAndEarnDetails[0];
 
-          // Update refer and earn status
-          await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
-            parsedReferAndEarnDetails.id,
-            getEmailFromPK(parsedReferAndEarnDetails.PK),
-            referAndEarnUpdateDto
-          );
-        } else if (
-          updatedJobApplication.status === JobApplicationStatus.HIRED
-        ) {
-          // Prepare refer and earn update dto
-          referAndEarnUpdateDto = {
-            jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.HIRED,
-          };
+          let referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto>;
 
-          // Update refer and earn status
-          await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
-            parsedReferAndEarnDetails.id,
-            getEmailFromPK(parsedReferAndEarnDetails.PK),
-            referAndEarnUpdateDto
-          );
+          if (updatedJobApplication.status === JobApplicationStatus.REJECTED) {
+            // Prepare statusTracker Data to update
+            const referAndEarnUpdatedStatusTracker: ReferAndEarnStatusTrackerDto[] =
+              [
+                ...parsedReferAndEarnDetails.statusTracker,
+                {
+                  oldStatus: parsedReferAndEarnDetails.status,
+                  newStatus: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+                  actionDate: currentActionDateTime,
+                  actionByUserId: undefined,
+                  description: undefined,
+                },
+              ];
+
+            // Prepare refer and earn update dto
+            referAndEarnUpdateDto = {
+              status: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+              statusTracker: referAndEarnUpdatedStatusTracker,
+              jobApplicationStatus:
+                ReferAndEarnJobApplicationStatusEnum.REJECTED,
+            };
+
+            // Update refer and earn status
+            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+              parsedReferAndEarnDetails.id,
+              getEmailFromPK(parsedReferAndEarnDetails.PK),
+              referAndEarnUpdateDto
+            );
+          } else if (
+            updatedJobApplication.status ===
+            JobApplicationStatus.PROCESSING_INTERVIEW
+          ) {
+            // Prepare refer and earn update dto
+            referAndEarnUpdateDto = {
+              jobApplicationStatus:
+                ReferAndEarnJobApplicationStatusEnum.PROCESSING_INTERVIEW,
+            };
+
+            // Update refer and earn status
+            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+              parsedReferAndEarnDetails.id,
+              getEmailFromPK(parsedReferAndEarnDetails.PK),
+              referAndEarnUpdateDto
+            );
+          } else if (
+            updatedJobApplication.status === JobApplicationStatus.HIRED
+          ) {
+            // Prepare refer and earn update dto
+            referAndEarnUpdateDto = {
+              jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.HIRED,
+            };
+
+            // Update refer and earn status
+            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+              parsedReferAndEarnDetails.id,
+              getEmailFromPK(parsedReferAndEarnDetails.PK),
+              referAndEarnUpdateDto
+            );
+          }
         }
       }
     }
