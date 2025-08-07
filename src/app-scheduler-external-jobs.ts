@@ -23,6 +23,7 @@ import { ScheduleJobType } from "./enums/ScheduleJob.enum";
 // Import services
 import { jobServiceObj } from "./services/Job.service";
 import { fantasticJobServiceObj } from "./services/FantasticJob.service";
+import { brightDataJobServiceObj } from "./services/BrightDataJob.service";
 
 // Import error handling utilities
 import { BaseError } from "./utils/errors.util";
@@ -146,6 +147,41 @@ export const handler = async (
               filePath: __filename,
               methodName: "handler",
               scheduleJobType: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
+            }
+          );
+
+          break;
+        }
+
+        case ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT: {
+          global.logger.info(
+            `Processing scheduled job for bright data job to create snapshot [app scheduler handler]`,
+            {
+              methodName: "handler",
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
+            }
+          );
+
+          const snapshotCreationResult: boolean = await brightDataJobServiceObj.validateAndCreateBrightDataSnapshot();
+          if(!snapshotCreationResult) {
+            global.logger.error(
+              `Snapshot creation failed [app scheduler external jobs handler]`,
+              {
+                filePath: __filename,
+                methodName: "handler",
+                scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
+              }
+            );
+
+            throw new BaseError(`The snapshot creation failed.`, HttpStatusCode.INTERNAL_SERVER_ERROR_500);
+          }
+
+          global.logger.info(
+            `Snapshot creation completed successfully [app scheduler external jobs handler]`,
+            {
+              filePath: __filename,
+              methodName: "handler",
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
             }
           );
 

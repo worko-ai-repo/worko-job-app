@@ -30,9 +30,14 @@ export enum ScheduleJobType {
   USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED = "USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED",
 
   /**
-   * BRIGHT_DATA_JOB_TO_RETRIEVE
+   * BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT
    * 
-   * Whenever we create a bright data snapshot, we are scheduling a job to retrieve the data from the snapshot after certain hours.
+   * This is used to create a bright data snapshot and schedule a job to retrieve the data from the snapshot after certain hours.
+   */
+  BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT = "BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT",
+
+  /**
+   * BRIGHT_DATA_JOB_TO_RETRIEVE
    */
   BRIGHT_DATA_JOB_TO_RETRIEVE = "BRIGHT_DATA_JOB_TO_RETRIEVE",
 }

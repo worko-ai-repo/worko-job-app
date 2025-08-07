@@ -182,7 +182,31 @@ class BrightDataJobService {
       brightDataJobs
     );
   }
+
+  /**
+   * validateAndCreateBrightDataSnapshot
+   *
+   * Validates and creates a snapshot with Bright Data Job API based on the retrieved fantastic jobs.
+   * If the jobs length is 0, then it creates a snapshot with all company names. Otherwise, it creates a snapshot
+   * with the company names that are not found in the retrieved jobs.
+   *
+   * @returns {Promise<boolean>} A promise that resolves to true if the snapshot creation and scheduling
+   *   are successful, false otherwise.
+   */
+  async validateAndCreateBrightDataSnapshot(): Promise<boolean> {
+    const brightDataLimit: number =
+      process.env.APP_STAGE === APP_CONSTANTS.STAGES.PROD
+        ? BRIGHT_DATA_JOB_APP_CONSTANTS.ENVIRONMENT_RETRIEVAL_LIMIT.PROD
+        : BRIGHT_DATA_JOB_APP_CONSTANTS.ENVIRONMENT_RETRIEVAL_LIMIT.DEV;
+
+    return this.createAndScheduleBrightDataSnapshotRetrieval(
+      BRIGHT_DATA_JOB_APP_CONSTANTS.COMPANIES,
+      BRIGHT_DATA_JOB_APP_CONSTANTS.LOCATIONS,
+      brightDataLimit
+    );
+  }
 }
 
-const brightDataJobServiceObj: BrightDataJobService = new BrightDataJobService();
+const brightDataJobServiceObj: BrightDataJobService =
+  new BrightDataJobService();
 export { brightDataJobServiceObj, BrightDataJobService };
