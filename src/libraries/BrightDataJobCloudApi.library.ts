@@ -66,7 +66,7 @@ class BrightDataJobCloudApiLibrary {
 
           // @NOTE: "country" or "time_range" or "job_type" may be dynamic in near future
           country: BrightDataJobCountryEnum.INDIA,
-          time_range: BrightDataJobTimeRangeEnum.PAST_TWENTY_FOUR_HOURS,
+          time_range: BrightDataJobTimeRangeEnum.PAST_WEEK,
           job_type: BrightDataJobEmploymentTypeEnum.FULL_TIME,
         });
       }

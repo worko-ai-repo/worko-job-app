@@ -352,35 +352,35 @@ const serverlessConfiguration: AWS = {
       events:
         process.env.APP_SLS_STAGE === APP_CONSTANTS.STAGES.PROD
           ? [
-              // {
-              //   schedule: {
-              //     name: "cleanup-old-unapplied-jobs-schedule", // Name can be specified for a schedule event. This is not a required property.
-              //     description:
-              //       "Triggers to hard and soft delete old unapplied external jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
-              //     /**
-              //      * Cron expressions
-              //      *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
-              //      * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
-              //      *
-              //      * @reference "Amazon EventBridge" > "Buses" > "Rules" > {name} > Event schedule
-              //      */
-              //     rate: ["cron(30 14 ? * SUN *)"],
-              //     enabled: true,
-              //     /**
-              //      * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
-              //      *
-              //      * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
-              //      *
-              //      * @description Whatever input you provide, that will be passed to the handler function as input,
-              //      *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
-              //      */
-              //     input: {
-              //       scheduleJob: {
-              //         type: ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
-              //       },
-              //     },
-              //   },
-              // },
+              {
+                schedule: {
+                  name: "cleanup-old-unapplied-jobs-schedule", // Name can be specified for a schedule event. This is not a required property.
+                  description:
+                    "Triggers to hard and soft delete old unapplied external jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+                  /**
+                   * Cron expressions
+                   *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
+                   * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
+                   *
+                   * @reference "Amazon EventBridge" > "Buses" > "Rules" > {name} > Event schedule
+                   */
+                  rate: ["cron(30 14 ? * SUN *)"],
+                  enabled: true,
+                  /**
+                   * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
+                   *
+                   * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
+                   *
+                   * @description Whatever input you provide, that will be passed to the handler function as input,
+                   *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
+                   */
+                  input: {
+                    scheduleJob: {
+                      type: ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+                    },
+                  },
+                },
+              },
               
               // {
               //   schedule: {
@@ -416,7 +416,7 @@ const serverlessConfiguration: AWS = {
                 schedule: {
                   name: "bright-data-external-job-schedule", // Name can be specified for a schedule event. This is not a required property.
                   description:
-                    "Triggers to retrieve bright data external job twenty four hours according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+                    "Triggers to retrieve bright data external job according to cron expression", // Description can be specified for a schedule event. This is not a required property.
                   /**
                    * Cron expressions
                    *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
@@ -424,7 +424,7 @@ const serverlessConfiguration: AWS = {
                    *
                    * @reference "Amazon EventBridge" > "Buses" > "Rules" > {Rule name} > Event schedule
                    */
-                  rate: ["cron(0 13 ? * FRI *)"],
+                  rate: ["cron(0 13 ? * MON *)"],
                   enabled: true,
                   /**
                    * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
