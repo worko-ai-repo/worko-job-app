@@ -81,7 +81,9 @@ class ScriptService {
       `Script to schedule job for external job api [Script Service]`
     );
 
-    return brightDataJobServiceObj.validateAndCreateBrightDataSnapshot();
+    return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
+      "s_mehavqdrghnt1t8h6"
+    );
   }
 
   /**
