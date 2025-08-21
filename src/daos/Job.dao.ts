@@ -378,7 +378,7 @@ class JobDao {
      *    3. experienceRange.min = 15 
      *       Logic: 15 <= 10 = false (job document not matched)
      */
-    if (jobFilterOptions?.YOE) {
+    if (jobFilterOptions?.YOE || jobFilterOptions?.YOE === 0) {
       queryBoolMust.push({
         range: {
           // "experienceRange.min" <= YOE
@@ -388,7 +388,7 @@ class JobDao {
     }
 
     // Add min experience range filter if provided
-    if (jobFilterOptions?.minExperience) {
+    if (jobFilterOptions?.minExperience || jobFilterOptions?.minExperience === 0) {
       queryBoolMust.push({
         range: {
           "experienceRange.min": {
@@ -399,7 +399,7 @@ class JobDao {
     }
 
     // Add max experience range filter if provided
-    if (jobFilterOptions?.maxExperience) {
+    if (jobFilterOptions?.maxExperience || jobFilterOptions?.maxExperience === 0) {
       queryBoolMust.push({
         range: {
           "experienceRange.max": { gte: jobFilterOptions.maxExperience },
@@ -408,7 +408,7 @@ class JobDao {
     }
 
     // Add min salary range filter if provided
-    if (jobFilterOptions?.minSalary) {
+    if (jobFilterOptions?.minSalary || jobFilterOptions?.minSalary === 0) {
       queryBoolMust.push({
         range: {
           "salaryRange.min": {
@@ -419,7 +419,7 @@ class JobDao {
     }
 
     // Add max salary range if provided
-    if (jobFilterOptions?.maxSalary) {
+    if (jobFilterOptions?.maxSalary || jobFilterOptions?.maxSalary === 0) {
       queryBoolMust.push({
         range: {
           "salaryRange.max": {

@@ -1281,12 +1281,14 @@ class UserJobApplicationService {
       /**
        * If job application status is "rejected" then invoke rag lambda with the job application details and applicant details
        */
+      /*
       if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
         await InvokeLambdaService.triggerRejectJobApplication({
           applicantEmail: getEmailFromPK(updatedJobApplication.PK),
           jobApplicationId: updatedJobApplication.id
         })
       }
+      */
 
       // Check if the job application is for a refer and earn id
       if (updatedJobApplication?.referAndEarnId) {
