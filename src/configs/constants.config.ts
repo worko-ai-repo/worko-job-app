@@ -120,6 +120,14 @@ const APP_CONSTANTS = {
     USER_MATCHING_SCORE_JOB_LAMBDA_NAME: "worko-user-matching-score-job",
 
     /**
+     * RAG_FEEDBACK_INGESTION
+     * 
+     * @description 
+     *  1. We are using this lambda to invoke whenever the corporate or worko-admin `rejects` the job application
+     */
+    RAG_FEEDBACK_INGESTION_LAMBDA_NAME: "worko-rag-feedback-ingestion",
+
+    /**
      * WORKO_JOB_APP_OPENSEARCH_OPERATIONS
      * 
      * This lambda function is used to perform opensearch operations 
@@ -232,6 +240,20 @@ const APP_CONSTANTS = {
      *  1. "{jobId}" is the `id` attribute of `CompanyJob.model.ts` and `OpenSearchJob.model.ts`
      */
     WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/v1/corporate/cApplicants/{jobId}`,
+  },
+
+  FRONTEND_ORIGINS: {
+    PROD: [
+      "https://worko.ai",
+    ],
+    DEV: [
+      "https://dev-ui.worko.work", 
+      "https://dev.worko.work",    
+      "http://localhost:4200",
+      "http://localhost:8080",
+      "http://localhost:3001", 
+      "http://localhost:3002",  
+    ],
   },
 
   /**

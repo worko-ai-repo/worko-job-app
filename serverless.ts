@@ -168,6 +168,7 @@ const serverlessConfiguration: AWS = {
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:resume-parser",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-description-parser",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-user-matching-score-job",
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-rag-feedback-ingestion",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-opensearch-operations",
         ],
       },
@@ -381,7 +382,7 @@ const serverlessConfiguration: AWS = {
                   },
                 },
               },
-              
+
               // {
               //   schedule: {
               //     name: "fantastic-job-twenty-four-hours-schedule", // Name can be specified for a schedule event. This is not a required property.

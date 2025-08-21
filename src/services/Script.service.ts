@@ -56,7 +56,6 @@ import { companyJobServiceObj } from "./CompanyJob.service";
 import { jobServiceObj } from "./Job.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { fantasticJobServiceObj } from "./FantasticJob.service";
-import { brightDataJobServiceObj } from "./BrightDataJob.service";
 
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
@@ -81,9 +80,7 @@ class ScriptService {
       `Script to schedule job for external job api [Script Service]`
     );
 
-    return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
-      "s_mehavqdrghnt1t8h6"
-    );
+    return false;
   }
 
   /**

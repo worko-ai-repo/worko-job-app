@@ -11,6 +11,7 @@ import { AwsSqsClientLibrary } from "../libraries/aws-sqs-client.library";
 import { AwsSchedulerLibrary } from "../libraries/aws-scheduler-client.library";
 import { AwsOpensearchLibrary } from "../libraries/aws-opensearch.library";
 import { AwsBedrockClientLibrary } from "../libraries/aws-bedrock-client.library";
+import { AwsClientLambdaLibrary } from "../libraries/aws-client-lambda.library";
 
 /**
  * awsConfigOptions
@@ -171,21 +172,27 @@ global.logger.info(`The "awsOpensearchLibrary" is initialised.`, {
 const awsBedrockClientLibrary: AwsBedrockClientLibrary = new AwsBedrockClientLibrary();
 global.logger.info(`The "awsBedrockClientLibrary" is initialised.`);
 
+/**
+ * awsClientLambdaLibrary
+ * 
+ * NOTE: For this lambda client, the `aws-sdk v3` is used
+ */
+const awsClientLambdaLibrary: AwsClientLambdaLibrary = new AwsClientLambdaLibrary();
+global.logger.info(`The "awsClientLambdaLibrary" is initialised.`);
+
 // Export the required resourses
 export {
-  // Configurations
   awsConfigOptions,
   awsS3ConfigOptions,
   awsSesConfigOptions,
   awsSqsConfigOptions,
   awsSchedulerConfigOptions,
   awsDynamoDBConfigOptions,
-
-  // Service Clients
   awsS3ClientLibrary,
   awsSesClientLibrary,
   awsSqsClientLibrary,
   awsSchedulerClientLibrary,
   awsOpensearchLibrary,
   awsBedrockClientLibrary,
+  awsClientLambdaLibrary,
 };

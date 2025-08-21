@@ -1,3 +1,7 @@
+
+// Import enums
+import { MatchingScoreEntityEnum } from "../enums/Common.enum";
+
 /**
  * InvokeLambdaParsedJobDescriptionDto
  *
@@ -20,4 +24,29 @@ export interface InvokeLambdaParsedJobDescriptionDto {
 export interface InvokeLambdaToMatchUserResumeWithJobAndJdDto {
   userId: string; // `id` attribute in `UserDetail.model.ts`
   jobId: string; 
+}
+
+/**
+ * InvokeLambdaRejectJobApplicationDto
+ */
+export interface InvokeLambdaRejectJobApplicationDto {
+  /**
+   * @reference `UserDetail.model.ts`
+   */
+  applicantEmail: string;
+
+  /**
+   * @reference `id` attribute of `UserJobApplication.model.ts`
+   */
+  jobApplicationId: string; 
+}
+
+/**
+ * InvokeLambdMatchingScoreCalcualtionDto
+ */
+export interface InvokeLambdMatchingScoreCalcualtionDto {
+  USER_PK: string;
+  USER_DETAIL_SK: string;
+  MATCHING_ENTITY: MatchingScoreEntityEnum;
+  ENTITY_SK: string;
 }

@@ -13,6 +13,9 @@ import { ScheduleBrightDataJobToRetrieveInputDto, ScheduleJobCreateDto } from ".
 // Import enums
 import { ScheduleJobStatus, ScheduleJobType } from "../enums/ScheduleJob.enum";
 
+// Import helpers
+import { jobDescriptionValidatorHelperObj } from "../helpers/jobDescriptionValidator.helper";
+
 // Import libraries
 import { brightDataJobCloudApiLibraryObj } from "../libraries/BrightDataJobCloudApi.library";
 
@@ -153,6 +156,22 @@ class BrightDataJobService {
     );
   }
 
+  private validateAndFilterFantasticJobs(
+    jobs: BrightDataJobApiResponse[]
+  ): BrightDataJobApiResponse[] {
+    return jobs.filter((eachJob: BrightDataJobApiResponse) => {
+      const givenJobDescription: string | undefined | null = eachJob.job_summary;
+
+      const isValidDescription: boolean | "" | null | undefined =
+        givenJobDescription &&
+        jobDescriptionValidatorHelperObj.isValidDescription(
+          givenJobDescription
+        );
+
+      return isValidDescription;
+    });
+  }
+
   /**
    * getAndProcessBatchInferenceForBrightDataJobs
    *
@@ -178,8 +197,10 @@ class BrightDataJobService {
       return false;
     }
 
+    const filteredBrightDataJobs: BrightDataJobApiResponse[] = this.validateAndFilterFantasticJobs(brightDataJobs);
+
     return brightDataJobBatchInferenceServiceObj.processBrightDataJobBatchInference(
-      brightDataJobs
+      filteredBrightDataJobs
     );
   }
 

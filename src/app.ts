@@ -13,6 +13,7 @@ import "./libraries/logger.library";
 
 // Import configs
 import DBConfig from "./db/DB.config";
+import APP_CONSTANTS from "./configs/constants.config";
 
 // Import middlewares
 import { getAuthorizerContext } from "./middlewares/authorizer-context.middleware";
@@ -70,8 +71,8 @@ class App {
    * This method registers the required middlewares to handle/customise the requests, responses, etc.
    */
   registerMiddleWares() {
-    // @todo: we should not allow apis to be called by any origin, we must specify known/trusted origins
-    this.app.use(cors({ origin: "*" }));
+    const origins: string[] = process.env.APP_STAGE === APP_CONSTANTS.STAGES.PROD ? APP_CONSTANTS.FRONTEND_ORIGINS.PROD : APP_CONSTANTS.FRONTEND_ORIGINS.DEV;
+    this.app.use(cors({ origin: origins })); 
     this.app.use(express.json()); // 100 KB default limit
   }
 
