@@ -354,7 +354,7 @@ const serverlessConfiguration: AWS = {
           ? [
               {
                 schedule: {
-                  name: "cleanup-old-unapplied-jobs-schedule", // Name can be specified for a schedule event. This is not a required property.
+                  name: "cleanup-old-unapplied-jobs-schedule-${self:custom.app.STAGE}", // Name can be specified for a schedule event. This is not a required property.
                   description:
                     "Triggers to hard and soft delete old unapplied external jobs according to cron expression", // Description can be specified for a schedule event. This is not a required property.
                   /**
@@ -414,7 +414,7 @@ const serverlessConfiguration: AWS = {
 
               {
                 schedule: {
-                  name: "bright-data-external-job-schedule", // Name can be specified for a schedule event. This is not a required property.
+                  name: "bright-data-external-job-schedule-${self:custom.app.STAGE}", // Name can be specified for a schedule event. This is not a required property.
                   description:
                     "Triggers to retrieve bright data external job according to cron expression", // Description can be specified for a schedule event. This is not a required property.
                   /**
