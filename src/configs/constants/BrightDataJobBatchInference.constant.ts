@@ -48,9 +48,6 @@ const BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS = {
 **MANDATORY SKILL MOVEMENT RULES:**
 - "team leadership" → softSkills (NOT coreSkills)
 - "strategic planning" → softSkills (NOT coreSkills)
-- "storytelling" → softSkills (NOT coreSkills)
-- "event handling" → softSkills (NOT coreSkills and NOT technicalSkills)
-- "project execution" → softSkills (NOT coreSkills and NOT technicalSkills)
 - "stakeholder management" → softSkills (NOT coreSkills)
 - "goal setting" → softSkills (NOT coreSkills)
 - "performance management" → softSkills (NOT coreSkills)
@@ -69,7 +66,6 @@ const BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS = {
 - "communication skills" → softSkills (NEVER coreSkills or technicalSkills)
 - "excel/power bi/visualization tools" → technicalSkills (NOT coreSkills)
 - "customer relationship management (crm)" → technicalSkills (NOT coreSkills)
-- "rag pipelines"  → technicalSkills (NOT coreSkills and NOT softSkills)
 **STEP 5 - FINAL VALIDATION (CRITICAL):**
 Before generating JSON, perform these checks:
 1. Scan coreSkills - remove ANY management/leadership/planning skills
@@ -77,6 +73,7 @@ Before generating JSON, perform these checks:
 3. Check for duplicates across all skill arrays - remove duplicates
 4. Ensure each skill is in ONLY ONE category
 5. Verify coreSkills contains ONLY functional/domain expertise
+6. keep only 20 most relavant skills with respect to job description in each catagory of skills.
 **EMPTY FIELD RULE:**
 - If information is not explicitly mentioned, leave field empty (not "Not Mentioned")
 **PROCESSING THE JOB DESCRIPTION:**
