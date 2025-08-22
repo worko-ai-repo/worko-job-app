@@ -8,6 +8,9 @@ import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJo
 import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
 import { BatchInferenceModelInput } from "../dtos/BatchInference.dto";
 
+// Import helpers
+import { brightDataJobValidateHelperObj } from "../helpers/BrightDataJobValidate.helper";
+
 // Import models
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
 
@@ -167,6 +170,14 @@ class BrightDataJobBatchInferenceService {
 
       // Loop through the current batch of jobs
       for (const eachJob of batch) {
+        const validateCompanyName: boolean = brightDataJobValidateHelperObj.validateBrightDataJobCompanyName(
+          eachJob.company_name,
+        );
+        
+        if(!validateCompanyName) {
+          continue;
+        }
+
         // Generate a unique ULID ID
         const brightDataJobId: string = UlidService.getUlidId();
 

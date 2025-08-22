@@ -18,11 +18,23 @@ const BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS = {
     CONTENT_TYPES: {
       TEXT: "text",
     },
-    PROMPT: `**JOB DESCRIPTION EXTRACTION TASK**
-**STEP 1 - Extract Basic Information:**
+
+    /**
+     * 1. If below attributes are already assigned with values then don't update them.
+     *    1. department
+     *    2. salaryRange
+     *    3. experienceRange
+     *    4. coreSkills
+     *    5. technicalSkills
+     *    6. softSkills
+     *    7. miscellaneousSkills
+     *    8. noticePeriod
+     *    9. typeOfEmployment
+     */
+    PROMPT: `*JOB DESCRIPTION EXTRACTION TASK*
+*STEP 1 - Extract Basic Information:*
 - Type of Employment (Return in UPPERCASE, e.g., FULL_TIME, PART_TIME)
 - Department (Return in lowercase, e.g., hr, marketing, sales)
-- Company Name (Return in UPPERCASE)
 - Salary Range (Minimum and Maximum, in LPA)
 - Experience Range (Minimum and Maximum, in years)
 - Core Skills (Each skill must be lowercase, max 30 characters)
@@ -30,22 +42,22 @@ const BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS = {
 - Soft Skills (Each skill must be lowercase, max 30 characters)
 - Miscellaneous Skills (Each skill must be lowercase, max 30 characters)
 - Notice Period (Days) (Enter a numeric value. If a range is provided, use the higher value.)
-**STEP 2 - CRITICAL SKILL CLASSIFICATION RULES:**
-**CORE SKILLS = Functional/Domain Expertise ONLY**
+*STEP 2 - CRITICAL SKILL CLASSIFICATION RULES:*
+*CORE SKILLS = Functional/Domain Expertise ONLY*
 - INCLUDE in coreSkills: Specific job functions, domain knowledge, industry expertise
 - Examples: "category management", "supplier relations", "e-commerce operations", "revenue management", "market research"
 - EXCLUDE from coreSkills: Management abilities, thinking skills, interpersonal skills
 - Examples: "team leadership", "strategic planning", "goal setting", "performance management", "stakeholder management"
-**SOFT SKILLS = Behavioral/Interpersonal Abilities**
+*SOFT SKILLS = Behavioral/Interpersonal Abilities*
 - INCLUDE in softSkills: How you work, think, and interact
 - Examples: "leadership", "communication", "strategic thinking", "problem solving", "team management", "decision making"
-**TECHNICAL SKILLS = Tools/Software/Platforms**
+*TECHNICAL SKILLS = Tools/Software/Platforms*
 - INCLUDE in technicalSkills: Specific tools, software, platforms, systems
 - Examples: "microsoft excel", "crm systems", "analytics tools", "database management"
-**miscellaneousSkills**: Extract any other skills or requirements not fitting into the above categories, in "lowercase".
-- If something is mentioned as a **general requirement, certification, or domain knowledge** that is not a
+*miscellaneousSkills*: Extract any other skills or requirements not fitting into the above categories, in "lowercase".
+- If something is mentioned as a *general requirement, certification, or domain knowledge* that is not a
   core/technical/soft skill, add it here.
-**MANDATORY SKILL MOVEMENT RULES:**
+*MANDATORY SKILL MOVEMENT RULES:*
 - "team leadership" → softSkills (NOT coreSkills)
 - "strategic planning" → softSkills (NOT coreSkills)
 - "stakeholder management" → softSkills (NOT coreSkills)
@@ -66,7 +78,7 @@ const BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS = {
 - "communication skills" → softSkills (NEVER coreSkills or technicalSkills)
 - "excel/power bi/visualization tools" → technicalSkills (NOT coreSkills)
 - "customer relationship management (crm)" → technicalSkills (NOT coreSkills)
-**STEP 5 - FINAL VALIDATION (CRITICAL):**
+*STEP 5 - FINAL VALIDATION (CRITICAL):*
 Before generating JSON, perform these checks:
 1. Scan coreSkills - remove ANY management/leadership/planning skills
 2. Move removed skills to softSkills
@@ -74,14 +86,15 @@ Before generating JSON, perform these checks:
 4. Ensure each skill is in ONLY ONE category
 5. Verify coreSkills contains ONLY functional/domain expertise
 6. keep only 20 most relavant skills with respect to job description in each catagory of skills.
-**EMPTY FIELD RULE:**
+7. for Salary Range and Experience Range if min is given but max is not then don't put any value in max if both are not given do not return the field.
+*EMPTY FIELD RULE:*
 - If information is not explicitly mentioned, leave field empty (not "Not Mentioned")
-**PROCESSING THE JOB DESCRIPTION:**
+*PROCESSING THE JOB DESCRIPTION:*
 Now analyze this job description step by step:
 {promptJobDescription}
 Return only the following JSON structure with extracted values. Do not provide any additional content, explanations,
 or details:\n\n{\n  \"typeofEmployment\": \"string\", // UPPERCASE format (e.g., FULL_TIME, PART_TIME)\n  \"department\": \"string\",
-// lowercase format (e.g., hr, marketing, sales)\n  \"companyName\": \"string\", // UPPERCASE format\n  \"salaryRange\": {\n    \"min\": number,
+// lowercase format (e.g., hr, marketing, sales)\n , // UPPERCASE format\n  \"salaryRange\": {\n    \"min\": number,
 \n    \"max\": number\n  }, //in LPA (e.g 3 LPA, 12 LPA)\n  \"experienceRange\": {\n    \"min\": number,\n    \"max\": number\n  },
 // in years\n  \"coreSkills\": [\n    \"string\", // lowercase format\n    \"string\"\n  ],\n  \"technicalSkills\": [\n    \"string\",
 // lowercase format\n    \"string\"\n  ],\n  \"softSkills\": [\n    \"string\", // lowercase format\n    \"string\"\n  ],
