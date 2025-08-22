@@ -197,10 +197,8 @@ class BrightDataJobService {
       return false;
     }
 
-    const filteredBrightDataJobs: BrightDataJobApiResponse[] = this.validateAndFilterFantasticJobs(brightDataJobs);
-
     return brightDataJobBatchInferenceServiceObj.processBrightDataJobBatchInference(
-      filteredBrightDataJobs
+      brightDataJobs,
     );
   }
 

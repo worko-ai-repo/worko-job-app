@@ -387,43 +387,79 @@ class JobDao {
       });
     }
 
-    // Add min experience range filter if provided
+    /**
+     * @example
+     * If minExperience = 4:
+     *    1. experienceRange.min = 7 
+     *       Logic: 7 >= 4 = true (job document matched)
+     *    2. experienceRange.min = 4 
+     *       Logic: 4 >= 4 = true (job document matched)
+     *    3. experienceRange.min = 3 
+     *       Logic: 3 >= 4 = false (job document not matched)
+     */
     if (jobFilterOptions?.minExperience || jobFilterOptions?.minExperience === 0) {
       queryBoolMust.push({
         range: {
           "experienceRange.min": {
-            lte: jobFilterOptions.minExperience,
+            gte: jobFilterOptions.minExperience,
           },
         },
       });
     }
 
-    // Add max experience range filter if provided
+    /**
+     * @example
+     * If maxExperience = 10:
+     *    1. experienceRange.max = 7 
+     *       Logic: 7 <= 10 = true (job document matched)
+     *    2. experienceRange.max = 10 
+     *       Logic: 10 <= 10 = true (job document matched)
+     *    3. experienceRange.max = 15 
+     *       Logic: 15 <= 10 = false (job document not matched)
+     */
     if (jobFilterOptions?.maxExperience || jobFilterOptions?.maxExperience === 0) {
       queryBoolMust.push({
         range: {
-          "experienceRange.max": { gte: jobFilterOptions.maxExperience },
+          "experienceRange.max": { lte: jobFilterOptions.maxExperience },
         },
       });
     }
 
-    // Add min salary range filter if provided
+    /**
+     * @example
+     * If minSalary = 50000:
+     *    1. salaryRange.min = 70000 
+     *       Logic: 70000 >= 50000 = true (job document matched)
+     *    2. salaryRange.min = 50000 
+     *       Logic: 50000 >= 50000 = true (job document matched)
+     *    3. salaryRange.min = 40000 
+     *       Logic: 40000 >= 50000 = false (job document not matched)
+     */
     if (jobFilterOptions?.minSalary || jobFilterOptions?.minSalary === 0) {
       queryBoolMust.push({
         range: {
           "salaryRange.min": {
-            lte: jobFilterOptions.minSalary,
+            gte: jobFilterOptions.minSalary,
           },
         },
       });
     }
 
-    // Add max salary range if provided
+    /**
+     * @example
+     * If maxSalary = 100000:
+     *    1. salaryRange.max = 70000 
+     *       Logic: 70000 <= 100000 = true (job document matched)
+     *    2. salaryRange.max = 100000 
+     *       Logic: 100000 <= 100000 = true (job document matched)
+     *    3. salaryRange.max = 150000 
+     *       Logic: 150000 <= 100000 = false (job document not matched)
+     */
     if (jobFilterOptions?.maxSalary || jobFilterOptions?.maxSalary === 0) {
       queryBoolMust.push({
         range: {
           "salaryRange.max": {
-            gte: jobFilterOptions.maxSalary,
+            lte: jobFilterOptions.maxSalary,
           },
         },
       });
