@@ -115,6 +115,14 @@ export interface AwsOpensearchRecordListingPaginationResponseDTO {
    */
   lastKey?: string;
 
+  /**
+   * @description This is the last key from `s3 vector`, whenever we list records from s3 vector and
+   * use those ids to fetch from opensearch.
+   * 
+   * @todo: This is not the best way to use in this interface, need to think and optimize the readability.
+   */
+  s3VectorLastKey?: boolean;
+
   // sortOrder means the order in which the records should be sorted.
   sortOrder?: AwsOpensearchSortOrderTypeEnum;
 

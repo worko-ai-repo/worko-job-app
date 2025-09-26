@@ -1,3 +1,5 @@
+import { EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS } from "../dtos/EmailTemplatePlaceholder.dto";
+
 /**
  * APP_CONSTANTS
  *
@@ -48,6 +50,9 @@ const APP_CONSTANTS = {
     BULK_CVS: "companies/{companyId}/bulk-cvs/{corporateBulkJdId}", // To upload the bulk cvs uplaoded via `corporate dashboard` or `admin dashboard`
     BATCH_INFERENCE_INPUT: "input/{externalJobSource}/{date}/{ulidId}/", // This is used to store the `id` attributes of the `OpenSearchJob.model.ts` and some batch inference related files in to s3
     BATCH_INFERENCE_OUTPUT: "output/{externalJobSource}/{date}/{ulidId}/", // This is used to store the batch inference output files in to s3
+    USER_JOB_APPL_DOC:
+      "users/{userId}/job-applications/{jobApplicationId}/documents",
+    HR_OFFER_LETTER_SENT: `users/{userId}/job-applications/{jobApplicationId}/offer-letters`,
   },
 
   /**
@@ -69,11 +74,11 @@ const APP_CONSTANTS = {
    *
    * This is the maximum number of documents that can be created in a single bulk request to the OpenSearch index.
    */
-  AWS_OPENSEARCH_BULK_CREATE_COUNT: 300,
+  AWS_OPENSEARCH_AND_S3_VECTOR_BULK_CREATE_COUNT: 300,
 
   /**
    * AWS_DYNAMODB_BATCH_ACTION_LIMIT
-   * 
+   *
    * This is the maximum number of actions that can be performed in a single batch request to the DynamoDB table.
    */
   AWS_DYNAMODB_BATCH_ACTION_LIMIT: {
@@ -81,7 +86,7 @@ const APP_CONSTANTS = {
   },
 
   // The possible options for the page sizes that is expected in the request payload.
-  PAGE_LENGTH_OPTIONS: [10, 25, 50, 100, 150, 200, 250],
+  PAGE_LENGTH_OPTIONS: [10, 25, 30, 50, 100, 150, 200, 250],
 
   // If "pageSize" from the request does not match with one of the "PAGE_LENGTH_OPTIONS" value, then this value would be used.
   PAGE_LENGTH_DEFAULT: 25,
@@ -129,11 +134,27 @@ const APP_CONSTANTS = {
 
     /**
      * WORKO_JOB_APP_OPENSEARCH_OPERATIONS
-     * 
-     * This lambda function is used to perform opensearch operations 
+     *
+     * This lambda function is used to perform opensearch operations
      * This is VPC attached lambda which is used to communicate with VPC-attached OpenSearch
      */
     WORKO_JOB_APP_OPENSEARCH_OPERATIONS: `worko-job-app-${process.env.APP_SLS_STAGE}-app-opensearch-operations`,
+
+    /**
+     * WORKO_S3_VECTOR_JOB_SEARCH
+     * 
+     * @description 
+     *  1. We are using this lambda to invoke for searching jobs from s3 vector 
+     */
+    WORKO_S3_VECTOR_JOB_SEARCH: process.env.APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME,
+
+    /**
+     * WORKO_S3_VECTOR_JOB_INGESTION
+     * 
+     * @description
+     *  1. We are using this lambda to invoke for managing CRUD operations on jobs from s3 vector 
+     */
+    WORKO_S3_VECTOR_JOB_INGESTION: process.env.APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME,
   },
 
   MATCHING_SCORE_PROMPT:
@@ -174,13 +195,21 @@ const APP_CONSTANTS = {
    */
   BULK_JOB_UPDATE_LIMIT: {
     MIN: 1,
-    MAX: 30,
+    MAX: 10,
   },
 
   /**
    * BULK_JOB_APPLICATION_LIMIT
    */
   BULK_JOB_APPLICATION_UPDATE_LIMIT: {
+    MIN: 1,
+    MAX: 25,
+  },
+
+  /**
+   * BULK_REQUEST_EVALUATION_CREATE_LIMIT
+   */
+  BULK_REQUEST_EVALUATION_CREATE_LIMIT: {
     MIN: 1,
     MAX: 30,
   },
@@ -227,19 +256,29 @@ const APP_CONSTANTS = {
    * FRONTEND_URLS
    */
   FRONTEND_URLS: {
+    WORKO_APP_URL: process.env.APP_WORKO_FRONTEND_BASE_URL ?? "https://worko.ai", 
     WORKO_INTERNAL_JOB_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/jobs/{companyName}/{jobId}`,
 
-    /**
-     * DEV:
-     *  @example: "https://dev-ui.worko.work/v1/corporate/cApplicants/01JWAV427WK374DR3ACKV25RQ1"
-     *
-     * PROD:
-     *  @example: "https://worko.ai/v1/corporate/cApplicants/01JWAV427WK374DR3ACKV25RQ1"
-     *
-     * @reference
-     *  1. "{jobId}" is the `id` attribute of `CompanyJob.model.ts` and `OpenSearchJob.model.ts`
-     */
     WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/v1/corporate/cApplicants/{jobId}`,
+
+    WORKO_CANDIDATE_JOB_APPLICATION_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/v1/candidate/jobs`,
+
+    WORKO_CORPORATE_LOGIN: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/auth/login`,
+
+    WORKO_GUIDANCE_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/guidance/`,
+  },
+
+  /**
+   * Returns the URL for the evaluator dashboard based on the environment.
+   *
+   * @returns {string} The URL for the evaluator dashboard.
+   */
+  get WORKO_EVALUATOR_DASHBOARD_URL(): string {
+    const PROD_URL: string = `${process.env.APP_WORKO_FRONTEND_BASE_URL}/auth/evaluator-dashboard/login?jobApplicationId={jobApplicationId}&evaluationRequestId={evaluationRequestId}`;
+    const DEV_URL: string = `${process.env.APP_WORKO_FRONTEND_BASE_URL}/auth/evaluator-dashboard/login?jobApplicationId={jobApplicationId}&evaluationRequestId={evaluationRequestId}`;
+
+    // return the time based on the environment
+    return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_URL : DEV_URL;
   },
 
   FRONTEND_ORIGINS: {
@@ -258,12 +297,13 @@ const APP_CONSTANTS = {
 
   /**
    * SERVERLESS_FUNCTION_NAMES
-   * 
+   *
    * @description These are the function names in `serverless.ts` file
    */
   SERVERLESS_FUNCTION_NAMES: {
     APP_SCHEDULER_HANDLER: "app-scheduler-handler",
-    APP_SCHEDULER_BRIGHT_DATA_EXTERNAL_JOBS: "app-scheduler-bright-data-external-jobs",
+    APP_SCHEDULER_BRIGHT_DATA_EXTERNAL_JOBS:
+      "app-scheduler-bright-data-external-jobs",
   },
 
   /**
@@ -283,11 +323,26 @@ const APP_CONSTANTS = {
   JOB_APPLICATION_READABLE_STATUS: {
     APPLIED: "Applied",
     REJECTED: "Not Selected",
+    ACCEPTED: "Accepted",
     CV_DOWNLOADED: "CV Downloaded",
     UNDER_EVALUATION: "Under Evaluation",
     PROCESSING_INTERVIEW: "Processing Interview",
     INTERVIEW_DONE: "Interview Done",
     HIRED: "Hired",
+    JOINED: "Joined",
+    ON_HOLD: "On Hold",
+    HIRING_IN_PROCESS: "Hiring In Process",
+    DOCUMENT_REQUESTED: "Document Requested",
+    DOCUMENT_SUBMITTED: "Document Submitted",
+    DOCUMENT_VERIFIED: "Document Verified",
+    OFFER_SENT: "Offer Sent",
+    REVISED_OFFER_SENT: "Revised Offer Sent",
+    DOCUMENT_REVISION_REQUESTED: "Document Revision Requested",
+    DOCUMENT_REVISION_REQUEST_SUBMITTED: "Document Revision Request Submitted",
+    DOCUMENT_ADDITIONAL_REQUESTED: "Document Additional Requested",
+    DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED:
+      "Document Additional Request Submitted",
+    OFFER_ISSUE_RAISED: "Offer Issue Raised",
   },
 
   /**
@@ -342,10 +397,25 @@ const APP_CONSTANTS = {
   },
 
   /**
-   * FANTASTIC_JOB_CLEANUP_CONFIG
+   * USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE
+   *
+   * 1. Whenever a job application is in `Hiring in process` status,
+   * "corporate" or "worko-admin" may request few documents like "internship certificate", "btech certificate" etc
+   * from "applicant" to be uploaded, and the range should be between specified minimum and maximum.
+   *
+   * 2. And "Applicant" will upload the documents requested by "corporate" or "worko-admin" and the range should be between specified minimum and maximum.
    */
-  FANTASTIC_JOB_CLEANUP_CONFIG: {
-    DELETE_OLDER_THAN_DAYS: 30,
+  USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE: {
+    MIN: 1,
+    MAX: 15,
+  },
+
+  /**
+   * EXTERNAL_JOB_CLEANUP_CONFIG
+   */
+  EXTERNAL_JOB_CLEANUP_CONFIG: {
+    FANTASTIC_JOB_DELETE_OLDER_THAN_DAYS: 30,
+    BRIGHT_DATA_JOB_DELETE_OLDER_THAN_DAYS: 30,
   },
 
   /**
@@ -404,6 +474,7 @@ const APP_CONSTANTS = {
     ADMIN: "admin",
     CORPORATE_ADMIN: "corporate-admin",
     CORPORATE_RECRUITER: "corporate-recruiter",
+    EVALUATOR: "evaluator",
   },
 
   // Worko App Domain
@@ -411,6 +482,42 @@ const APP_CONSTANTS = {
 
   // Guidance Email
   GUIDANCE_EMAIL: "guidance@worko.ai.",
+
+  WORKO_SOCIAL_PROFILE_DETAILS: {
+    INSTAGRAM: {
+      URL: process.env.APP_WORKO_SOCIAL_PROFILE_INSTAGRAM_URL,
+      LOGO_URL: process.env.APP_WORKO_SOCIAL_PROFILE_INSTAGRAM_LOGO_URL,
+    },
+    LINKEDIN: {
+      URL: process.env.APP_WORKO_SOCIAL_PROFILE_LINKEDIN_URL,
+      LOGO_URL: process.env.APP_WORKO_SOCIAL_PROFILE_LINKEDIN_LOGO_URL,
+    },
+  },
+
+  get GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL(): EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+    const { INSTAGRAM, LINKEDIN } = this.WORKO_SOCIAL_PROFILE_DETAILS;
+    const { LOGO_URL: instagramLogoUrl, URL: instagramUrl } = INSTAGRAM;
+    const { LOGO_URL: linkedInLogoUrl, URL: linkedInUrl } = LINKEDIN;
+
+    const socialProfielForEmails: EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS =
+      {
+        workoLogoUrl:
+          this.WORKO_LOGO_URL ??
+          "https://worko.ai/assets/logo-text-Dfe5k43I.webp",
+        instagramUrl: instagramUrl ?? "https://instagram.com/worko_ai",
+        instagramLogoUrl:
+          instagramLogoUrl ??
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/2048px-Instagram_icon.png",
+        linkedInUrl: linkedInUrl ?? "https://www.linkedin.com/company/worko",
+        linkedInLogoUrl:
+          linkedInLogoUrl ??
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/600px-LinkedIn_logo_initials.png",
+      };
+
+    return socialProfielForEmails
+  },
+
+  WORKO_LOGO_URL: process.env.APP_WORKO_LOGO_URL,
 };
 
 export default APP_CONSTANTS;

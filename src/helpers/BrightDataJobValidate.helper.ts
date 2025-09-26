@@ -25,7 +25,7 @@ class BrightDataJobValidateHelper {
   ): boolean {
 
    // If company name is empty string or null or undefined then return false
-   if (!companyName || companyName.toUpperCase().trim() === "NOT MENTIONED") {
+   if (!companyName) {
      return false;
    }
 

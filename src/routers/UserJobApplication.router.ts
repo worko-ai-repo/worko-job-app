@@ -50,6 +50,13 @@ UserJobApplicationRouter.get("/", userJobApplicationController.getJobApplication
 UserJobApplicationRouter.patch("/:id/corp-action", userJobApplicationController.updateJobApplicationByCorpUser);
 
 /**
+ * Update job application by applicant
+ * 
+ * @authorisedRoles ["loggedInUser"]
+ */
+UserJobApplicationRouter.patch("/:id/applicant-action", userJobApplicationController.updateJobApplicationByApplicant);
+
+/**
  * Request feedback by candidate
  * @authorisedRoles ["loggedInUser"]
  */

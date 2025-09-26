@@ -1,9 +1,11 @@
 // Import Common Dto
 import { JobLocationDto, MinMaxRange, RecordListingFilterOptions, RecordListingFilterRequestDTO } from '../dtos/Common.dto';
+import { SalaryRangeDto } from "./Job.dto";
 
 // Import Enums
 import { CompanyJobStatusEnum, CompanyJobWorkModeEnum } from '../enums/CompanyJob.enum';
 import { JobStatusEnum, JobWorkModeEnum } from '../enums/Job.enum';
+
 
 /**
  * SalaryRange
@@ -27,18 +29,21 @@ export interface CompanyJobCreateApiDto {
   otherRequirements?: string;
   experienceRange: MinMaxRange;
   noticePeriod?: number;
+  flexibleNotice?: boolean;
   numOfOpenings: number;
-  salaryRange: MinMaxRange;
+  salaryRange: SalaryRangeDto;
   department: string;
   location: JobLocationDto;
   workMode: JobWorkModeEnum;
   typeofEmployment: string;
   coreSkills: string[]; // Array of skills like [JAVA, PYTHON] i.e skillName
+  goodToHaveSkills?: string[];
   softSkills: string[]; // Array of skills like [COMMUNICATION, TEAMWORK]
   technicalSkills: string[]; // Array of skills like [MS EXCEL, MS OFFICE, SAP]
   miscellaneousSkills?: string[]; // Array of any skills could be from the above 3 fields.
   status: JobStatusEnum;
-  displaySalaryRange?: boolean; 
+  displaySalaryRange?: boolean;
+  gradeLevel?: number;
 }
 
 /**
@@ -69,17 +74,20 @@ export interface CompanyJobUpdateApiDto {
   otherRequirements?: string;
   experienceRange?: MinMaxRange;
   noticePeriod?: number;
+  flexibleNotice?: boolean;
   numOfOpenings?: number;
-  salaryRange?: MinMaxRange;
+  salaryRange?: SalaryRangeDto;
   department?: string;
   location?: JobLocationDto;
   workMode?: JobWorkModeEnum;
   typeofEmployment?: string;
   coreSkills?: string[];
+  goodToHaveSkills?: string[];
   softSkills?: string[];
   technicalSkills?: string[];
   miscellaneousSkills?: string[];
   displaySalaryRange?: boolean;
+  gradeLevel?: number;
 }
 
 /**
@@ -103,9 +111,11 @@ export interface CompanyJobUpdateDto extends CompanyJobUpdateApiDto {
  */
 export interface CompanyJobCommonUpdateDto {
   updatedByUserId: string;
-  updatedByCorporateUserId: string;  
+  updatedByCorporateUserId: string;
   status: JobStatusEnum;
   isDeleted: boolean;
+  shortSoftDeleteReason: string;
+  detailedSoftDeleteReason: string;
 }
 
 /**

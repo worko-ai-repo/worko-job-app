@@ -14,11 +14,12 @@ import BaseDao from "./Base.dao";
 
 // import dtos
 import { UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions } from "../dtos/UserJobApplication.dto";
-import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
+import { PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
 
 // import enums
 import { SortOrderTypeEnum } from "../enums/Common.enum";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
+import { JobApplicationStatus, UserJobApplicationHiringInProcessRelatedStatusEnum, UserJobApplicationRejectUpdateStatusEnum } from "../enums/UserJobApplication.enum";
 
 // import helpers
 import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.helper";
@@ -387,7 +388,18 @@ class UserJobApplicationDao implements BaseDao {
 
     // Apply status filter if provided
     if (jobApplicationRequestBody.status) {
-      query = query.where("status").eq(jobApplicationRequestBody.status);
+      /**
+       * If job application status is `HIRING_IN_PROCESS` then 
+       * retrieve all the job applications with below specified statuses also:
+       *  @see {UserJobApplicationHiringInProcessRelatedStatusEnum}
+       */
+      if(jobApplicationRequestBody.status === JobApplicationStatus.HIRING_IN_PROCESS) {
+        query = query.where("status").in(
+          Object.values(UserJobApplicationHiringInProcessRelatedStatusEnum),
+        );
+      } else {
+        query = query.where("status").eq(jobApplicationRequestBody.status);
+      }
     }
 
     if(jobApplicationRequestBody.referAndEarnId) {
@@ -419,20 +431,24 @@ class UserJobApplicationDao implements BaseDao {
       The and() method initiates a condition block where all conditions within it must be satisfied.
       The parenthesis() method allows grouping of conditions for complex queries.
       */
-      query = query.and().parenthesis((condition) => {
-        return (
-          condition
-            .where("status")
-            .contains(searchTextValue.toUpperCase())
+      query = query.and().parenthesis((condition: Condition) => {
+        let searchCondition: Condition = condition
+          .where("status")
+          .contains(searchTextValue.toUpperCase())
+          .or()
+          // NOTE: `companyName` search will not work when the `companyName` is changed in `CompanyDetail` model and
+          // if the `companyName` is changed in `CompanyDetail` model, then the `companyName` will not be updated in `UserJobApplication` model
+          .where("companyName")
+          .contains(searchTextValue.toUpperCase());
+
+        if(!jobApplicationRequestBody.userEmail) {
+          searchCondition = searchCondition
             .or()
             .where("PK")
-            .contains(`USR#EML#${searchTextValue.toLowerCase()}`)
-            .or()
-            // NOTE: `companyName` search will not work when the `companyName` is changed in `CompanyDetail` model and
-            // if the `companyName` is changed in `CompanyDetail` model, then the `companyName` will not be updated in `UserJobApplication` model
-            .where("companyName")
-            .contains(searchTextValue.toUpperCase())
-        );
+            .contains(`USR#EML#${searchTextValue.toLowerCase()}`);
+        }
+
+        return searchCondition;
       });
     }
 
@@ -440,6 +456,34 @@ class UserJobApplicationDao implements BaseDao {
     return getPaginatedResultsWithMatchingConditions<
       DbUserJobApplicationDto,
       UserJobApplicationListingFilterOptions
+    >(query, jobApplicationRequestBody);
+  }
+
+  async getAllNonInitiatedHiringStatusJobApplicationsToReject(
+    jobId: string,
+    jobApplicationRequestBody: RecordListingFilterOptions
+  ): Promise<PaginatedResultsWithMatchingConditionsResponse<DbUserJobApplicationDto>> {
+    global.logger.info(
+      `Get All Non Initiated Hiring Status Job Applications [DAO]`,
+      {
+        jobId,
+        methodName: this.getAllNonInitiatedHiringStatusJobApplicationsToReject.name,
+        jobApplicationRequestBody,
+      }
+    );
+
+    // Retrieve all the job applications for a specific job
+    let query: Query<DbUserJobApplicationDto> = UserJobApplicationModel.query("GSI3PK")
+        .eq(this.GSI3PK.strtr({ "{jobId}": jobId }))
+        .where("GSI3SK")
+        .beginsWith(this.GSI3SK.strtr({ "{id}": "" }))
+        .where("status").in(
+          Object.values(UserJobApplicationRejectUpdateStatusEnum),
+        ) 
+
+    return getPaginatedResultsWithMatchingConditions<
+      DbUserJobApplicationDto,
+      RecordListingFilterOptions
     >(query, jobApplicationRequestBody);
   }
 

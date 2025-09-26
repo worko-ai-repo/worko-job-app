@@ -51,6 +51,33 @@ export enum ReferAndEarnStatusEnum {
   WITHDRAWAL_REJECTED = "WITHDRAWAL_REJECTED",
 }
 
+export enum ReferAndEarnAllowedAdminUpdateStatusEnum {
+  /**
+   * WITHDRAWAL_ACCEPTED
+   *
+   * Whenever Request was accepted by worko admin
+   */
+  WITHDRAWAL_ACCEPTED = "WITHDRAWAL_ACCEPTED",
+
+  /**
+   * PAYMENT_COMPLETED
+   *
+   * Whenever Payment was completed by worko admin
+   */
+  PAYMENT_COMPLETED = "PAYMENT_COMPLETED",
+
+  /**
+   * WITHDRAWAL_REJECTED
+   *
+   * 1. Whenever the Request was rejected by worko admin
+   * 2. Whenever the Job application of `recipient` was rejected
+   *    1. Because of low matching score
+   *    2. Because of corporate admin/recruiter rejecting
+   *    3. Because of worko admin rejecting
+   */
+  WITHDRAWAL_REJECTED = "WITHDRAWAL_REJECTED",
+}
+
 /**
  * ReferAndEarnJobApplicationStatusEnum
  */
@@ -101,9 +128,9 @@ export enum ReferAndEarnJobApplicationStatusEnum {
   /**
    * JOINED
    *
-   * Whenever the `recipient` got hired and joined for the `company` then
-   * `worko admin` will update the Refer And Earn JobApplication Status 
-   * to `JOINED`.
+   * Whenever the `status` attribute in the `UserJobApplication.model.ts` is `JOINED`:
+   *  1. Whenever the `worko admin` update the `job application` status to `JOINED`
+   *  2. Whenever the `corporate admin/recruiter` update the `job application` status to `JOINED`
    */
   JOINED = "JOINED",
 }

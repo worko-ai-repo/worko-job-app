@@ -5,7 +5,7 @@ import * as dynamoose from "dynamoose";
 import APP_CONSTANTS from "../configs/constants.config";
 import { DB_CONSTANTS } from "./DB.constants";
 
-// Import `worko-job-app` table related models
+// Import DB models
 import { UserJobApplicationModel } from "./models/UserJobApplication.model";
 import { CompanyJobModel } from "./models/CompanyJob.model";
 import { ExternalJobModel } from "./models/ExternalJob.model";
@@ -13,8 +13,6 @@ import { UserExternalJobApplicationModel } from "./models/UserExternalJobApplica
 import { ReferAndEarnModel } from "./models/ReferAndEarn.model";
 import { BatchInferenceLogModel } from "./models/BatchInferenceLog.model";
 import { FantasticJobLogModel } from "./models/FantasticJobLog.model";
-
-// Import `worko` table related models
 import { EmailTemplateModel } from "./models/EmailTemplate.model";
 import { EmailLogModel } from "./models/EmailLog.model";
 import { WhatsappTemplateModel } from "./models/WhatsappTemplate.model";
@@ -26,6 +24,10 @@ import { CorporateUserModel } from "./models/CorporateUser.model";
 import { UserModel } from "./models/User.model";
 import { UserDetailModel } from "./models/UserDetail.model";
 import { ScheduleJobModel } from "./models/ScheduleJob.model";
+import { RequestEvaluationModel } from "./models/RequestEvaluation.model";
+import { ResponseEvaluationModel } from "./models/ResponseEvaluation.model";
+import { EvaluatorDetailModel } from "./models/EvaluatorDetail.model";
+import { UserJobApplicationAuthorNoteModel } from "./models/UserJobApplicationAuthorNote.model";
 
 /**
  * DBConfig
@@ -99,6 +101,10 @@ class DBConfig {
         ReferAndEarnModel,
         BatchInferenceLogModel,
         FantasticJobLogModel,
+        RequestEvaluationModel,
+        ResponseEvaluationModel,
+        EvaluatorDetailModel,
+        UserJobApplicationAuthorNoteModel,
       ]
     );
   }

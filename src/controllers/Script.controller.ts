@@ -22,37 +22,34 @@ import ErrorCodeName from "../utils/error-code-name.util";
  */
 class ScriptController {
   /**
-   * scriptScheduleJobExternalJobApi
+   * scriptSampleEntityTest
    *
-   * To Schedule job for external job api.
+   * To test sample entity
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @param {NextFunction} next - The Express next middleware function.
    */
-  scriptScheduleJobExternalJobApi = async (
+  scriptSampleEntityTest = async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
     try {
       global.logger.info(
-        `Script to schedule job for external job api [Script Controller]`,
+        `Script for sample entity test [Script Controller]`,
         {
-          filePath: __filename,
-          methodName: this.scriptScheduleJobExternalJobApi.name,
+          methodName: this.scriptSampleEntityTest.name,
         }
       );
 
-      const scheduleJobExternalJobApiDetails: boolean =
-        await scriptServiceObj.scriptScheduleJobExternalJobApi();
+      const response =
+        await scriptServiceObj.scriptSampleEntityTest();
 
-      res.status(HttpStatusCode.OK_200).json({
-        message: `Scheduled job for external job api response: ${scheduleJobExternalJobApiDetails}`,
-      });
+      res.status(HttpStatusCode.OK_200).json(response);
     } catch (error) {
       global.logger.debug(
-        `Error at catch block in while Scheduled job for external job api. [Script Controller]`,
+        `Error at catch block in while testing sample entity. [Script Controller]`,
         {
           error,
         }
@@ -87,9 +84,11 @@ class ScriptController {
         }
       );
 
+      const jobsWithCompanyDetails = await scriptServiceObj.retrieveJobsAndAttachCompanyDetails();
+
       // transfer data from worko-ddb to worko-jobs-opensearch
       const transferDataFromWorkoDdbToWorkoJobsOpensearchDetails: boolean =
-        await scriptServiceObj.scriptWorkoDdbToWorkoJobsOpensearch(req.body);
+        await scriptServiceObj.scriptWorkoDdbToWorkoJobsOpensearch(jobsWithCompanyDetails);
       global.logger.info(
         `Transfer data from worko-ddb to worko-jobs-opensearch details: ${transferDataFromWorkoDdbToWorkoJobsOpensearchDetails}`
       );

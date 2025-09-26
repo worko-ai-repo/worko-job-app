@@ -6,6 +6,7 @@ import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 
 // import dtos
 import {
+  UserJobApplicationApplicantUpdateApiDTO,
   UserJobApplicationBulkUpdateApiDTO,
   UserJobApplicationCreateApiDTO,
   UserJobApplicationDisplayToCorporateApiDTO,
@@ -47,6 +48,7 @@ import {
   userJobApplicationUpdateValidation,
   userJobApplicationDisplayToCorporateValidation,
   userJobApplicationBulkUpdateApiDtoValidation,
+  userJobApplicationApplicantUpdateValidation,
 } from "../schemas/UserJobApplication.schema";
 
 // import types
@@ -398,6 +400,46 @@ class UserJobApplicationController {
       // return the response
       res.status(HttpStatusCode.OK_200).json(userJobApplicationDetails);
     } catch (error) {
+      next(error);
+    }
+  };
+
+  updateJobApplicationByApplicant = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(`Update Job Application By Applicant [Controller]`, {
+        methodName: this.updateJobApplicationByApplicant.name,
+      });
+
+      const jobApplicationId: string = req.params.id;
+      
+      const reqBody: UserJobApplicationApplicantUpdateApiDTO = req.body;
+      const { error: reqBodyError, value: jobApplicationRequestBody } =
+        userJobApplicationApplicantUpdateValidation.validate(reqBody, {
+          abortEarly: false,
+        });
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+
+      const jobApplication: DbUserJobApplicationDto =
+        await userJobApplicationServiceObj.updateJobApplicationByApplicant(
+          jobApplicationId,
+          jobApplicationRequestBody
+        );
+
+      res.status(HttpStatusCode.OK_200).json(
+        jobApplication
+      )
+    } catch (error) {
+      global.logger.error(`Update Job Application By Applicant [Controller]`, {
+        methodName: this.updateJobApplicationByApplicant.name,
+        error,
+      });
+
       next(error);
     }
   };

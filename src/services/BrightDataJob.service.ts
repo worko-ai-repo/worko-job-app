@@ -174,7 +174,13 @@ class BrightDataJobService {
 
     const brightDataJobs: BrightDataJobApiResponse[] = await brightDataJobCloudApiLibraryObj.getBrightDataJobBySnapshotId(snapshotId);
 
-    if(!brightDataJobs.length) {
+    /**
+     * If the jobs length is 0 to 99, then it returns false, because
+     * to perform batch inference, it requires at least 100 jobs.
+     * 
+     * Otherwise, process the jobs for batch inference.
+     */
+    if(!brightDataJobs.length || brightDataJobs.length < 100) {
       return false;
     }
 

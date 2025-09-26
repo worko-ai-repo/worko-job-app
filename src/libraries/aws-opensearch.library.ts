@@ -13,6 +13,7 @@ import {
   DeleteByQuery_Response,
   Index_RequestBody,
   Index_Response,
+  Scroll_Response,
   Search_RequestBody,
   Search_Response,
   Update_Response,
@@ -244,6 +245,53 @@ class AwsOpensearchLibrary {
 
     // Return the paginated result
     return paginatedResult;
+  }
+
+  /**
+   * getAllDocumentsWithoutPagination
+   *
+   * Retrieves all documents from an OpenSearch index without pagination using scroll.
+   *
+   * @param {string} indexName - The name of the OpenSearch index.
+   * @param {Search_RequestBody} searchRequestBody - The search request body.
+   * @returns {Promise<EntityDto[]>} - A promise that resolves to all matching documents.
+   */
+  async getAllDocumentsWithoutPagination<EntityDto>(
+    indexName: string,
+    searchRequestBody: Search_RequestBody
+  ): Promise<EntityDto[]> {
+    const allDocuments: EntityDto[] = [];
+    
+    const initialResponse: Search_Response = await this.opensearchClient.search({
+      index: indexName,
+      scroll: '1m', // 1 minute
+      body: {
+        ...searchRequestBody,
+        size: 1000
+      },
+    });
+
+    allDocuments.push(...initialResponse.body.hits.hits.map((hit: Hit) => hit._source as EntityDto));
+    
+    let scrollId: string | undefined = initialResponse.body._scroll_id;
+    
+    while (scrollId && initialResponse.body.hits.hits.length > 0) {
+      const scrollResponse: Scroll_Response = await this.opensearchClient.scroll({
+        scroll_id: scrollId,
+        scroll: '1m' // 1 minute
+      });
+      
+      if (scrollResponse.body.hits.hits.length === 0) break;
+      
+      allDocuments.push(...scrollResponse.body.hits.hits.map((hit: Hit) => hit._source as EntityDto));
+      scrollId = scrollResponse.body._scroll_id;
+    }
+    
+    if (scrollId) {
+      await this.opensearchClient.clearScroll({ scroll_id: scrollId });
+    }
+    
+    return allDocuments;
   }
 
   /**

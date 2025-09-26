@@ -3,6 +3,7 @@ import Joi from "joi";
 
 // Import enums
 import {
+  ReferAndEarnAllowedAdminUpdateStatusEnum,
   ReferAndEarnJobApplicationStatusEnum,
   ReferAndEarnStatusEnum,
 } from "../enums/ReferAndEarn.enum";
@@ -137,24 +138,16 @@ export const referAndEarnCreateApiDtoValidation = Joi.object({
 export const referAndEarnUpdateApiDtoValidation = Joi.object({
   status: Joi.string()
     .optional() // allow `undefined` value
-    .valid(...Object.values(ReferAndEarnStatusEnum))
+    .valid(...Object.values(ReferAndEarnAllowedAdminUpdateStatusEnum))
     .messages({
       "any.only": `Invalid Refer and earn status. Please provide a valid value from
-  ${Object.values(ReferAndEarnStatusEnum).join(", ")}.`,
+  ${Object.values(ReferAndEarnAllowedAdminUpdateStatusEnum).join(", ")}.`,
     }),
 
   withDrawalRequestRejectedReason: Joi.string()
     .optional() // allow `undefined` value
     .messages({
       "string.base": "The WithDrawal request rejected reason field must be a string.",
-    }),
-
-  jobApplicationStatus: Joi.string()
-    .optional() // allow `undefined` value
-    .valid(...Object.values(ReferAndEarnJobApplicationStatusEnum))
-    .messages({
-      "any.only": `Invalid Refer and earn job application status. Please provide a valid value from
-      ${Object.values(ReferAndEarnJobApplicationStatusEnum).join(", ")}.`,
     }),
 
   referrerBankDetails: Joi.object({

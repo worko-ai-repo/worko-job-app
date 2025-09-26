@@ -20,7 +20,6 @@ import { DateTime } from "luxon";
 // Import constants
 import { awsOpensearchLibrary, awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import APP_CONSTANTS from "../configs/constants.config";
-import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJob.constant";
 
 // Import daos
 import { jobDaoObj } from "../daos/Job.dao";
@@ -61,6 +60,7 @@ import { fantasticJobServiceObj } from "./FantasticJob.service";
 import HttpStatusCode from "../utils/http-codes.util";
 import { BaseError } from "../utils/errors.util";
 import ErrorCodeName from "../utils/error-code-name.util";
+import { brightDataJobServiceObj } from "./BrightDataJob.service";
 
 /**
  * ScriptService
@@ -68,17 +68,12 @@ import ErrorCodeName from "../utils/error-code-name.util";
  * Service for handling script-related operations related to updating GSI attributes.
  */
 class ScriptService {
-  /**
-   * scriptScheduleJobExternalJobApi
-   *
-   * Script to schedule job for external job api
-   *
-   * @returns {Promise<boolean>} A promise that resolves to a boolean indicating whether the scheduled job was created successfully.
-   */
-  async scriptScheduleJobExternalJobApi(): Promise<boolean> {
+  async scriptSampleEntityTest() {
     global.logger.info(
-      `Script to schedule job for external job api [Script Service]`
+      `Script for sample entity test [Script Service]`
     );
+
+    // return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs("s_mfv4waje20ydwun043"); // 3867 jobs
 
     return false;
   }
@@ -138,6 +133,67 @@ class ScriptService {
     };
 
     return dbJobDto;
+  }
+
+  /**
+   * Gets all company jobs with pagination.
+   *
+   * 1. Creates a query using GSI1PK and GSI1SK.
+   * 2. Uses `getPaginatedResultsWithMatchingConditions` to get the paginated results.
+   * 3. Extracts the data from the paginated response.
+   * 4. Converts the data to an array.
+   * 5. Returns the array.
+   *
+   * @param {number} pageSize - The number of items to return per page.
+   * @returns {Promise<DbCompanyJobDto[]>} A promise that resolves to an array of `DbCompanyJobDto` objects.
+   */
+  async getAllCompanyJobsByPageSize(
+    pageSize: number
+  ): Promise<DbCompanyJobDto[]> {
+    let query: Query<DbCompanyJobDto> = CompanyJobModel.query("GSI1PK")
+      .eq(companyJobDaoObj.GSI1PK)
+      .where("GSI1SK")
+      .beginsWith(companyJobDaoObj.GSI1SK.strtr({ "{id}": "" }));
+
+    const requestBody: RecordListingFilterOptions = {
+      pageSize: pageSize,
+    };
+
+    const totalCompanyJobs: PaginatedResultsWithMatchingConditionsResponse<DbCompanyJobDto> =
+      await getPaginatedResultsWithMatchingConditions<
+        DbCompanyJobDto,
+        RecordListingFilterOptions
+      >(query, requestBody);
+
+    // Extract referrals data
+    const { lastKey, count, timesQueried, queriedCount, ...companyJobsData } =
+      totalCompanyJobs;
+
+    // Convert to array
+    const companyJobArray: DbCompanyJobDto[] = Object.values(companyJobsData);
+
+    return companyJobArray;
+  }
+
+  /**
+   * Retrieves all company jobs with pagination and attaches company details.
+   *
+   * @returns {Promise<(DbCompanyJobDto & { companyDetails: DbCompanyDetailDto | undefined; })[]>}
+   * A promise that resolves to an array of `DbCompanyJobDto` objects each with a `companyDetails` property
+   * that may be `undefined` if company details are not available.
+   */
+  async retrieveJobsAndAttachCompanyDetails(): Promise<
+    (DbCompanyJobDto & {
+      companyDetails: DbCompanyDetailDto | undefined;
+    })[]
+  > {
+    const retrieveAllJobsFromDynamoDbByPageSize: DbCompanyJobDto[] =
+      await this.getAllCompanyJobsByPageSize(500);
+
+    // Attach company details
+    return attachCompanyDetails<DbCompanyJobDto>(
+      retrieveAllJobsFromDynamoDbByPageSize
+    );
   }
 
   /**

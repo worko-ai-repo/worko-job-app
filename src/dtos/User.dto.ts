@@ -173,3 +173,13 @@ export interface UsersListingFilterRequestDTO
   // Should be used when requesting to filter users records.
   userType?: UserType;
 }
+
+export interface UserDetailDbResponsibilitiesDto {
+  companyId?: string;
+  companyName?: string;
+  date?: {
+    startDate: string; // "2025-03-20T16:02:34.277Z"
+    endDate?: string;
+  };
+  description: string;
+};
