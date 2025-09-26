@@ -53,6 +53,7 @@ export enum JobSourcedFromEnum {
 export enum OpenSearchOperationsEnum {
   CREATE_DOCUMENT = "createDocument",
   GET_DOCUMENTS = "getDocuments",
+  GET_ALL_DOCUMENTS_WITHOUT_PAGINATION = "getAllDocumentsWithoutPagination",
   GET_DOCUMENT_BY_ID  = "getDocumentById",
   UPDATE_DOCUMENT_BY_ID = "updateDocumentById",
   DELETE_DOCUMENTS_BY_QUERY = "deleteDocumentsByQuery",

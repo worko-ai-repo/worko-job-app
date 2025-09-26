@@ -13,17 +13,23 @@ import "./libraries/logger.library";
 
 // Import database configuration
 import DBConfig from "./db/DB.config";
+import APP_CONSTANTS from "./configs/constants.config";
 
 // import dtos
 import { ScheduledEventDto } from "./dtos/ScheduleJob.dto";
 
 // Import enums
 import { ScheduleJobType } from "./enums/ScheduleJob.enum";
+import { JobSourcedFromEnum } from "./enums/Common.enum";
+
+// Import models
+import { DbJobAwsOpensearchDto } from "./db/OpenSearch-models/OpenSearchJob.model";
 
 // Import services
 import { jobServiceObj } from "./services/Job.service";
 import { fantasticJobServiceObj } from "./services/FantasticJob.service";
 import { brightDataJobServiceObj } from "./services/BrightDataJob.service";
+import { awsS3VectorJobServiceObj } from "./services/AwsS3VectorJob.service";
 
 // Import error handling utilities
 import { BaseError } from "./utils/errors.util";
@@ -78,39 +84,91 @@ export const handler = async (
       global.logger.info(`"scheduleJob" property is present in "event" object`);
 
       switch (event.scheduleJob?.type) {
-        case ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS: {
-          // Logger for Hard and soft delete old jobs
+        case ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS: {
           global.logger.info(
-            `Processing scheduled job for hard and soft deleting old jobs and old initial matching score jobs [app scheduler handler]`,
+            `Processing scheduled job for bright data job hard and soft delete old jobs [app scheduler handler]`,
             {
-              filePath: __filename,
               methodName: "handler",
-              scheduleJobType:
-                ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
             }
           );
 
-          // Hard Delete old jobs
-          const deleteOldUnappliedExternalJobsResult: DeleteByQuery_Response =
-            await jobServiceObj.deleteOldUnappliedExternalJobs();
+          const getListOfExpiredJobIds: DbJobAwsOpensearchDto[] = await jobServiceObj.getAllOldUnappliedExternalJobs(
+            APP_CONSTANTS.EXTERNAL_JOB_CLEANUP_CONFIG.BRIGHT_DATA_JOB_DELETE_OLDER_THAN_DAYS,
+            JobSourcedFromEnum.BRIGHT_DATA_JOB
+          )
           global.logger.info(
-            "App scheduler handler: Old jobs hard deleted successfully: ",
+            "App scheduler handler: Old jobs fetched successfully: ",
             {
-              filePath: __filename,
-              methodName: "handler",
-              deleteOldUnappliedExternalJobsResult: deleteOldUnappliedExternalJobsResult,
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+              getListOfExpiredJobIdsLength: getListOfExpiredJobIds.length,
             }
           );
+
+          if(getListOfExpiredJobIds?.length) {
+            const deleteJobIds: string[] = getListOfExpiredJobIds.map((job: DbJobAwsOpensearchDto) => job.id);
+
+            /**
+             * @todo Need to think how to abort the transaction if any of the activity fails
+             */
+            const deleteActivities: [DeleteByQuery_Response, boolean] = await Promise.all([
+              // Hard Delete old jobs
+              jobServiceObj.deleteOldUnappliedExternalJobs(
+                deleteJobIds,
+              ),
+                
+              awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobOldUnappliedExternalJobs(
+                deleteJobIds
+              )
+            ])
+          }
 
           // Soft Delete old jobs
           const softDeleteOldAppliedExternalJobsResult: UpdateByQuery_Response =
-            await jobServiceObj.softDeleteOldAppliedExternalJobs();
+            await jobServiceObj.softDeleteOldAppliedExternalJobs(
+              APP_CONSTANTS.EXTERNAL_JOB_CLEANUP_CONFIG.BRIGHT_DATA_JOB_DELETE_OLDER_THAN_DAYS,
+              JobSourcedFromEnum.BRIGHT_DATA_JOB
+            );
           global.logger.info(
             "App scheduler handler: Old jobs soft deleted successfully: ",
             {
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+              softDeleteOldAppliedExternalJobsResult: softDeleteOldAppliedExternalJobsResult,
+            }
+          );
+
+          break;
+        }
+
+        case ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT: {
+          global.logger.info(
+            `Processing scheduled job for bright data job to create snapshot [app scheduler handler]`,
+            {
+              methodName: "handler",
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
+            }
+          );
+
+          const snapshotCreationResult: boolean = await brightDataJobServiceObj.validateAndCreateBrightDataSnapshot();
+          if(!snapshotCreationResult) {
+            global.logger.error(
+              `Snapshot creation failed [app scheduler external jobs handler]`,
+              {
+                filePath: __filename,
+                methodName: "handler",
+                scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
+              }
+            );
+
+            throw new BaseError(`The snapshot creation failed.`, HttpStatusCode.INTERNAL_SERVER_ERROR_500);
+          }
+
+          global.logger.info(
+            `Snapshot creation completed successfully [app scheduler external jobs handler]`,
+            {
               filePath: __filename,
               methodName: "handler",
-              softDeleteOldAppliedExternalJobsResult: softDeleteOldAppliedExternalJobsResult,
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
             }
           );
 
@@ -147,41 +205,6 @@ export const handler = async (
               filePath: __filename,
               methodName: "handler",
               scheduleJobType: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
-            }
-          );
-
-          break;
-        }
-
-        case ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT: {
-          global.logger.info(
-            `Processing scheduled job for bright data job to create snapshot [app scheduler handler]`,
-            {
-              methodName: "handler",
-              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
-            }
-          );
-
-          const snapshotCreationResult: boolean = await brightDataJobServiceObj.validateAndCreateBrightDataSnapshot();
-          if(!snapshotCreationResult) {
-            global.logger.error(
-              `Snapshot creation failed [app scheduler external jobs handler]`,
-              {
-                filePath: __filename,
-                methodName: "handler",
-                scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
-              }
-            );
-
-            throw new BaseError(`The snapshot creation failed.`, HttpStatusCode.INTERNAL_SERVER_ERROR_500);
-          }
-
-          global.logger.info(
-            `Snapshot creation completed successfully [app scheduler external jobs handler]`,
-            {
-              filePath: __filename,
-              methodName: "handler",
-              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
             }
           );
 

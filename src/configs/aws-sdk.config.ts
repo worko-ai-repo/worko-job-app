@@ -12,6 +12,7 @@ import { AwsSchedulerLibrary } from "../libraries/aws-scheduler-client.library";
 import { AwsOpensearchLibrary } from "../libraries/aws-opensearch.library";
 import { AwsBedrockClientLibrary } from "../libraries/aws-bedrock-client.library";
 import { AwsClientLambdaLibrary } from "../libraries/aws-client-lambda.library";
+import { AwsClientCognitoIdentityProviderLibrary } from "../libraries/aws-client-cognito-identity-provider.library";
 
 /**
  * awsConfigOptions
@@ -173,6 +174,14 @@ const awsBedrockClientLibrary: AwsBedrockClientLibrary = new AwsBedrockClientLib
 global.logger.info(`The "awsBedrockClientLibrary" is initialised.`);
 
 /**
+ * awsClientCognitoIdentityProviderLibrary
+ * 
+ * NOTE: For this client, the `aws-sdk v3` is used
+ */
+const awsClientCognitoIdentityProviderLibrary: AwsClientCognitoIdentityProviderLibrary = new AwsClientCognitoIdentityProviderLibrary();
+global.logger.info(`The "awsClientCognitoIdentityProviderLibrary" is initialised.`);
+
+/**
  * awsClientLambdaLibrary
  * 
  * NOTE: For this lambda client, the `aws-sdk v3` is used
@@ -195,4 +204,5 @@ export {
   awsOpensearchLibrary,
   awsBedrockClientLibrary,
   awsClientLambdaLibrary,
+  awsClientCognitoIdentityProviderLibrary
 };

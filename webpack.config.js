@@ -48,13 +48,13 @@ module.exports = {
    */
   optimization: {
     splitChunks: false,
-    minimize: false,
+    minimize: false
   },
 
   /**
    * Reduce build output to prevent memory issues
    */
-  stats: "errors-only",
+  stats: 'errors-only',
 
   /**
    * Defines how different file types should be processed (rules).

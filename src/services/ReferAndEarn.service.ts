@@ -229,6 +229,7 @@ class ReferAndEarnService {
         companyName: companyDetails.name.toTitleCase(),
         jobTitle: companyJobDetails.jobTitle.toTitleCase(),
         jobUrl: updatedJobUrlWithReferAndEarnId,
+        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
 
     const recipientEmailResponse: {
@@ -262,6 +263,8 @@ class ReferAndEarnService {
         recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
         jobTitle: companyJobDetails.jobTitle.toTitleCase(),
         companyName: companyDetails.name.toTitleCase(),
+        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+        dashboardUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_APP_URL,
       };
 
     const emailToReferrerSendResponse: {
@@ -496,22 +499,6 @@ class ReferAndEarnService {
     );
   }
 
-  /**
-   * updateReferAndEarnById
-   *
-   * Updates specific fields of a refer and earn ticket identified by its ID and primary email.
-   *
-   * This function is the reusable function to update specific fields of a refer and earn model based on its ID and primary email.
-   * It also handles sending email to referrer if refer and earn status is changed to payment completed.
-   *
-   * @param {ReferAndEarnUpdateApiDto} updateRequestApiBody - Object containing the fields to update
-   *   and their new values.
-   * @param {DbUserDetailDto} userDetails - User details performing the update.
-   * @param {DbReferAndEarnDto} existingReferAndEarnData - Existing refer and earn data.
-   * @returns {Promise<DbReferAndEarnDto>} A promise that resolves to the updated refer and earn
-   *   record if the update was successful.
-   * @throws {BaseError} Throws a 500 error if the update operation fails.
-   */
   async updateReferAndEarnById(
     updateRequestApiBody: ReferAndEarnUpdateApiDto,
     userDetails: DbUserDetailDto,
@@ -533,26 +520,6 @@ class ReferAndEarnService {
       ...updateRequestApiBody,
       updatedByUserId: userDetails.id,
     };
-
-    // If refer and earn job application status is joined then update status tracker also
-    if (
-      updateReferAndEarnDto.jobApplicationStatus ===
-        ReferAndEarnJobApplicationStatusEnum.JOINED &&
-      existingReferAndEarnData.jobApplicationStatus !==
-        ReferAndEarnJobApplicationStatusEnum.JOINED
-    ) {
-      updateReferAndEarnDto.status = ReferAndEarnStatusEnum.ACHIEVED;
-      updateReferAndEarnDto.statusTracker = [
-        ...existingReferAndEarnData.statusTracker,
-        {
-          oldStatus: existingReferAndEarnData.status,
-          newStatus: ReferAndEarnStatusEnum.ACHIEVED,
-          actionDate: currentDateAndTime,
-          actionByUserId: undefined,
-          description: undefined,
-        },
-      ];
-    }
 
     // If refer and earn status is withdrawal rejected then update status tracker also
     if (
@@ -635,6 +602,8 @@ class ReferAndEarnService {
             paymentDate: dateHelperObj.formatDateToDayMonthYear(
               updatedReferAndEarnItem.paymentDoneDetails.actionDate
             ),
+            dashboardUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_APP_URL,
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 
         const emailToReferrerSendResponse: {
@@ -724,6 +693,7 @@ class ReferAndEarnService {
         accountNumber: referAndEarnRequestBody.accountNumber.toString(),
         ifscCode: referAndEarnRequestBody.ifscCode,
         branchName: referAndEarnRequestBody.branchName,
+        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
 
     const emailToWorkoAdminSendResponse: {

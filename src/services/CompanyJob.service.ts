@@ -51,19 +51,10 @@ class CompanyJobService {
     return companyJobDaoObj.createJob(companyName, companyJobDetailsData);
   }
 
-  /**
-   * softDeleteJobById
-   *
-   * Delete Company Job
-   *
-   * @param {string} jobId
-   * @param {string} companyId
-   *
-   * @returns {Promise<DbCompanyJobDto>}
-   */
   async softDeleteJobById(
     jobId: string,
-    companyId: string
+    companyId: string,
+    softDeletData: Partial<CompanyJobCommonUpdateDto>
   ): Promise<DbCompanyJobDto> {
     // Global Logger for the service
     global.logger.info(`Deleting Job for Company: ${jobId} [service]`, {
@@ -71,7 +62,7 @@ class CompanyJobService {
       methodName: this.softDeleteJobById.name,
     });
 
-    return companyJobDaoObj.softDeleteJobById(jobId, companyId);
+    return companyJobDaoObj.softDeleteJobById(jobId, companyId, softDeletData);
   }
 
   /**
@@ -199,12 +190,12 @@ class CompanyJobService {
       methodName: this.updateCommonCompanyJobById.name,
       companyId,
       jobId,
-    })
+    });
 
     if (jobUpdateDto?.status) {
       jobUpdateDto.isDeleted = jobUpdateDto.status === JobStatusEnum.CLOSED;
     }
-    
+
     return companyJobDaoObj.updateCommonCompanyJobById(
       jobId,
       companyId,

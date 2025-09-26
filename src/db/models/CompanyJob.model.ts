@@ -9,6 +9,7 @@ import { BaseDbDto } from "./Base.model";
 
 // Import dtos
 import { JobLocationDto, MinMaxRange } from "../../dtos/Common.dto";
+import { SalaryRangeDto } from "../../dtos/Job.dto";
 
 // Load Enums
 import { JobStatusEnum, JobWorkModeEnum } from "../../enums/Job.enum";
@@ -51,23 +52,28 @@ class DbCompanyJobDto extends BaseDbDto {
   htmlJobDescription?: string;
   jobUrl!: string;
   coreSkills!: string[];
+  goodToHaveSkills?: string[];
   department!: string;
   experienceRange!: MinMaxRange;
   location!: JobLocationDto;
   miscellaneousSkills?: string[];
   noticePeriod?: number;
+  flexibleNotice?: boolean;
   industry?: string;
   numOfOpenings!: number;
   otherRequirements?: string;
-  salaryRange!: MinMaxRange;
+  salaryRange!: SalaryRangeDto;
   softSkills!: string[];
   status!: JobStatusEnum;
   technicalSkills!: string[];
   typeofEmployment!: string;
   workMode!: JobWorkModeEnum;
   displaySalaryRange?: boolean;
+  gradeLevel?: number;
 
   isDeleted!: boolean;
+  shortSoftDeleteReason?: string;
+  detailedSoftDeleteReason?: string;
 }
 
 // Define the schema for the CompanyJob model
@@ -124,6 +130,11 @@ const CompanyJobSchema = new dynamoose.Schema(
       schema: String,
       required: true,
     },
+    goodToHaveSkills: {
+      type: Array,
+      schema: String,
+      required: false,
+    },
     department: {
       type: String,
       required: true,
@@ -139,6 +150,14 @@ const CompanyJobSchema = new dynamoose.Schema(
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    shortSoftDeleteReason: {
+      type: String,
+      required: false,
+    },
+    detailedSoftDeleteReason: {
+      type: String,
+      required: false,
     },
     jobTitle: {
       type: String,
@@ -175,6 +194,10 @@ const CompanyJobSchema = new dynamoose.Schema(
       type: Number,
       required: false,
     },
+    flexibleNotice: {
+      type: Boolean,
+      required: false,
+    },
     numOfOpenings: {
       type: Number,
       required: true,
@@ -189,6 +212,8 @@ const CompanyJobSchema = new dynamoose.Schema(
       schema: {
         min: { type: Number, required: true },
         max: { type: Number, required: true },
+        fixedComponentPercentage: { type: Number, required: false },
+        variableComponentPercentage: { type: Number, required: false },
       },
     },
     softSkills: {
@@ -216,7 +241,11 @@ const CompanyJobSchema = new dynamoose.Schema(
     displaySalaryRange: {
       type: Boolean,
       required: false,
-      default: true
+      default: true,
+    },
+    gradeLevel: {
+      type: Number,
+      required: false,
     },
   },
   {

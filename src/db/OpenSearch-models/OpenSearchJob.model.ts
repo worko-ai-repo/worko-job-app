@@ -1,5 +1,6 @@
 // Import dtos
 import { JobLocationDto, MinMaxRange } from "../../dtos/Common.dto";
+import { SalaryRangeDto } from "../../dtos/Job.dto";
 
 // Import enums
 import { JobSourcedFromEnum } from "../../enums/Common.enum";
@@ -158,9 +159,9 @@ export interface DbJobAwsOpensearchDto {
   /**
    * salaryRange
    *
-   * @see {MinMaxRange}
+   * @see {SalaryRangeDto}
    */
-  salaryRange?: MinMaxRange;
+  salaryRange?: SalaryRangeDto;
 
   /**
    * jobUrl
@@ -212,10 +213,17 @@ export interface DbJobAwsOpensearchDto {
    */
   miscellaneousSkills?: string[];
 
+  goodToHaveSkills?: string[];
+
   /**
    * noticePeriod
    */
   noticePeriod?: number;
+
+  /**
+   * flexibleNotice
+   */
+  flexibleNotice?: boolean;
 
   /**
    * numOfOpenings
@@ -258,14 +266,19 @@ export interface DbJobAwsOpensearchDto {
    */
   isDeleted: boolean;
 
+  shortSoftDeleteReason?: string;
+  detailedSoftDeleteReason?: string;
+
   /**
    * displaySalaryRange
    */
   displaySalaryRange?: boolean;
 
+  gradeLevel?: number;
+
   /**
    * isJobUpdated
-   * 
+   *
    * @reference "isJobUpdated" attribute is being used in "worko-job-batch-inference-update-function" lambda function.
    */
   isJobUpdated?: boolean;

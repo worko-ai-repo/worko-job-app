@@ -11,13 +11,11 @@ const ScriptRouter = Router();
 const scriptController = new ScriptController();
 
 /**
- * scriptScheduleJobExternalJobApi
- * 
- * Endpoint to schedule job for external job api 
+ * scriptSampleEntityTest 
  * 
  * @authorisedRoles ["admin"]
  */
-ScriptRouter.post("/script-schedule-external-job", scriptController.scriptScheduleJobExternalJobApi);
+ScriptRouter.post("/script-schedule-external-job", scriptController.scriptSampleEntityTest);
 
 /**
  * scriptWorkoDdbToWorkoJobsOpensearch

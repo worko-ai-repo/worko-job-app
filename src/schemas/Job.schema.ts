@@ -109,6 +109,13 @@ export const jobCreateApiDtoValidation = Joi.object({
     "number.min": "The Notice period cannot be negative.",
    }),
 
+  flexibleNotice: Joi
+   .boolean()
+   .optional()
+   .messages({
+    "boolean.base": "The Flexible notice period field must be a boolean.",
+   }),
+
   // Validate numOfOpenings field
   numOfOpenings: Joi
    .number()
@@ -139,6 +146,30 @@ export const jobCreateApiDtoValidation = Joi.object({
         "any.required": "The Maximum salary field is required.",
         "number.base": "The Maximum salary field must be a number.",
         "number.min": "The Maximum salary field cannot be less than minimum salary.",
+      }),
+
+    fixedComponentPercentage: Joi
+      .number()
+      .min(0)
+      .max(100)
+      .required()
+      .messages({
+        "any.required": "The Fixed component percentage field is required.",
+        "number.base": "The Fixed component percentage field must be a number.",
+        "number.min": "The Fixed component percentage field cannot be negative.",
+        "number.max": "The Fixed component percentage field cannot be greater than 100.",
+      }),
+
+    variableComponentPercentage: Joi
+      .number()
+      .min(0)
+      .max(100)
+      .required()
+      .messages({
+        "any.required": "The Variable component percentage field is required.",
+        "number.base": "The Variable component percentage field must be a number.",
+        "number.min": "The Variable component percentage field cannot be negative.",
+        "number.max": "The Variable component percentage field cannot be greater than 100.",
       }),
   })
     .required()
@@ -230,6 +261,15 @@ export const jobCreateApiDtoValidation = Joi.object({
       "any.required": "Core skills are required.",
     }),
 
+  goodToHaveSkills: Joi.array()
+    .min(1)
+    .items(Joi.string().lowercase())
+    .optional()
+    .messages({
+      "array.base": "The Good to have skills field must be an array.",
+      "string.base": "Each item in the Good to have skills field must be a string.",
+    }),
+
   //Validate softSkills field
   softSkills: Joi.array()
     .min(1)
@@ -277,6 +317,13 @@ export const jobCreateApiDtoValidation = Joi.object({
     .messages({
       "any.type": "The Display salary range field must be a boolean.",
     }),
+
+  gradeLevel: Joi.number()
+    .integer()
+    .optional()
+    .messages({
+      "any.type": "The Grade level field must be a number.",
+    })
 });
 
 /**
@@ -284,6 +331,30 @@ export const jobCreateApiDtoValidation = Joi.object({
  */
 export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
   Joi.object({
+    includeCompanyDetails: Joi
+      .boolean()
+      .optional()
+      .messages({
+        "boolean.base": "The includeCompanyDetails field must be a boolean.",
+      }),
+
+    fromS3Vector: Joi
+      .boolean()
+      .optional()
+      .messages({
+        "boolean.base": "The fromS3Vector field must be a boolean.",
+      }),
+
+    s3VectorPageNumber: Joi
+      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+      .integer()
+      .min(1)
+      .optional()
+      .messages({
+        "number.base": "The Page number field must be a number.",
+        "number.min": "The Page number field must be at least 1.",
+      }),
+    
     dashboard: Joi
       .string()
       .optional()
@@ -550,6 +621,13 @@ export const jobUpdateApiDtoValidation = Joi.object({
             'number.min': 'The Notice period field must be a positive integer.',
         }),
 
+    flexibleNotice: Joi
+        .boolean()
+        .optional()
+        .messages({
+          'boolean.base': 'The Flexible notice field must be a boolean.',
+        }),
+
     numOfOpenings: Joi
         .number()
         .integer()
@@ -575,7 +653,29 @@ export const jobUpdateApiDtoValidation = Joi.object({
             .messages({
                 "number.base": "The Maximum salary field must be a number.",
                 "number.min": "The Maximum salary field cannot be less than minimum salary.",
-            })
+            }),
+
+        fixedComponentPercentage: Joi
+            .number()
+            .min(0)
+            .max(100)
+            .optional()
+            .messages({
+                "number.base": "The Fixed component percentage field must be a number.",
+                "number.min": "The Fixed component percentage field cannot be negative.",
+                "number.max": "The Fixed component percentage field cannot be greater than 100.",
+            }),
+
+        variableComponentPercentage: Joi
+            .number()
+            .min(0)
+            .max(100)
+            .optional()
+            .messages({
+                "number.base": "The Variable component percentage field must be a number.",
+                "number.min": "The Variable component percentage field cannot be negative.",
+                "number.max": "The Variable component percentage field cannot be greater than 100.",
+            }),
     }).optional(),
 
     department: Joi
@@ -656,6 +756,15 @@ export const jobUpdateApiDtoValidation = Joi.object({
             'array.min': 'At least one soft skill is required.',
         }),
 
+    goodToHaveSkills: Joi.array()
+      .min(1)
+      .items(Joi.string().lowercase())
+      .optional()
+      .messages({
+        "array.base": "The Good to have skills field must be an array.",
+        "string.base": "Each item in the Good to have skills field must be a string.",
+      }),
+
     technicalSkills: Joi
         .array()
         .min(1)
@@ -680,7 +789,15 @@ export const jobUpdateApiDtoValidation = Joi.object({
         .messages({
             'boolean.base': 'The Display salary range field must be a boolean.',
         }),
-
+    
+    gradeLevel: Joi
+        .number()
+        .integer()
+        .optional()
+        .messages({
+            'number.base': 'The Grade level field must be a number.',
+            'number.integer': 'The Grade level field must be an integer.',
+        })
 });
 
 /**
@@ -694,6 +811,22 @@ export const jobSoftDeleteApiDtoValidation = Joi.object({
     'string.base': 'The Company Id field must be a string.',
     'string.empty': 'The Company Id field cannot be empty.',
     'any.required': 'The Company Id field is required.',
+  }),
+
+  shortSoftDeleteReason: Joi
+  .string()
+  .required()
+  .messages({
+    'string.base': 'The reason field must be a string.',
+    'string.empty': 'The reason field cannot be empty.',
+    'any.required': 'The reason field is required.',
+  }),
+
+  detailedSoftDeleteReason: Joi
+  .string()
+  .optional()
+  .messages({
+    'string.base': 'The detailed reason field must be a string.',
   }),
 });
 

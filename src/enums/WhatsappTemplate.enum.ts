@@ -170,41 +170,17 @@ export enum WhatsappTemplateCreateButtonTypeCloudApiEnum {
  */
 export enum WhatsappTemplateNameEnum {
   /**
-   * Welcome message template for candidates.
-   * Sent when a new candidate joins the platform.
-   */
-  CAND_WELCOME_MSG = "cand_welcome_msg",
-
-  /**
    * Template for candidate referral query by employer.
    * Used when an employer inquires about referring a specific candidate.
    */
   CAND_QUERY_FOR_REFERRAL_BY_EMP = "cand_referral_query_by_emp",
 
   /**
-   * Template for completion of candidate referral request.
-   * Notifies the candidate that their referral process has been completed.
-   */
-  CAND_REFERRAL_REQ_COMPLETED = "cand_referral_req_completed",
-
-  /**
-   * Template for acceptance of candidate referral request.
-   * Informs the candidate that their referral request has been accepted by an employer.
-   */
-  CAND_REFERRAL_REQ_ACCEPTED = "cand_referral_req_accepted",
-
-  /**
    * Template for new chat message notification from employer to candidate.
    * Alerts the candidate about a new message from an employer.
    */
   CAND_NEW_CHAT_MSG_FROM_EMP_NOTIFICATION = "cand_new_chat_msg_from_emp_notification",
-
-  /**
-   * Template for candidate profile completion reminder.
-   * Encourages candidates to complete their profiles for better visibility.
-   */
-  CAND_PROFILE_COMPLETION_REMINDER = "cand_profile_completion_reminder",
-
+  
   /**
    * Template for notification when a candidate's premium subscription expires.
    * Alerts the candidate about the expiration of their premium features.

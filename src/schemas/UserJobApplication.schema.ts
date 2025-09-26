@@ -5,7 +5,7 @@ import Joi from "joi";
 import APP_CONSTANTS from "../configs/constants.config";
 
 // import enums
-import { JobApplicationStatus, JobApplicationValidBulkUpdateStatusEnum } from "../enums/UserJobApplication.enum";
+import { JobApplicationStatus, JobApplicationValidBulkUpdateStatusEnum, UserJobApplicationValidApplicantUpdateStatusEnum, UserJobApplicationValidHrUpdateStatusEnum } from "../enums/UserJobApplication.enum";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 import { UserType } from "../enums/User.enum";
 import { AdminRoleEnum } from "../enums/Common.enum";
@@ -114,11 +114,11 @@ export const userJobApplicationUpdateValidation = Joi.object({
   }),
 
   status: Joi.string()
-    .valid(...Object.values(JobApplicationStatus))
+    .valid(...Object.values(UserJobApplicationValidHrUpdateStatusEnum))
     .required()
     .messages({
       "string.valid": `Status must be one of: ${Object.values(
-        JobApplicationStatus
+        UserJobApplicationValidHrUpdateStatusEnum
       ).join(", ")}`,
       "any.required": "Status is required",
       "string.empty": "Status should not be empty",
@@ -128,6 +128,35 @@ export const userJobApplicationUpdateValidation = Joi.object({
     "any.required": "Email is required.",
     "string.email": "Please provide a valid email address.",
     "string.empty": "Email cannot be empty.",
+  }),
+
+  requestedDocumentNames: Joi.array()
+    .min(APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MIN)
+    .max(APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MAX)
+    .items(Joi.string().lowercase())
+    .optional()
+    .messages({
+      "any.type": "Requested document names must be an array of strings.",
+      "array.min": `Requested document names must have at least ${APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MIN} item.`,
+      "array.max": `Requested document names cannot have more than ${APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MAX} items.`,
+    }),
+
+  offerLetterCloudFileName: Joi.string().optional().messages({
+    "any.type": "Offer letter cloud file name must be a string.",
+  }),
+
+  offerLetterRemarks: Joi.string().optional().messages({
+    "any.type": "Offer letter remarks must be a string.",
+  }),
+
+  offerLetterJoiningDate: Joi.string().isoDate().optional().messages({
+    "string.isoDate": "The joiningDate must be a valid ISO date string.",
+    "any.type": "The joiningDate must be a string.",
+  }),
+
+  joiningDate: Joi.string().isoDate().optional().messages({
+    "string.isoDate": "The joiningDate must be a valid ISO date string.",
+    "any.type": "The joiningDate must be a string.",
   }),
 
   // Additional fields for the Reject status
@@ -143,7 +172,10 @@ export const userJobApplicationUpdateValidation = Joi.object({
 
   userType: Joi.string()
     .required()
-    .valid(...Object.values(CorporateUserTypeEnum), ...Object.values(AdminRoleEnum))
+    .valid(
+      ...Object.values(CorporateUserTypeEnum),
+      ...Object.values(AdminRoleEnum)
+    )
     .messages({
       "string.valid": `User type must be one of: ${Object.values(
         CorporateUserTypeEnum
@@ -339,4 +371,88 @@ export const userJobApplicationBulkUpdateApiDtoValidation = Joi.object({
       "array.min": `The Bulk Job Application Update field must contain at least ${APP_CONSTANTS.BULK_JOB_APPLICATION_UPDATE_LIMIT.MIN} item(s).`,
       "array.max": `The Bulk Job Application Update field must contain at most ${APP_CONSTANTS.BULK_JOB_APPLICATION_UPDATE_LIMIT.MAX} item(s).`,
     }),
+});
+
+/**
+ * userJobApplicationApplicantUpdateValidation
+ */
+export const userJobApplicationApplicantUpdateValidation = Joi.object({
+  userId: Joi.string().required().messages({
+    "any.required": "User ID is required",
+    "string.empty": "User ID should not be empty",
+    "string.base": "User ID must be a string",
+  }),
+
+  emailId: Joi.string().email().required().messages({
+    "any.required": "Email is required.",
+    "string.email": "Please provide a valid email address.",
+    "string.empty": "Email cannot be empty.",
+  }),
+
+  userType: Joi.string().required().valid(UserType.CAND).messages({
+    "any.only": `Invalid user type`,
+    "any.required": "User type is required",
+    "string.empty": "User type should not be empty",
+  }),
+
+  status: Joi.string()
+    .valid(
+      ...Object.values(UserJobApplicationValidApplicantUpdateStatusEnum),
+    )
+    .required()
+    .messages({
+      "string.valid": `Invalid status. Please provide a valid status.`,
+      "any.required": "Status is required",
+      "string.empty": "Status should not be empty",
+    }),
+
+  documentMapping: Joi.array()
+    .min(APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MIN)
+    .max(APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MAX)
+    .items(
+      Joi.object({
+        documentName: Joi.string().required().lowercase().messages({
+          "any.required": "Document name is required.",
+          "string.empty": "Document name should not be empty.",
+        }),
+
+        cloudFileName: Joi.string().required().messages({
+          "any.required": "Cloud file name is required.",
+          "string.empty": "Cloud file name should not be empty.",
+        }),
+      })
+    )
+    .optional()
+    .messages({
+      "array.base": "Document mapping must be an array.",
+      "array.empty": "Document mapping should not be empty.",
+      "array.min": `Document mapping must have at least ${APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MIN} item.`,
+      "array.max": `Document mapping cannot have more than ${APP_CONSTANTS.USER_JOB_APPLICATION_UPLOAD_DOCUMENT_RANGE.MAX} items.`,
+    }),
+
+  offerLetterIssueRemarks: Joi.string().optional().messages({
+    "any.type": "Offer letter issue Remarks must be a string.",
+  }),
+
+  offerLetterCloudFileName: Joi.string().optional().messages({
+    "any.type": "Offer letter cloud file name must be a string.",
+  }),
+
+  joiningDate: Joi.string().isoDate().optional().messages({
+    "string.isoDate": "The joiningDate must be a valid ISO date string.",
+    "any.type": "The joiningDate must be a string.",
+  }),
+
+  joiningHrName: Joi.string().optional().messages({
+    "any.type": "HR name must be a string.",
+  }),
+
+  joiningApplicantMessage: Joi.string().optional().messages({
+    "any.type": "Message must be a string.",
+  }),
+
+  applicantName: Joi.string().required().messages({
+    "any.required": "The Applicant name field is required.",
+    "string.empty": "The Applicant name field should not be empty.",
+  }),
 });

@@ -19,9 +19,6 @@ import {
   CompanyJobCommonUpdateDto,
 } from "../dtos/CompanyJob.dto";
 
-// Import the enums
-import { JobStatusEnum } from "../enums/Job.enum";
-
 // Load Model
 import {
   DbCompanyJobDto,
@@ -194,19 +191,7 @@ class CompanyJobDao implements BaseDao {
     );
   }
 
-  /**
-   * softDeleteJobById
-   *
-   * Deletes a Job by its ID.
-   *
-   * @param {string} jobId - The ID of the Job to delete
-   * @param {string} companyId - The ID of
-   *
-   * @returns {Promise<DbCompanyJobDto>} - Promise resolving to the deleted Job object
-   *
-   * @see {CompanyJobModel} - The model used to interact with the database
-   */
-  async softDeleteJobById(jobId: string, companyId: string) {
+  async softDeleteJobById(jobId: string, companyId: string, softDeletData: Partial<CompanyJobCommonUpdateDto>) {
     // Logger message
     global.logger.info("Job Deleting !. [dao]", {
       filePath: __filename,
@@ -229,10 +214,7 @@ class CompanyJobDao implements BaseDao {
     };
 
     // Find and delete the Job
-    return CompanyJobModel.update(inputKey, {
-      isDeleted: true,
-      status: JobStatusEnum.CLOSED,
-    });
+    return CompanyJobModel.update(inputKey, softDeletData);
   }
 
   /**

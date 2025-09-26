@@ -20,7 +20,7 @@ import { jobServiceObj } from '../services/Job.service';
 import { jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
 
 // Import types
-import { FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails } from '../types/Job.type';
+import { JobsWithAndWithoutCompanyDetails } from '../types/Job.type';
 
 // Import utils
 import { RequestValidationError } from '../utils/errors.util';
@@ -166,8 +166,8 @@ class JobController {
       }
 
       // Get all jobs by filter options
-      const jobDetails: AwsOpensearchRecordListingResponseDTO<FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails> =
-        await jobServiceObj.getAllJobsByFilterOptions(jobFilterOptions);
+      const jobDetails: AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails> =
+        await jobServiceObj.getAllJobsByDashboardFilterOptions(jobFilterOptions);
 
       // Respond with job details
       res.status(HttpStatusCode.OK_200).json(jobDetails);
@@ -221,7 +221,7 @@ class JobController {
           updatedByCorporateUserId: actionByCorporateUserId,
         };
 
-      const jobDetails: DbJobAwsOpensearchDto | DbCompanyJobDto | undefined = await jobServiceObj.updateInternalOrExternalJobById(
+      const jobDetails: DbJobAwsOpensearchDto | undefined = await jobServiceObj.updateInternalOrExternalJobById(
         jobId,
         jobUpdateDto
       );
@@ -273,7 +273,8 @@ class JobController {
       // Call the service to update the Job
       const updatedJob: DbCompanyJobDto = await jobServiceObj.softDeleteJobById(
         jobId,
-        validatedJobRequestBody.companyId
+        validatedJobRequestBody.companyId,
+        validatedJobRequestBody
       );
 
       res.status(HttpStatusCode.OK_200).json(updatedJob);
@@ -339,13 +340,6 @@ class JobController {
 
       const updatedJobs: JobBulkUpdateResponseDto = await jobServiceObj.updateBulkJob(validatedJobRequestBody);
 
-      /**
-       * @todo: Discuss with "CTO" instead of logging, 
-       * if any single job id is failed to update in DynamoDB or Opensearch,
-       * then we need to store it in new "dynamodb" logs partition.
-       * If all the job Ids are success then we no need to store it in new "dynamodb" logs partition to
-       * save the cost of storing it in new "dynamodb" logs partition.
-       */
       global.logger.info(`Bulk Update Job Result [Controller]`, {
         methodName: this.updateBulkJob.name,
         updatedJobs: updatedJobs,

@@ -7,6 +7,7 @@ import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJo
 // Import dtos
 import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
 import { BatchInferenceModelInput } from "../dtos/BatchInference.dto";
+import { AwsS3VectorJobCreateOrUpdateJobDataDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto } from "../dtos/AwsS3VectorJob.dto";
 
 // Import helpers
 import { brightDataJobValidateHelperObj } from "../helpers/BrightDataJobValidate.helper";
@@ -18,6 +19,7 @@ import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.mod
 import { commonExternalJobBatchInferenceServiceObj } from "./CommonExternalJobBatchInference.service";
 import { jobServiceObj } from "./Job.service";
 import UlidService from "./Ulid.service";
+import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 
 // Import utils
 import { fileUtilObj } from "../utils/file.util";
@@ -129,10 +131,10 @@ class BrightDataJobBatchInferenceService {
     const uploadDir: string = await this.initBrightDataJobBatchInferenceUploadDirectory();
 
     /**
-     * This is the maximum number of jobs that can be indexed in a single bulk request to the OpenSearch index
+     * This is the maximum number of jobs that can be indexed in a single bulk request to the OpenSearch index,s3 vector
      * and write to single JSONL file.
      */
-    const batchSize: number = APP_CONSTANTS.AWS_OPENSEARCH_BULK_CREATE_COUNT;
+    const batchSize: number = APP_CONSTANTS.AWS_OPENSEARCH_AND_S3_VECTOR_BULK_CREATE_COUNT;
 
     // Initialize a counter for creating JSONL files
     let fileJsonlRandomId: string = "";
@@ -158,7 +160,7 @@ class BrightDataJobBatchInferenceService {
       );
 
       // Initialize an empty array to hold the bulk job data
-      let bulkJobData: (
+      const bulkJobData: (
         | DbJobAwsOpensearchDto
         | {
             index: {
@@ -167,6 +169,11 @@ class BrightDataJobBatchInferenceService {
             };
           }
       )[] = [];
+
+      /**
+       * Initialize an empty array to hold the jobs data to create in aws S3 vector 
+       */
+      const bulkS3VectorCreateJobData: AwsS3VectorJobCreateOrUpdateJobDataDto[] = [];
 
       // Loop through the current batch of jobs
       for (const eachJob of batch) {
@@ -196,6 +203,13 @@ class BrightDataJobBatchInferenceService {
             },
           },
           transformedBrightDataJob
+        );
+
+        bulkS3VectorCreateJobData.push(
+          awsS3VectorJobServiceObj.prepareAwsS3VectorJobsDataCreateOrUpdateDto(
+            awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+            transformedBrightDataJob
+          )
         );
 
         const jsonlObj: BatchInferenceModelInput =
@@ -233,6 +247,24 @@ class BrightDataJobBatchInferenceService {
         );
 
         return false;
+      }
+
+      const successAwsS3VectorJobCreate: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs(
+        {
+          jobData: bulkS3VectorCreateJobData,
+          indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+        }
+      );
+
+      if(successAwsS3VectorJobCreate?.results?.success !== bulkS3VectorCreateJobData.length) {
+        global.logger.error(`AwsS3VectorJob create failed`, {
+          methodName: this.processBrightDataJobBatchInference.name,
+          successAwsS3VectorJobCreate,
+        });
+
+        /**
+         * @todo: Need to think how to handle the failure and implement rollback
+         */
       }
 
       // End the file stream and upload the fantastic jobs details to `S3`

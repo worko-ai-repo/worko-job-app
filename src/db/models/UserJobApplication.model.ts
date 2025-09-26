@@ -8,10 +8,10 @@ import { DB_CONSTANTS } from "../DB.constants";
 import { BaseDbDto } from "./Base.model";
 
 // Import dtos
-import { UserJobApplicationHiredFromOtherPortal } from "../../dtos/UserJobApplication.dto";
+import { UserJobApplicationDbJoinedDateDetailDto, UserJobApplicationDbOfferLetterDetailDto, UserJobApplicationDbOfferLetterIssueRaisedDetailDto, UserJobApplicationDbRejectedForJobClose, UserJobApplicationDbRequestedDocumentDetailDto, UserJobApplicationDbResponseDocumentDetailDto, UserJobApplicationHiredFromOtherPortal } from "../../dtos/UserJobApplication.dto";
 
 // import Enums
-import { JobApplicationStatus } from "../../enums/UserJobApplication.enum";
+import { JobApplicationStatus, UserJobApplicationDocumentStatusEnum } from "../../enums/UserJobApplication.enum";
 
 // import types
 import {
@@ -51,6 +51,43 @@ class DbUserJobApplicationDto extends BaseDbDto {
    */
   rejectedByUserId?: JobApplicationRejectedByUserIdType;
 
+  rejectedForJobClose?: UserJobApplicationDbRejectedForJobClose;
+
+  /**
+   * Array to store multiple document requests (initial, additional, re-requests)
+   */
+  requestedDocumentDetails?: UserJobApplicationDbRequestedDocumentDetailDto[];
+
+  /**
+   * Array to store multiple document responses (initial submissions, revisions)
+   */
+  responseDocumentDetails?: UserJobApplicationDbResponseDocumentDetailDto[];
+
+  /**
+   * Current document status mapping for each requested document
+   */
+  documentCurrentStatusMap?: Record<
+    string,
+    UserJobApplicationDocumentStatusEnum
+  >;
+
+  /**
+   * Current document mapping for each requested document
+   * 
+   * @example 
+   * {
+      "resume": "{ulidId}.pdf",
+      "internship certificate": "{ulidId2}.pdf"
+     }
+   */
+  documentCurrentMapping?: Record<string, string>;
+
+  offerLetterDetails?: UserJobApplicationDbOfferLetterDetailDto[];
+
+  offerLetterIssueRaisedDetails?: UserJobApplicationDbOfferLetterIssueRaisedDetailDto[];
+
+  joiningDateDetails?: UserJobApplicationDbJoinedDateDetailDto[];
+
   /**
    * When candidate request follow up then this attribute will be set
    */
@@ -59,9 +96,9 @@ class DbUserJobApplicationDto extends BaseDbDto {
   /**
    * hiredFromOtherPortal
    *
-   * This attribute is used to track the actual source of hiring (if any) 
+   * This attribute is used to track the actual source of hiring (if any)
    * from external portal by the corporate user.
-   * 
+   *
    * For example:
    * - "Rohith" is a recruiter at Amazon who has registered on both "Worko.ai" and "LinkedIn" job portals.
    * - A candidate "Ashutosh" applies for a job at Amazon through both "Worko.ai" and "LinkedIn" job portals.
@@ -73,8 +110,8 @@ class DbUserJobApplicationDto extends BaseDbDto {
 
   /**
    * displayToCorporate
-   * 
-   * This attribute is used whenever the `worko-admin` see a job application 
+   *
+   * This attribute is used whenever the `worko-admin` see a job application
    * and if its matching score is very near to the minimum matching score(example: 69),
    * then `worko-admin` will click on `send to recruiter` button in admin dashboard
    * and this attribute will be set to `true`.
@@ -91,6 +128,13 @@ class DbUserJobApplicationDto extends BaseDbDto {
   rejectionAwsScheduleId?: string;
 
   /**
+   * isEvaluatorResponded
+   *
+   * If the evaluator has responded to the job application then this attribute will be set to `true`.
+   */
+  isEvaluatorResponded?: boolean;
+
+  /**
    * Attributes Being set after comparing `Job description` and `CV`
    * from `Python script` by AI/ML Team
    */
@@ -98,8 +142,18 @@ class DbUserJobApplicationDto extends BaseDbDto {
   jdMatchErrorCode?: number;
   jdMatchErrorDesc?: string;
   matchingScore?: number;
+
+  /**
+   * This is for `corporate-admin/recruiter` and `worko-admin`
+   */
   rejectionFeedbackBySystem?: string;
+
+  /**
+   * This is for `candidate`
+   */
+  rejectionFeedbackBySystemForApplicant?: string;
   scoreDetails?: string;
+  scoreDetailsForApplicant?: string;
   scoreFetchedDate?: string;
 
   /**
@@ -209,7 +263,7 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
     },
     referAndEarnId: {
       type: String,
-      required: false
+      required: false,
     },
     companyName: {
       type: String,
@@ -222,6 +276,160 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
     jobPortal: {
       type: String,
       required: false,
+    },
+    requestedDocumentDetails: {
+      type: Array,
+      required: false,
+      schema: [
+        {
+          type: Object,
+          schema: {
+            userId: {
+              type: String,
+              required: true,
+            },
+            userType: {
+              type: String,
+              required: true,
+            },
+            actionDate: {
+              type: String,
+              required: true,
+            },
+            requestedDocumentNames: {
+              type: Array,
+              schema: String,
+              required: true,
+            },
+            documentStatus: {
+              type: String,
+              required: true,
+            },
+          },
+        },
+      ],
+    },
+    responseDocumentDetails: {
+      type: Array,
+      required: false,
+      schema: [
+        {
+          type: Object,
+          schema: {
+            userId: {
+              type: String,
+              required: true,
+            },
+            userType: {
+              type: String,
+              required: true,
+            },
+            actionDate: {
+              type: String,
+              required: true,
+            },
+            documentStatus: {
+              type: String,
+              required: true, 
+            },
+            documentMapping: {
+              type: Array,
+              required: true, // Maps document name to cloud file name
+              schema: [
+                {
+                  type: Object,
+                  schema: {
+                    documentName: {
+                      type: String,
+                      required: true,
+                    },
+                    cloudFileName: {
+                      type: String,
+                      required: true,
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    },
+    documentCurrentStatusMap: {
+      type: Object,
+      required: false,
+    },
+    documentCurrentMapping: {
+      type: Object,
+      required: false,
+    },
+    offerLetterDetails: {
+      type: Array,
+      required: false,
+      schema: [
+        {
+          type: Object,
+          required: false,
+          schema: {
+            userId: {
+              type: String,
+              required: true,
+            },
+            userType: {
+              type: String,
+              required: true,
+            },
+            actionDate: {
+              type: String,
+              required: true,
+            },
+            joiningDate: {
+              type: String,
+              required: false,
+            },
+            cloudFileName: {
+              type: String,
+              required: false,
+            },
+            remarks: {
+              type: String,
+              required: false,
+            },
+          },
+        },
+      ],
+    },
+    offerLetterIssueRaisedDetails: {
+      type: Array,
+      required: false,
+      schema: [
+        {
+          type: Object,
+          required: false,
+          schema: {
+            userId: {
+              type: String,
+              required: true,
+            },
+            userType: {
+              type: String,
+              required: true,
+            },
+            actionDate: {
+              type: String,
+              required: true,
+            },
+            cloudFileName: {
+              type: String,
+              required: true,
+            },
+            remarks: {
+              type: String,
+              required: true,
+            },
+          },
+        },
+      ],
     },
     rejectedByUserId: {
       type: Object,
@@ -248,6 +456,72 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
           required: true,
         },
       },
+    },
+    rejectedForJobClose: {
+      type: Object,
+      required: false,
+      schema: {
+        userId: {
+          type: String,
+          required: false,
+        },
+        userType: {
+          type: String,
+          required: false,
+        },
+        actionDate: {
+          type: String,
+          required: true,
+        },
+        reason: {
+          type: String,
+          required: false,
+        },
+        userComment: {
+          type: String,
+          required: false,
+        },
+      }
+    },
+    joiningDateDetails: {
+      type: Array,
+      required: false,
+      schema: [
+        {
+          type: Object,
+          required: false,
+          schema: {
+            joiningDate: {
+              type: String,
+              required: true,
+            },
+            hrName: {
+              type: String,
+              required: false,
+            },
+            hrEmail: {
+              type: String,
+              required: false,
+            },
+            message: {
+              type: String,
+              required: false,
+            },
+            actionByUserId: {
+              type: String,
+              required: true,
+            },
+            actionByUserType: {
+              type: String,
+              required: true,
+            },
+            actionDate: {
+              type: String,
+              required: true,
+            },
+          },
+        },
+      ],
     },
     followUpRequest: {
       type: Array,
@@ -286,6 +560,10 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
       type: String,
       required: false,
     },
+    isEvaluatorResponded: {
+      type: Boolean,
+      required: false,
+    },
     cvExtract: {
       type: String,
       required: false,
@@ -306,7 +584,15 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
       type: String,
       required: false,
     },
+    rejectionFeedbackBySystemForApplicant: {
+      type: String,
+      required: false,
+    },
     scoreDetails: {
+      type: String,
+      required: false,
+    },
+    scoreDetailsForApplicant: {
       type: String,
       required: false,
     },

@@ -14,8 +14,6 @@ import { InvocationTypeEnum } from "../enums/InvokeLambda.enum";
 // import utils
 import HttpStatusCode from "../utils/http-codes.util";
 
-// import utils
-
 /**
  * API Reference Invoke Lambda Documentation:
  * @see https://docs.aws.amazon.com/lambda/latest/api/API_Invoke.html
