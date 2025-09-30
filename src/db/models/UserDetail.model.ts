@@ -43,6 +43,7 @@ class DbUserDetailDto extends BaseDbDto {
   isNoticePeriodNegotiable?: boolean;
   YOE?: number;
   CV?: string; // The uploaded cv file name.
+  userCvFileName?: string; // Name of the uploaded CV file.
   cvExtract?: string; // The extracted plain texts.
 
   /* 
@@ -87,6 +88,14 @@ class DbUserDetailDto extends BaseDbDto {
   }, */
   cvExtractParsed?: object;
   cvExtractParsedDate?: string;
+
+  /**
+   * Whenever candidate uploads `CV` then nodejs api
+   * will trigger the `resume-parser` lambda function
+   * to extract and store the details from the uploaded CV
+   * and once the data is extracted then this field will be set to true
+   */
+  isCvExtracted?: boolean;
 
   coverLetter?: string;
   lastAccessedDash!: string;
@@ -219,6 +228,10 @@ const UserDetailSchema = new dynamoose.Schema(
       type: String,
       required: false,
     },
+    userCvFileName: {
+      type: String,
+      required: false,
+    },
     cvExtract: {
       type: String,
       required: false,
@@ -229,6 +242,10 @@ const UserDetailSchema = new dynamoose.Schema(
     },
     cvExtractParsedDate: {
       type: String,
+      required: false,
+    },
+    isCvExtracted: {
+      type: Boolean,
       required: false,
     },
     coverLetter: {
@@ -318,7 +335,7 @@ const UserDetailSchema = new dynamoose.Schema(
             },
             department: {
               type: String,
-              required: true,
+              required: false,
             },
             YOE: {
               type: Number,

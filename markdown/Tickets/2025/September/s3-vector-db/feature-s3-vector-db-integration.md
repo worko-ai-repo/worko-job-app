@@ -1,30 +1,23 @@
 
-# Production Checklist
-1. Transfer the latest jobs to `vector s3` on `production`
-2. use `.env.prod` in `env` file -> `do` this every time
+# Shared single job url s3 vector integration
+1. [GET] `https://jobs.dev.worko.work/job/:jobId/s3-vector?coreSkills=Node.js Backend Development,Cloud Computing`
+```json
+// Response
+{
+  // ...
 
-# Pending implementation in s3 vector
-1. Pagination 
-2. Left side filters in ui 
-3. Search by:
-  1. jobTitle
-  2. department
-  3. workMode
-  4. companyName
-  5. location
-  7. coreSkills
-  8. softSkills
-  9. technicalSkills
+  "initialMatchingScoreDetails": {
+    "jobId": "01K3TM7E8SBKY4NZAHQZS0N313",
+    "matchRank": 2,
+    "finalScore": 0.5226
+  }
 
-# Pending in Nodejs
-1. Move it to `environment` variables according to `dev` and `prod`
-```sh
-worko-s3-vector-job-search
-worko-s3-vector-job-ingestion
+  // ...
+}
 ```
-
-```sh
-`worko-s3-vector-job-search` | Functions | Lambda
+```json
+// If job not fount, then you will recieve below response
+{}
 ```
 
 1. Crud Operation for vector DB

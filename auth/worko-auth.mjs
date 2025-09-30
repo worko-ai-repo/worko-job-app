@@ -363,7 +363,9 @@ var checkWhitelistedUrl = function (url, httpMethod) {
     },
 
     // job routes
-    { path: "/job*", method: HttpMethodsConstants.GET },
+    { path: "/job/:id", method: HttpMethodsConstants.GET },
+    { path: "/job/", method: HttpMethodsConstants.GET },
+    { path: "/job", method: HttpMethodsConstants.GET },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -457,9 +459,18 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
     { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
 
     // User Job Application Author Note Routers
-    { path: "/job-application-author-note/", method: HttpMethodsConstants.POST },
-    { path: "/job-application-author-note/:jobApplicationId/:authorId", method: HttpMethodsConstants.GET },
-    { path: "/job-application-author-note/:jobApplicationId/:noteId", method: HttpMethodsConstants.PATCH },
+    {
+      path: "/job-application-author-note/",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:authorId",
+      method: HttpMethodsConstants.GET,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:noteId",
+      method: HttpMethodsConstants.PATCH,
+    },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -524,9 +535,18 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
 
     // User Job Application Author Note Routers
-    { path: "/job-application-author-note/", method: HttpMethodsConstants.POST },
-    { path: "/job-application-author-note/:jobApplicationId/:authorId", method: HttpMethodsConstants.GET },
-    { path: "/job-application-author-note/:jobApplicationId/:noteId", method: HttpMethodsConstants.PATCH },
+    {
+      path: "/job-application-author-note/",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:authorId",
+      method: HttpMethodsConstants.GET,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:noteId",
+      method: HttpMethodsConstants.PATCH,
+    },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -633,12 +653,24 @@ var isAdminUrl = function (url, httpMethod) {
     { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
 
     // Guidance Request routers
-    { path: "/user/guidance-request/:id/WORKO_ADMIN_ACTION", method: HttpMethodsConstants.PATCH },
+    {
+      path: "/user/guidance-request/:id/WORKO_ADMIN_ACTION",
+      method: HttpMethodsConstants.PATCH,
+    },
 
     // User Job Application Author Note Routers
-    { path: "/job-application-author-note/", method: HttpMethodsConstants.POST },
-    { path: "/job-application-author-note/:jobApplicationId/:authorId", method: HttpMethodsConstants.GET },
-    { path: "/job-application-author-note/:jobApplicationId/:noteId", method: HttpMethodsConstants.PATCH },
+    {
+      path: "/job-application-author-note/",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:authorId",
+      method: HttpMethodsConstants.GET,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:noteId",
+      method: HttpMethodsConstants.PATCH,
+    },
   ];
 
   const result = checkMatchingPattern(url, adminUrlList, httpMethod);

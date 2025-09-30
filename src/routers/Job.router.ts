@@ -36,6 +36,13 @@ JobRouter.post("/parsejd", jobController.parseJobDescription);
 JobRouter.get("/:id", jobController.getJobById);
 
 /**
+ * Get job by id
+ * 
+ * @authorisedRoles ["loggedInUser"]
+ */
+JobRouter.get("/:id/s3-vector", jobController.getJobByIdFromS3Vector);
+
+/**
  * Get job by filter options 
  * 
  * @authorisedRoles ["public"]
