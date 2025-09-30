@@ -14,9 +14,7 @@ import { awsBedrockClientLibrary, awsS3ClientLibrary } from "../configs/aws-sdk.
 import APP_CONSTANTS from "../configs/constants.config";
 
 // Import dtos
-import { BatchInferenceModelInput } from "../dtos/BatchInference.dto";
 import {
-  BatchInferenceLogCommonUpdateDto,
   BatchInferenceLogCreateDto,
 } from "../dtos/BatchInferenceLog.dto";
 
@@ -37,7 +35,6 @@ import UlidService from "./Ulid.service";
 import { batchInferenceLogServiceObj } from "./BatchInferenceLog.service";
 
 // Import utils
-import { BaseError } from "../utils/errors.util";
 import { fileUtilObj } from "../utils/file.util";
 import HttpStatusCode from "../utils/http-codes.util";
 

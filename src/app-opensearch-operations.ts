@@ -83,6 +83,19 @@ export const handler = async (
           AwsOpensearchRecordListingResponseDTO<any[]>
         >(getResponse);
 
+      case OpenSearchOperationsEnum.GET_ALL_DOCUMENTS_WITHOUT_PAGINATION:
+        const { awsOpensearchQuery: getAllQuery } = body;
+
+        const getAllResponse: any[] =
+          await awsOpensearchLibrary.getAllDocumentsWithoutPagination<any>(
+            indexName,
+            getAllQuery
+          );
+
+        return responseHandlerUtilObj.sendSuccessResponseForInvokedLambda<any[]>(
+          getAllResponse
+        );
+
       case OpenSearchOperationsEnum.UPDATE_DOCUMENT_BY_ID:
         const { id, updatedDto } = body;
 

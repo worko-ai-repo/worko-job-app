@@ -111,3 +111,12 @@ export enum UserCareerRequestStatusEnum {
   UNDER_CONSIDERATION = "UNDER_CONSIDERATION",
   HIRED = "HIRED",
 }
+
+/**
+ * UserDetailDbGenderEnum
+ */
+export enum UserDetailDbGenderEnum {
+  MALE = "MALE",
+  FEMALE = "FEMALE",
+  OTHER = "OTHER",
+}

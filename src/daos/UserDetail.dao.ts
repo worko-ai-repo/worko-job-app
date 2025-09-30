@@ -17,15 +17,6 @@ import {
   UserSubscriptionDetailsUpdateDto,
 } from "../dtos/User.dto";
 import { UserDetailDTO } from "../dtos/UserDetail.dto";
-import { UsersListingFilterOptions } from "../dtos/User.dto";
-import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
-
-// import enums
-import { SortOrderTypeEnum } from ".././enums/Common.enum";
-import { UserType } from "../enums/User.enum";
-
-// Load helpers
-import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.helper";
 
 // UserDetailDao class implementing the BaseDao interface
 class UserDetailDao implements BaseDao {

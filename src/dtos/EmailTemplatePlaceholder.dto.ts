@@ -1,3 +1,11 @@
+export interface EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  instagramUrl: string;
+  instagramLogoUrl: string;
+  linkedInUrl: string;
+  linkedInLogoUrl: string;
+  workoLogoUrl: string;
+}
+
 export interface EmailTemplatePlaceholderCAND_REFERRAL_REQ_ACCEPTED {
     candName: string;
     companyName: string;
@@ -124,7 +132,7 @@ export interface EmailTemplatePlaceholderCORP_USER_SUCCESSFUL_SIGNUP {
  * 
  * Represents the placeholders for the email template used when a worko corporate user receives a job application notification.
  */
-export interface EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION {
+export interface EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   corporateUserFullName: string;
   candidateName: string;
   jobTitle: string;
@@ -136,59 +144,63 @@ export interface EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICAT
 /**
  * EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION
  */
-export interface EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION {
+export interface EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   jobPosterName: string;
   candidateName: string;
   jobTitle: string;
   applicationDate: string;
   status: string;
+  companyJobApplicantsUrl: string;
+  corporateUpdateStatusUrl: string;
 }
 
 /**
  * EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION
  */
-export interface EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION {
+export interface EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   jobPosterName: string;
   jobTitle: string;
   candidateName: string;
   updatedStatus: string;
+  companyJobApplicantsUrl: string;
 }
 
 /**
  * EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION
  */
-export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION {
+export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   candidateName: string;
   jobTitle: string;
   companyName: string;
+  candJobApplUrl: string;
 }
 
 /**
  * EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE
  */
-export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE {
+export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   candName: string;
   companyName: string;
   jobTitle: string;
   workoAppUrl: string;
-  guidanceEmail: string;
+  guidanceUrl: string;
 }
 
 /**
  * EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE
  */
-export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE {
+export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   candName: string;
   companyName: string;
   jobTitle: string;
   workoAppUrl: string;
-  guidanceEmail: string;
+  guidanceUrl: string;
 }
 
 /**
  * EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE
  */
-export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE {
+export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   candName: string;
   jobTitle: string;
   companyName: string;
@@ -198,12 +210,33 @@ export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STA
 /**
  * EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE
  */
-export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE {
+export interface EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   candName: string;
   jobTitle: string;
   companyName: string;
   hrFeedback: string;
   workoAppUrl: string;
+}
+
+export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  uploadDocumentsUrl: string;
+}
+
+export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  joiningDate: string;
+}
+
+export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  viewOfferUrl: string;
 }
 
 /**
@@ -228,7 +261,7 @@ export interface EmailTemplatePlaceholderCAND_CORPORATE_BULK_JD_RESUME_LOW_MATCH
 /**
  * EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN
  */
-export interface EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN {
+export interface EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   referrerName: string,
   recipientName: string,
   companyName: string,
@@ -239,17 +272,18 @@ export interface EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN {
 /**
  * EmailTemplatePlaceholderREFERRER_REFER_AND_EARN
  */
-export interface EmailTemplatePlaceholderREFERRER_REFER_AND_EARN {
+export interface EmailTemplatePlaceholderREFERRER_REFER_AND_EARN extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   referrerName: string;
   recipientName: string;
   jobTitle: string;
   companyName: string;
+  dashboardUrl: string;
 }
 
 /**
  * EmailTemplatePlaceholderWORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED
  */
-export interface EmailTemplatePlaceholderWORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED {
+export interface EmailTemplatePlaceholderWORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_REQUESTED extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   referrerName: string;
   referrerEmailId: string;
   referrerPhoneNumber: string;
@@ -270,7 +304,7 @@ export interface EmailTemplatePlaceholderWORKO_ADMIN_REFER_AND_EARN_WITHDRAWAL_R
 /**
  * EmailTemplatePlaceholderREFERRER_REFER_AND_EARN_PAYMENT_COMPLETED
  */
-export interface EmailTemplatePlaceholderREFERRER_REFER_AND_EARN_PAYMENT_COMPLETED {
+export interface EmailTemplatePlaceholderREFERRER_REFER_AND_EARN_PAYMENT_COMPLETED extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   referrerName: string;
   amountPaid: string;
   recipientName: string;
@@ -281,4 +315,36 @@ export interface EmailTemplatePlaceholderREFERRER_REFER_AND_EARN_PAYMENT_COMPLET
   referrerAccountNumber: string;
   referrerIfscCode: string;
   paymentDate: string;
+  dashboardUrl: string;
+}
+
+/**
+ * EmailTemplatePlaceholder
+ */
+export interface EmailTemplatePlaceholderEVALUATOR_REQUEST_EVALUATION extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  evaluatorName: string;
+  jobTitle: string;
+  evaluatorDashboardUrl: string;
+
+  /**
+   * hiringManagerName
+   * 
+   * 1. `hrName` may be `worko-admin` or `corporate-admin` or `corporate-recruiter`
+   */
+  hrName: string;
+
+  /**
+   * hiringManagerCurrentCompanyName
+   * 
+   * 1. `hrCurrentCompanyName` may be `worko-admin's current company` or `corporate-admin's current company` or `corporate-recruiter's current company`
+   */
+  hrCurrentCompanyName: string;
+}
+
+export interface EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS
+  extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candName: string;
+  jobTitle: string;
+  companyName: string;
+  workoAppUrl: string;
 }

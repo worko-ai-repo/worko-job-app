@@ -1,5 +1,6 @@
 // Import dynamoose types
 import { Query, QueryResponse } from "dynamoose/dist/ItemRetriever";
+import { Condition } from "dynamoose/dist/Condition";
 
 // Import luxon
 import { DateTime } from "luxon";
@@ -417,8 +418,10 @@ class ReferAndEarnDao implements BaseDao {
       // Remove trailing and leading spaces from the search text
       const searchTextValue: string = referAndEarnRequestBody.searchText;
 
-      query = query.and().parenthesis((condition) => {
-        return condition
+      global.logger.debug("Search text value", { searchTextValue });
+
+      query = query.and().parenthesis((condition: Condition) => {
+        let searchCondition: Condition = condition
           .where("recipientDetails.email")
           .contains(searchTextValue.toLowerCase())
           .or()
@@ -434,9 +437,6 @@ class ReferAndEarnDao implements BaseDao {
           .where("jobApplicationStatus")
           .contains(searchTextValue.toUpperCase())
           .or()
-          .where("PK")
-          .contains(`USR#EML#${searchTextValue.toLowerCase()}`) // Search by referrer email
-          .or()
           .where("companyDetails.name")
           .contains(searchTextValue.toUpperCase())
           .or()
@@ -448,6 +448,15 @@ class ReferAndEarnDao implements BaseDao {
           .or()
           .where("referrerDetails.phoneNumber")
           .contains(searchTextValue);
+
+        if(!referAndEarnRequestBody.referrerEmail) {
+          searchCondition = searchCondition
+            .or()
+            .where("PK")
+            .contains(`USR#EML#${searchTextValue.toLowerCase()}`); // Search by referrer email
+        }
+
+        return searchCondition;
       });
     }
 

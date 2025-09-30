@@ -260,7 +260,7 @@ export interface JobLocationDto {
  */
 export interface EntityBulkUpdateCountDto {
   count: number;
-  primaryIds: string[];
+  primaryIds?: string[];
 }
 
 /**

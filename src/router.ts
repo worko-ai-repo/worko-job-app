@@ -4,9 +4,14 @@ import { Router } from "express";
 // Import the routes
 import JobRouter from "./routers/Job.router";
 import ReferAndEarnRouter from "./routers/ReferAndEarn.router";
+import RequestEvaluationRouter from "./routers/RequestEvaluation.router";
 import ScriptRouter from "./routers/Script.router";
 import UserExternalJobApplicationRouter from "./routers/UserExternalJobApplication.router";
 import UserJobApplicationRouter from "./routers/UserJobApplication.router";
+import UserJobApplicationAuthorNoteRouter from "./routers/UserJobApplicationAuthorNote.router";
+import ResponseEvaluationRouter from "./routers/ResponseEvaluation.router";
+import EvaluatorDetailRouter from "./routers/EvaluatorDetail.router";
+import FileRouter from "./routers/File.router";
 
 // Router that contains all the routes/endpoints in the application
 const router = Router();
@@ -22,7 +27,24 @@ const router = Router();
  *    "admin" - Only worko admin users can access these routes
  *    "corporate-recruiter" - Only corporate recruiters can access these routes
  *    "corporate-admin" - Only corporate admin users can access these routes
+ *    "evaluator" - Only evaluators can access these routes 
  */
+
+/**
+ * Evaluator detail routers
+ * 
+ * @authorisedRoles ["evaluator"]
+ */
+router.use("/evaluator-detail", EvaluatorDetailRouter);
+
+/**
+ * FILE ROUTERS 
+ * 
+ * Regitser the "File" router
+ * 
+ * @authorisedRoles ["loggedInUser"] 
+ */
+router.use("/file", FileRouter);
 
 /**
  * JOB ROUTERS
@@ -41,6 +63,20 @@ router.use("/job", JobRouter);
  * @authorisedRoles ["loggedInUser", "admin"]
  */
 router.use('/refer-and-earn', ReferAndEarnRouter);
+
+/**
+ * REQUEST EVALUATION ROUTES
+ * 
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin", "evaluator"]
+ */
+router.use("/request-evaluation", RequestEvaluationRouter);
+
+/**
+ * RESPONSE EVALUATION ROUTES
+ * 
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin", "evaluator"]
+ */
+router.use("/response-evaluation", ResponseEvaluationRouter);
 
 /**
  * SCRIPT ROUTERS
@@ -68,6 +104,15 @@ router.use("/external-job-application", UserExternalJobApplicationRouter);
  * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
  */
 router.use("/job-application", UserJobApplicationRouter);
+
+/**
+ * USER JOB APPLICATION AUTHOR NOTE ROUTERS
+ * 
+ * Register the "UserJobApplicationAuthorNote CRUD" routers
+ * 
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ */
+router.use("/job-application-author-note", UserJobApplicationAuthorNoteRouter);
 
 /**
  * User Matching Score Job Router

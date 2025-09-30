@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 // Import dtos
 import { AwsOpensearchRecordListingResponseDTO } from '../dtos/Common.aws-opensearch.dto';
 import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateApiDto, JobCreateDto, JobListingFilterOptions, JobListingFilterRequestDTO, JobSoftDeleteApiDto, JobUpdateApiDto, JobUpdateDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from '../dtos/Job.dto';
+import { AwsS3VectorJobMatchingScoreDto } from "../dtos/AwsS3VectorJob.dto";
 
 // Import helpers
 import { getActionByUserId } from "../helpers/user.helper";
@@ -20,10 +21,10 @@ import { jobServiceObj } from '../services/Job.service';
 import { jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
 
 // Import types
-import { FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails } from '../types/Job.type';
+import { JobsWithAndWithoutCompanyDetails } from '../types/Job.type';
 
 // Import utils
-import { RequestValidationError } from '../utils/errors.util';
+import { BaseError, RequestValidationError } from '../utils/errors.util';
 import HttpStatusCode from '../utils/http-codes.util';
 
 /**
@@ -148,8 +149,7 @@ class JobController {
         filePath: __filename,
         methodName: this.getAllJobsByFilterOptions.name,
       });
-
-      // Create JobListingFilterRequest var to store the filter options and parse the lastKey
+      
       const jobListingFilterRequest: JobListingFilterOptions =
         AwsOpensearchRequestHelper.parseFilterOptions<
           JobListingFilterRequestDTO,
@@ -166,8 +166,8 @@ class JobController {
       }
 
       // Get all jobs by filter options
-      const jobDetails: AwsOpensearchRecordListingResponseDTO<FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails> =
-        await jobServiceObj.getAllJobsByFilterOptions(jobFilterOptions);
+      const jobDetails: AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails> =
+        await jobServiceObj.getAllJobsByDashboardFilterOptions(jobFilterOptions);
 
       // Respond with job details
       res.status(HttpStatusCode.OK_200).json(jobDetails);
@@ -221,7 +221,7 @@ class JobController {
           updatedByCorporateUserId: actionByCorporateUserId,
         };
 
-      const jobDetails: DbJobAwsOpensearchDto | DbCompanyJobDto | undefined = await jobServiceObj.updateInternalOrExternalJobById(
+      const jobDetails: DbJobAwsOpensearchDto | undefined = await jobServiceObj.updateInternalOrExternalJobById(
         jobId,
         jobUpdateDto
       );
@@ -273,7 +273,8 @@ class JobController {
       // Call the service to update the Job
       const updatedJob: DbCompanyJobDto = await jobServiceObj.softDeleteJobById(
         jobId,
-        validatedJobRequestBody.companyId
+        validatedJobRequestBody.companyId,
+        validatedJobRequestBody
       );
 
       res.status(HttpStatusCode.OK_200).json(updatedJob);
@@ -311,6 +312,50 @@ class JobController {
     }
   };
 
+  getJobByIdFromS3Vector = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Retrieve id from path parameters
+      const { id } = req.params;
+
+      const cognitoUserId: string = global.requestLocalContext.userId;
+      if(!cognitoUserId){
+        global.logger.error(`User not logged in`, {
+          methodName: this.getJobByIdFromS3Vector.name,
+          id: id,
+          userId: cognitoUserId
+        });
+        throw new BaseError("Please log in to access this resource", HttpStatusCode.UNAUTHORIZED_401);
+      }
+
+      const jobListingFilterRequest: JobListingFilterOptions =
+        AwsOpensearchRequestHelper.parseFilterOptions<
+          JobListingFilterRequestDTO,
+          JobListingFilterOptions
+        >(req.query as unknown as JobListingFilterRequestDTO);
+
+      // Validate the request using the appropriate schema
+      let { error, value: jobFilterOptions } = jobFilterDtoValidation.validate(
+        jobListingFilterRequest,
+        { abortEarly: false }
+      );
+      if (error) {
+        throw new RequestValidationError(error);
+      }
+
+      const jobDetails: DbJobAwsOpensearchDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
+      } = await jobServiceObj.getJobByIdFromS3Vector(id, jobFilterOptions);
+
+      res.status(HttpStatusCode.OK_200).json(jobDetails ?? {});
+    } catch (error) {
+      global.logger.error(`Error in catch block of getJobByIdFromS3Vector [Controller]`, {
+        methodName: this.getJobByIdFromS3Vector.name,
+        error: error
+      })
+      next(error);
+    }
+  };
+
   /**
    * updateBulkJob
    *
@@ -339,13 +384,6 @@ class JobController {
 
       const updatedJobs: JobBulkUpdateResponseDto = await jobServiceObj.updateBulkJob(validatedJobRequestBody);
 
-      /**
-       * @todo: Discuss with "CTO" instead of logging, 
-       * if any single job id is failed to update in DynamoDB or Opensearch,
-       * then we need to store it in new "dynamodb" logs partition.
-       * If all the job Ids are success then we no need to store it in new "dynamodb" logs partition to
-       * save the cost of storing it in new "dynamodb" logs partition.
-       */
       global.logger.info(`Bulk Update Job Result [Controller]`, {
         methodName: this.updateBulkJob.name,
         updatedJobs: updatedJobs,

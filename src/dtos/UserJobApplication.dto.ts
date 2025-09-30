@@ -3,7 +3,8 @@
 import { RecordListingFilterOptions, RecordListingFilterRequestDTO } from "./Common.dto";
 
 // import enums
-import { JobApplicationStatus } from "../enums/UserJobApplication.enum";
+import { JobApplicationStatus, UserJobApplicationDocumentStatusEnum } from "../enums/UserJobApplication.enum";
+import { UserType } from "../enums/User.enum";
 
 // import types
 import { JobApplicationFollowUpRequestType, JobApplicationRejectedByUserIdType, JobApplicationStatusTrackerType, JobApplicationUserType, JobApplicationUserTypeWithAdmin } from "../types/UserJobApplication.type";
@@ -86,18 +87,37 @@ export interface UserJobApplicationListingFilterRequestDTO extends RecordListing
  * NOTE: This Comes from the request body of the API i.e from the frontend
  */
 export interface UserJobApplicationUpdateApiDTO {
-  userId: string; // The ID of the corporate user i.e `CorporateUser` model
+  // Details of the corporateUser or worko-admin
+  userId: string; // The ID of the corporateUser or worko-admin
+  emailId: string; // The email ID of the corporateUser or worko-admin
+  userType: JobApplicationUserTypeWithAdmin;
+
+  // New status of the job application
   status: JobApplicationStatus;
-  emailId: string; // The email ID of the corporate user i.e `CorporateUser` model
+
+  // Requested documents from applicant
+  requestedDocumentNames?: string[]; // ["Internship certificate", "Btech certificate"]
+
+  offerLetterCloudFileName?: string;
+  offerLetterRemarks?: string;
+  offerLetterJoiningDate?: string;
+
+  /**
+   * joiningDate
+   *
+   * @example "2024-10-11T08:01:52.193Z"
+   */
+  joiningDate?: string;
+
+  // Reason and comment for rejection
   reason?: string;
   userComment?: string;
-  userType: JobApplicationUserTypeWithAdmin;
 
   /**
    * applicantName
-   * 
+   *
    * @reference `name` attribute of `UserDetail.model.ts`
-   * 
+   *
    * @description We use this name for email notifications
    */
   applicantName: string;
@@ -113,6 +133,11 @@ export interface UserJobApplicationInternalUpdateDto {
   status: JobApplicationStatus;
   rejectedByUserId?: JobApplicationRejectedByUserIdType;
   statusTracker: JobApplicationStatusTrackerType;
+  requestedDocumentDetails?: UserJobApplicationDbRequestedDocumentDetailDto[];
+  documentCurrentStatusMap?: Record<string, UserJobApplicationDocumentStatusEnum>;
+  responseDocumentDetails?: UserJobApplicationDbResponseDocumentDetailDto[];
+  offerLetterDetails?: UserJobApplicationDbOfferLetterDetailDto[];
+  joiningDateDetails?: UserJobApplicationDbJoinedDateDetailDto[];
 }
 
 /**
@@ -236,6 +261,13 @@ export interface UserJobApplicationCommonUpdateDto {
   rejectionAwsScheduleId: string;
   status: JobApplicationStatus;
   statusTracker: JobApplicationStatusTrackerType;
+  isEvaluatorResponded: boolean;
+  responseDocumentDetails: UserJobApplicationDbResponseDocumentDetailDto[];
+  documentCurrentMapping: Record<string, string>;
+  documentCurrentStatusMap: Record<string, UserJobApplicationDocumentStatusEnum>;
+  offerLetterIssueRaisedDetails: UserJobApplicationDbOfferLetterIssueRaisedDetailDto[];
+  joiningDateDetails: UserJobApplicationDbJoinedDateDetailDto[];
+  rejectedForJobClose: UserJobApplicationDbRejectedForJobClose;
 }
 
 /**
@@ -276,3 +308,147 @@ export interface UserJobApplicationBulkUpdateApiDTO {
     applicantName: string;
   }[];
 }
+
+/**
+ * UserJobApplicationDbRequestedDocumentDetailDto
+ * 
+ * @reference `requestedDocumentDetails` attribute from `UserJobApplication.model.ts`
+ */
+export interface UserJobApplicationDbRequestedDocumentDetailDto {
+  userId: string; // `id` of the user who requested the document
+  userType: JobApplicationUserTypeWithAdmin; // `userType` of the user who requested the document
+  actionDate: string; // date when the document was requested
+  requestedDocumentNames: string[]; // ["Internship certificate", "Btech certificate"]
+  documentStatus: UserJobApplicationDocumentStatusEnum; // Type of document request
+};
+
+export interface UserJobApplicationDocumentMappingDto {
+  /**
+   * documentName
+   * 
+   * @description File name requested by worko-admin or corporate-admin
+   */
+  documentName: string;
+
+  /**
+   * cloudFileName
+   * 
+   * @description `s3` file name
+   */
+  cloudFileName: string;
+}
+
+/**
+ * UserJobApplicationDbResponseDocumentDetailDto
+ * 
+ * @reference `responseDocumentDetails` attribute from `UserJobApplication.model.ts`
+ */
+export interface UserJobApplicationDbResponseDocumentDetailDto {
+  userId: string;
+  userType: UserType;
+  actionDate: string;
+  documentStatus: UserJobApplicationDocumentStatusEnum; // Type of document response
+  documentMapping: UserJobApplicationDocumentMappingDto[]; // Maps document name to cloud file name
+};
+
+/**
+ * UserJobApplicationApplicantUpdateApiDTO
+ */
+export interface UserJobApplicationApplicantUpdateApiDTO {
+  userId: string; // The ID of the applicant
+  emailId: string; // The email ID of the applicant
+  userType: UserType;
+  status: JobApplicationStatus;
+
+  // Whenever `applicant` successfully uploads the documents requested by worko-admin or corporate-admin to s3 then this attribute will be set
+  documentMapping?: UserJobApplicationDocumentMappingDto[];
+
+  /**
+   * offerLetterIssueRemarks and offerLetterCloudFileName are used when the `applicant` raises an issue with the offer letter
+   */
+  offerLetterIssueRemarks?: string;
+  offerLetterCloudFileName?: string;
+
+  /**
+   * joiningDate
+   *
+   * @example "2024-10-11T08:01:52.193Z"
+   */
+  joiningDate?: string;
+  /**
+   * `hr` may be `worko-admin` or `corporate-admin/recruiter`
+   */
+  joiningHrName?: string;
+  joiningApplicantMessage?: string;
+
+  /**
+   * applicantName
+   *
+   * @reference `name` attribute of `UserDetail.model.ts`
+   *
+   * @description We use this name for email notifications
+   */
+  applicantName: string;
+}
+
+/**
+ * UserJobApplicationDbOfferLetterDetailDto
+ */
+export interface UserJobApplicationDbOfferLetterDetailDto {
+  userId: string;
+  userType: JobApplicationUserTypeWithAdmin;
+  actionDate: string;
+  joiningDate?: string;
+  cloudFileName?: string;
+  remarks?: string;
+}
+
+/**
+ * UserJobApplicationDbOfferLetterIssueRaisedDetailDto
+ */
+export interface UserJobApplicationDbOfferLetterIssueRaisedDetailDto {
+  userId: string;
+  userType: UserType;
+  actionDate: string;
+  cloudFileName: string; // s3 file name for which the issue was raised
+  remarks: string;
+}
+
+/**
+ * UserJobApplicationDbJoinedDateDetailDto
+ * 
+ * 1. If corporate-admin/recruiter or worko-admin clicks `joined` button before candidate clicks then only `joiningDate` will be present
+ * 2. If candidate clicks `I have joined` button before corporate-admin/recruiter or worko-admin clicks then `joiningDate`, `hr` details will also be present
+ */
+export interface UserJobApplicationDbJoinedDateDetailDto {
+  /**
+   * joiningDate
+   *
+   * @example "2024-10-11T08:01:52.193Z"
+   */
+  joiningDate: string;
+
+  /**
+   * `hr` may be `worko-admin` or `corporate-admin/recruiter`
+   */
+  hrName?: string;
+
+  message?: string;
+
+  actionByUserId: string;
+  actionByUserType: JobApplicationUserType;
+  actionDate: string;
+}
+
+export interface UserJobApplicationDbRejectedForJobClose {
+  userId?: string;
+  userType?: JobApplicationUserTypeWithAdmin;
+
+  /**
+   * Sample value of `actionDate`: 2024-12-17T11:36:46.753+00:00
+   */
+  actionDate?: string;
+
+  reason?: string;
+  userComment?: string;
+};

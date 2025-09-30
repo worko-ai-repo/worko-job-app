@@ -70,6 +70,10 @@ const serverlessConfiguration: AWS = {
       APP_AWS_BEDROCK_SERVICE_ROLE: "${env:APP_AWS_BEDROCK_SERVICE_ROLE}",
       APP_AWS_EVENT_BRIDGE_SCHEDULE_INVOKE_LAMBDA_ROLE:
         "${env:APP_AWS_EVENT_BRIDGE_SCHEDULE_INVOKE_LAMBDA_ROLE}",
+      APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME:
+        "${env:APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME}",
+      APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME:
+        "${env:APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME}",
     },
   },
 
@@ -168,7 +172,9 @@ const serverlessConfiguration: AWS = {
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:resume-parser",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-description-parser",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-user-matching-score-job",
-          // "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-rag-feedback-ingestion",
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-rag-feedback-ingestion",
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:${self:custom.aws.APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME}",
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:${self:custom.aws.APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME}",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-opensearch-operations",
         ],
       },
@@ -197,6 +203,17 @@ const serverlessConfiguration: AWS = {
         ],
         Resource:
           "arn:aws:scheduler:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:schedule-group/*",
+      },
+
+      {
+        Effect: "Allow",
+        Action: [
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminListGroupsForUser",
+        ],
+        Resource:
+          "arn:aws:cognito-idp:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:userpool/${self:custom.aws.APP_AWS_COGNITO_USER_POOL_ID}",
       },
 
       /**
@@ -377,41 +394,11 @@ const serverlessConfiguration: AWS = {
                    */
                   input: {
                     scheduleJob: {
-                      type: ScheduleJobType.FANTASTIC_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+                      type: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
                     },
                   },
                 },
               },
-
-              // {
-              //   schedule: {
-              //     name: "fantastic-job-twenty-four-hours-schedule", // Name can be specified for a schedule event. This is not a required property.
-              //     description:
-              //       "Triggers to retrieve fantastic job twenty four hours according to cron expression", // Description can be specified for a schedule event. This is not a required property.
-              //     /**
-              //      * Cron expressions
-              //      *  Syntax: cron(fields) -->>  "cron(Minutes Hours Day-of-month Month Day-of-week Year)"
-              //      * @see https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html#eb-cron-expressions
-              //      *
-              //      * @reference "Amazon EventBridge" > "Buses" > "Rules" > {Rule name} > Event schedule
-              //      */
-              //     rate: ["cron(0 13 ? * TUE *)"],
-              //     enabled: true,
-              //     /**
-              //      * @see https://www.serverless.com/framework/docs/providers/aws/events/schedule#specify-multiple-schedule-expressions
-              //      *
-              //      * @type { string | { body: string; } | { [k: string]: unknown; } | undefined }
-              //      *
-              //      * @description Whatever input you provide, that will be passed to the handler function as input,
-              //      *              If no input is provided, the type of "event" object will be by default `ScheduledEvent`.
-              //      */
-              //     input: {
-              //       scheduleJob: {
-              //         type: ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS,
-              //       },
-              //     },
-              //   },
-              // },
 
               {
                 schedule: {

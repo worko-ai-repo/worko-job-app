@@ -18,14 +18,14 @@ import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 
 // import dtos
-import { UserJobApplicationBulkUpdateApiDTO, UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
-import { EntityBulkUpdateMetricDto, PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
-import { EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
+import { UserJobApplicationApplicantUpdateApiDTO, UserJobApplicationBulkUpdateApiDTO, UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationDocumentMappingDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
+import { EntityBulkUpdateMetricDto, PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
+import { EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
 import { ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
 import { ReferAndEarnStatusTrackerDto, UpdateReferAndEarnInternalDto } from "../dtos/ReferAndEarn.dto";
 
 // import enums
-import { JobApplicationStatus } from "../enums/UserJobApplication.enum";
+import { JobApplicationStatus, UserJobApplicationDocumentStatusEnum } from "../enums/UserJobApplication.enum";
 import { EmailTemplateEnum } from "../enums/EmailTemplate.enum";
 import { UserType } from "../enums/User.enum";
 import { JobStatusEnum } from "../enums/Job.enum";
@@ -61,7 +61,7 @@ import { referAndEarnServiceObj } from "./ReferAndEarn.service";
 
 // import types
 import { UserDetailProfileInfoType } from "../types/UserDetail.type";
-import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
+import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationUserType, JobApplicationUserTypeWithAdmin, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
 import { EmailPlaceholderDetailsToJobPosterType } from "../types/EmailTemplatePlaceholder.type";
 
 // import utils
@@ -895,6 +895,8 @@ class UserJobApplicationService {
       jobUrl: string | undefined;
       jobTitle: string | undefined;
       jdExtracted: string | undefined;
+      jobCreatedByUserId: string | undefined;
+      jobCreatedByCorporateUserId: string | undefined;
     })[] = await injectCompanyJobDetails<DbUserJobApplicationDto>(
       userJobApplicationArray
     );
@@ -974,7 +976,8 @@ class UserJobApplicationService {
             companyName: updatedJobApplication.companyName.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
-            guidanceEmail: APP_CONSTANTS.GUIDANCE_EMAIL,
+            guidanceUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_GUIDANCE_URL,
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 
         // Send email to the corporate user
@@ -993,7 +996,8 @@ class UserJobApplicationService {
             companyName: updatedJobApplication.companyName.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
-            guidanceEmail: APP_CONSTANTS.GUIDANCE_EMAIL,
+            guidanceUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_GUIDANCE_URL,
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 
         // Send email to the corporate user
@@ -1012,6 +1016,7 @@ class UserJobApplicationService {
             companyName: updatedJobApplication.companyName.toTitleCase(),
             jobTitle: companyJobDetails.jobTitle.toTitleCase(),
             workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 
         // Send email to the corporate user
@@ -1033,6 +1038,7 @@ class UserJobApplicationService {
               updatedJobApplication.rejectedByUserId?.reason ??
               "Hiring manager has not provided any feedback",
             workoAppUrl: APP_CONSTANTS.WORKO_APP_DOMAIN,
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 
         // Send email to the corporate user
@@ -1043,6 +1049,75 @@ class UserJobApplicationService {
         );
         break;
       }
+
+      case JobApplicationStatus.DOCUMENT_REQUESTED: {
+        // Construct the email placeholders object
+        const documentRequestedEmailPlaceholders: EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE =
+          {
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+            candidateName: applicantNameToTitleCase,
+            jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+            companyName: updatedJobApplication.companyName.toTitleCase(),
+            uploadDocumentsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CANDIDATE_JOB_APPLICATION_URL,
+          };
+
+        // Send email to the candidate 
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE,
+          toAddress,
+          documentRequestedEmailPlaceholders
+        );
+        break;
+      }
+
+      case JobApplicationStatus.OFFER_SENT: {
+        
+        // Construct the email placeholders object
+        const offerSentEmailPlaceholders: EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE =
+          {
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+            candidateName: applicantNameToTitleCase,
+            jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+            companyName: updatedJobApplication.companyName.toTitleCase(),
+            viewOfferUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CANDIDATE_JOB_APPLICATION_URL,
+          };
+
+        // Send email to the candidate 
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE,
+          toAddress,
+          offerSentEmailPlaceholders
+        );
+        break;
+      }
+
+      case JobApplicationStatus.JOINED: {
+        const {joiningDateDetails} = updatedJobApplication;
+
+        if(!joiningDateDetails || !joiningDateDetails.length) {
+          throw new BaseError("Joining date details should not be empty when status is JOINED", HttpStatusCode.BAD_REQUEST_400);
+        }
+
+        if (joiningDateDetails[0].actionByUserType !== UserType.CAND) {
+          // Construct the email placeholders object
+          const joinedEmailPlaceholders: EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE =
+            {
+              ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+              candidateName: applicantNameToTitleCase,
+              jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+              companyName: updatedJobApplication.companyName.toTitleCase(),
+              joiningDate: dateHelperObj.formatDateToDayMonthYear(joiningDateDetails[0].joiningDate),
+            };
+
+          // Send email to the candidate 
+          await emailLibrary.sendEmail(
+            EmailTemplateEnum.CAND_JOB_APPLICATION_JOINED_STATUS_UPDATE,
+            toAddress,
+            joinedEmailPlaceholders
+          );
+        }
+      }
+
       default:
         return false;
     }
@@ -1074,6 +1149,8 @@ class UserJobApplicationService {
     const formattedStatuses: Record<JobApplicationStatus, string> = {
       [JobApplicationStatus.APPLIED]:
         APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.APPLIED,
+      [JobApplicationStatus.ACCEPTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.ACCEPTED,
       [JobApplicationStatus.REJECTED]:
         APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.REJECTED,
       [JobApplicationStatus.CV_DOWNLOADED]:
@@ -1086,6 +1163,31 @@ class UserJobApplicationService {
         APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.INTERVIEW_DONE,
       [JobApplicationStatus.HIRED]:
         APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.HIRED,
+      [JobApplicationStatus.JOINED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.JOINED,
+      [JobApplicationStatus.ON_HOLD]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.ON_HOLD,
+      [JobApplicationStatus.HIRING_IN_PROCESS]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.HIRING_IN_PROCESS,
+      [JobApplicationStatus.DOCUMENT_REQUESTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.DOCUMENT_REQUESTED,
+      [JobApplicationStatus.DOCUMENT_SUBMITTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.DOCUMENT_SUBMITTED,
+      [JobApplicationStatus.DOCUMENT_REVISION_REQUESTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.DOCUMENT_REVISION_REQUESTED,
+      [JobApplicationStatus.DOCUMENT_REVISION_REQUEST_SUBMITTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.DOCUMENT_REVISION_REQUEST_SUBMITTED,
+      [JobApplicationStatus.DOCUMENT_VERIFIED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.DOCUMENT_VERIFIED,
+      [JobApplicationStatus.OFFER_SENT]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.OFFER_SENT,
+      [JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUESTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.DOCUMENT_ADDITIONAL_REQUESTED,
+      [JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED,
+      [JobApplicationStatus.REVISED_OFFER_SENT]:
+        APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.REVISED_OFFER_SENT,
+      [JobApplicationStatus.OFFER_ISSUE_RAISED]: APP_CONSTANTS.JOB_APPLICATION_READABLE_STATUS.OFFER_ISSUE_RAISED,
     };
 
     // Return the formatted status or default to "Applied"
@@ -1150,6 +1252,10 @@ class UserJobApplicationService {
         updatedStatus: this.formatJobApplicationStatus(
           status as JobApplicationStatusType
         ),
+        companyJobApplicantsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL.strtr({
+          "{jobId}": updatedJobApplication.jobId,
+        }),
+        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
 
     // Send email to the corporate user
@@ -1277,18 +1383,22 @@ class UserJobApplicationService {
     currentActionDateTime: string,
     applicantName: string,
   ): Promise<void> {
-    if ([JobApplicationStatus.REJECTED, JobApplicationStatus.PROCESSING_INTERVIEW, JobApplicationStatus.HIRED].includes(updatedJobApplication.status)) {
-      /**
-       * If job application status is "rejected" then invoke rag lambda with the job application details and applicant details
-       */
-      /*
-      if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
-        await InvokeLambdaService.triggerRejectJobApplication({
-          applicantEmail: getEmailFromPK(updatedJobApplication.PK),
-          jobApplicationId: updatedJobApplication.id
-        })
-      }
-      */
+    if (
+      [
+        JobApplicationStatus.REJECTED,
+        JobApplicationStatus.PROCESSING_INTERVIEW,
+        JobApplicationStatus.HIRED,
+      ].includes(updatedJobApplication.status)
+    ) {
+      // /**
+      //  * If job application status is "rejected" then invoke rag lambda with the job application details and applicant details
+      //  */
+      // if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
+      //   await InvokeLambdaService.triggerRejectJobApplication({
+      //     applicantEmail: getEmailFromPK(updatedJobApplication.PK),
+      //     jobApplicationId: updatedJobApplication.id
+      //   })
+      // }
 
       // Check if the job application is for a refer and earn id
       if (updatedJobApplication?.referAndEarnId) {
@@ -1362,6 +1472,31 @@ class UserJobApplicationService {
               getEmailFromPK(parsedReferAndEarnDetails.PK),
               referAndEarnUpdateDto
             );
+          } else if(
+            updatedJobApplication.status === JobApplicationStatus.JOINED
+          ) {
+            // Prepare refer and earn update dto
+            referAndEarnUpdateDto = {
+              jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.JOINED,
+              status: ReferAndEarnStatusEnum.ACHIEVED,
+              statusTracker: [
+                ...parsedReferAndEarnDetails.statusTracker,
+                {
+                  oldStatus: parsedReferAndEarnDetails.status,
+                  newStatus: ReferAndEarnStatusEnum.ACHIEVED,
+                  actionDate: currentActionDateTime,
+                  actionByUserId: undefined,
+                  description: undefined,
+                },
+              ],
+            };
+
+            // Update refer and earn status
+            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+              parsedReferAndEarnDetails.id,
+              getEmailFromPK(parsedReferAndEarnDetails.PK),
+              referAndEarnUpdateDto
+            );            
           }
         }
       }
@@ -1370,13 +1505,64 @@ class UserJobApplicationService {
     // send email to candidate
     await this.sendEmailToCandidateOnJobApplicationUpdate(
       updatedJobApplication,
-      applicantName,
+      applicantName
     );
 
     // send email to job poster on job application update
     await this.sendEmailToJobPosterOnJobApplicationUpdate(
       updatedJobApplication,
-      applicantName,
+      applicantName
+    );
+  }
+
+  private prepareStatusTrackerDataForUpdate(
+    existingStatus: JobApplicationStatus,
+    existingStatusTracker: JobApplicationStatusTrackerType,
+    newStatus: JobApplicationStatus,
+    currentActionDateTime: string,
+    actionByUserId: string,
+    actionByUserType: JobApplicationUserType,
+  ): JobApplicationStatusTrackerType {
+    return [
+      ...existingStatusTracker,
+      {
+        oldStatus: existingStatus,
+        newStatus: newStatus,
+        actionDate: currentActionDateTime,
+        userId: actionByUserId,
+        userType: actionByUserType,
+      },
+    ];
+  }
+
+  private throwErrorForAlreadyUpdatedJobApplicationStatus(
+    newStatus: JobApplicationStatus,
+    oldStatus: JobApplicationStatus,
+  ): void {
+    if (newStatus === oldStatus) {
+      throw new BaseError(
+        "Job application is already updated with this status.",
+        HttpStatusCode.BAD_REQUEST_400
+      );
+    }
+  }
+
+  private missingRequiredDataErrorWhileUpdatingJobApplication(
+    newStatus: JobApplicationStatus,
+    methodName: string,
+    jobApplicationId: string,
+    requiredFields: string[],
+  ): void {
+    global.logger.error(`Missing required fields`, {
+      methodName,
+      newStatus,
+      jobApplicationId,
+      requiredFields,
+    });
+
+    throw new BaseError(
+      "Missing required fields",
+      HttpStatusCode.BAD_REQUEST_400
     );
   }
 
@@ -1384,10 +1570,6 @@ class UserJobApplicationService {
    * updateJobApplicationByCorpUser
    *
    * Updates a job application by corporate user.
-   *
-   * This method updates a job application with the provided status and
-   * reason. It also sends an email notification to the candidate of the
-   * job application status update.
    *
    * @param {string} jobApplicationId - The ID of the job application to be updated.
    * @param {UserJobApplicationUpdateApiDTO} jobApplicationRequestBody - The update data for the job application.
@@ -1404,97 +1586,327 @@ class UserJobApplicationService {
       jobApplicationRequestBody,
     });
 
+    const {
+      status: newJobApplicationStatus,
+      userId: actionByUserId,
+      userType: actionByUserType,
+    } = jobApplicationRequestBody;
+
     // Fetch job application details
     const parsedJobApplication: DbUserJobApplicationDto =
       await this.getJobApplicationById(jobApplicationId);
 
-    // Fetch refer and earn details
+    if(![JobApplicationStatus.CV_DOWNLOADED, JobApplicationStatus.ON_HOLD, JobApplicationStatus.UNDER_EVALUATION].includes(newJobApplicationStatus)) {
+      this.throwErrorForAlreadyUpdatedJobApplicationStatus(
+        newJobApplicationStatus,
+        parsedJobApplication.status
+      );
+    }
+
+    // Fetch current date and time
     const currentActionDateTime: string = DateTime.now().toISO();
 
     // Prepare update data
     let updateData: UserJobApplicationInternalUpdateDto;
 
-    // Prepare update data based on job application status
-    if (jobApplicationRequestBody.status === JobApplicationStatus.REJECTED) {
-      const statusTrackerData: JobApplicationStatusTrackerType = [
-        ...parsedJobApplication.statusTracker,
-        {
-          oldStatus: parsedJobApplication.status,
-          newStatus: jobApplicationRequestBody.status,
-          actionDate: currentActionDateTime,
-          userId: jobApplicationRequestBody.userId,
-          userType: jobApplicationRequestBody.userType,
-        },
-      ];
+    const commonUpdateStatusTracker: JobApplicationStatusTrackerType = this.prepareStatusTrackerDataForUpdate(
+      parsedJobApplication.status,
+      parsedJobApplication.statusTracker,
+      newJobApplicationStatus,
+      currentActionDateTime,
+      actionByUserId,
+      actionByUserType,
+    )
 
-      updateData = {
-        status: jobApplicationRequestBody.status,
-        rejectedByUserId: {
-          userId: jobApplicationRequestBody.userId,
-          userType: jobApplicationRequestBody.userType,
-          actionDate: currentActionDateTime,
-          reason:
-            jobApplicationRequestBody.reason ?? "Reason not provided by User",
-          userComment:
-            jobApplicationRequestBody.userComment ??
-            "Comment not provided by User",
-        },
-        statusTracker: statusTrackerData,
-      };
-    } else if(jobApplicationRequestBody.status === JobApplicationStatus.CV_DOWNLOADED) {
-      // If cv is already downloaded then override the action date, user id and user type
-      if(parsedJobApplication.status === JobApplicationStatus.CV_DOWNLOADED) {
-        const statusTrackerData: JobApplicationStatusTrackerType = [
-          ...parsedJobApplication.statusTracker.map(
-            (item) =>
-              item.newStatus === JobApplicationStatus.CV_DOWNLOADED
-                ? { 
-                  ...item, 
-                  actionDate: currentActionDateTime,
-                  userId: jobApplicationRequestBody.userId,
-                  userType: jobApplicationRequestBody.userType
-                } // override "actionDate", "userId" and "userType"
-                : item // keep others unchanged
-          )
-        ];
-  
+    switch (newJobApplicationStatus) {
+      case JobApplicationStatus.REJECTED:
         updateData = {
-          status: jobApplicationRequestBody.status,
-          statusTracker: statusTrackerData,
-        };
-      } else {
-        const statusTrackerData: JobApplicationStatusTrackerType = [
-          ...parsedJobApplication.statusTracker,
-          {
-            oldStatus: parsedJobApplication.status,
-            newStatus: jobApplicationRequestBody.status,
+          status: newJobApplicationStatus,
+          rejectedByUserId: {
+            userId: actionByUserId,
+            userType: actionByUserType,
             actionDate: currentActionDateTime,
-            userId: jobApplicationRequestBody.userId,
-            userType: jobApplicationRequestBody.userType,
+            reason:
+              jobApplicationRequestBody.reason ?? "Reason not provided by User",
+            userComment:
+              jobApplicationRequestBody.userComment ??
+              "Comment not provided by User",
           },
-        ];
+          statusTracker: commonUpdateStatusTracker,
+        };
+
+        break;
+
+      case JobApplicationStatus.CV_DOWNLOADED:
+        // If cv is already downloaded then override the action date, user id and user type
+        if (
+          parsedJobApplication.status === JobApplicationStatus.CV_DOWNLOADED
+        ) {
+          const statusTrackerDataForCvDownloaded: JobApplicationStatusTrackerType = [
+            ...parsedJobApplication.statusTracker.map(
+              (item) =>
+                item.newStatus === JobApplicationStatus.CV_DOWNLOADED
+                  ? {
+                      ...item,
+                      actionDate: currentActionDateTime,
+                      userId: actionByUserId,
+                      userType: actionByUserType,
+                    } // override "actionDate", "userId" and "userType"
+                  : item // keep others unchanged
+            ),
+          ];
+
+          updateData = {
+            status: newJobApplicationStatus,
+            statusTracker: statusTrackerDataForCvDownloaded,
+          };
+        } else {
+          updateData = {
+            status: newJobApplicationStatus,
+            statusTracker: commonUpdateStatusTracker,
+          };
+        }
+        break;
+
+      case JobApplicationStatus.DOCUMENT_REQUESTED:
+        const {requestedDocumentNames} = jobApplicationRequestBody;
+
+        if(!requestedDocumentNames || !requestedDocumentNames?.length) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByCorpUser.name,
+            jobApplicationId,
+            ["requestedDocumentNames"]
+          );
+        };
 
         updateData = {
-          status: jobApplicationRequestBody.status,
-          statusTracker: statusTrackerData,
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          requestedDocumentDetails: [
+            ...(parsedJobApplication.requestedDocumentDetails ?? []),
+            {
+              documentStatus: UserJobApplicationDocumentStatusEnum.DOCUMENT_REQUESTED,
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              requestedDocumentNames: requestedDocumentNames!,
+            },
+          ],
+          documentCurrentStatusMap: requestedDocumentNames!.reduce(
+            (
+              acc: Record<string, UserJobApplicationDocumentStatusEnum>, // The initialValue, or the previously returned value of the function.
+              doc: string // The value of the current element.The value of the current element.
+            ) => {
+              acc[doc] = UserJobApplicationDocumentStatusEnum.DOCUMENT_REQUESTED;
+              return acc;
+            },
+            {} as Record<string, UserJobApplicationDocumentStatusEnum> // initialValue
+          ),
         };
-      }
-    } else {
-      const statusTrackerData: JobApplicationStatusTrackerType = [
-        ...parsedJobApplication.statusTracker,
-        {
-          oldStatus: parsedJobApplication.status,
-          newStatus: jobApplicationRequestBody.status,
-          actionDate: currentActionDateTime,
-          userId: jobApplicationRequestBody.userId,
-          userType: jobApplicationRequestBody.userType,
-        },
-      ];
+        break;
 
-      updateData = {
-        status: jobApplicationRequestBody.status,
-        statusTracker: statusTrackerData,
-      };
+      case JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUESTED:
+        const {requestedDocumentNames: additionalRequestedDocumentNames} = jobApplicationRequestBody;
+
+        if(!additionalRequestedDocumentNames || !additionalRequestedDocumentNames?.length) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByCorpUser.name,
+            jobApplicationId,
+            ["requestedDocumentNames"]
+          );
+        };
+
+        const existingDocuments: string[] = Object.keys(
+          parsedJobApplication.documentCurrentStatusMap || {}
+        );
+        const newDocuments: string[] = additionalRequestedDocumentNames!.filter((doc: string) => !existingDocuments.includes(doc));
+
+        if(!newDocuments?.length) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByCorpUser.name,
+            jobApplicationId,
+            ["requestedDocumentNames"]
+          );
+        };
+        
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          requestedDocumentDetails: [
+            ...(parsedJobApplication.requestedDocumentDetails || []),
+            {
+              documentStatus: UserJobApplicationDocumentStatusEnum.DOCUMENT_ADDITIONAL_REQUESTED,
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              requestedDocumentNames: newDocuments,
+            },
+          ],
+          documentCurrentStatusMap: {
+            ...(parsedJobApplication.documentCurrentStatusMap || {}),
+            ...newDocuments.reduce(
+              (acc: Record<string, UserJobApplicationDocumentStatusEnum>, doc: string) => {
+                acc[doc] = UserJobApplicationDocumentStatusEnum.DOCUMENT_ADDITIONAL_REQUESTED;
+                return acc;
+              },
+              {} as Record<string, UserJobApplicationDocumentStatusEnum>
+            ),
+          },
+        };
+        break;
+
+      case JobApplicationStatus.DOCUMENT_REVISION_REQUESTED:
+        const { requestedDocumentNames: reRequestedDocuments } =
+          jobApplicationRequestBody;
+
+        if (!reRequestedDocuments || !reRequestedDocuments?.length) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByCorpUser.name,
+            jobApplicationId,
+            ["requestedDocumentNames"]
+          );
+        };
+
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          requestedDocumentDetails: [
+            ...(parsedJobApplication.requestedDocumentDetails || []),
+            {
+              documentStatus: UserJobApplicationDocumentStatusEnum.DOCUMENT_REVISION_REQUESTED,
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              requestedDocumentNames: reRequestedDocuments!,
+            },
+          ],
+          documentCurrentStatusMap: {
+            ...(parsedJobApplication.documentCurrentStatusMap || {}),
+            ...reRequestedDocuments!.reduce((acc: Record<string, UserJobApplicationDocumentStatusEnum>, doc: string) => {
+              acc[doc] = UserJobApplicationDocumentStatusEnum.DOCUMENT_REVISION_REQUESTED;
+              return acc;
+            }, {} as Record<string, UserJobApplicationDocumentStatusEnum>)
+          }
+        };
+        break;
+
+      case JobApplicationStatus.DOCUMENT_VERIFIED:
+        const existingDocumentCurrentMapping: Record<string, UserJobApplicationDocumentStatusEnum> | undefined = parsedJobApplication.documentCurrentStatusMap;
+
+        if(!existingDocumentCurrentMapping) {
+          throw new BaseError(
+            `You should have requested at least one document before making it verified.`,
+            HttpStatusCode.FORBIDDEN_403,
+          )
+        }
+
+        // Check if all documents are in submitted status
+        const submittedStatuses = [
+          UserJobApplicationDocumentStatusEnum.DOCUMENT_SUBMITTED,
+          UserJobApplicationDocumentStatusEnum.DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED,
+          UserJobApplicationDocumentStatusEnum.DOCUMENT_REVISION_REQUEST_SUBMITTED
+        ];
+        
+        // Check if all documents are in submitted status
+        const allDocumentsSubmitted: boolean = Object.values(existingDocumentCurrentMapping).every(
+          status => submittedStatuses.includes(status)
+        );
+
+        if (!allDocumentsSubmitted) {
+          throw new BaseError(
+            `You can only make document verified only when all the documents are submitted by the applicant.`,
+            HttpStatusCode.FORBIDDEN_403,
+          )
+        }
+
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+        };
+        break;
+      
+      case JobApplicationStatus.OFFER_SENT: 
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          offerLetterDetails: [
+            ...(parsedJobApplication.offerLetterDetails || []),
+            {
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              joiningDate: jobApplicationRequestBody.offerLetterJoiningDate,
+              cloudFileName:
+                jobApplicationRequestBody.offerLetterCloudFileName,
+              remarks: jobApplicationRequestBody.offerLetterRemarks,
+            },
+          ],
+        };
+        break;
+      
+      case JobApplicationStatus.REVISED_OFFER_SENT: 
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          offerLetterDetails: [
+            ...(parsedJobApplication.offerLetterDetails || []),
+            {
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              cloudFileName:
+                jobApplicationRequestBody.offerLetterCloudFileName,
+              remarks: jobApplicationRequestBody.offerLetterRemarks,
+              joiningDate: jobApplicationRequestBody.offerLetterJoiningDate,
+            },
+          ],
+        };
+        break;
+
+      case JobApplicationStatus.JOINED:
+        const {status: existingJobApplicationStatus, joiningDateDetails} = parsedJobApplication
+        if (existingJobApplicationStatus === JobApplicationStatus.JOINED && joiningDateDetails) {
+          throw new BaseError(
+            "Already submitted joined date details",
+            HttpStatusCode.BAD_REQUEST_400,
+          )
+        }
+
+        const {joiningDate} = jobApplicationRequestBody
+
+        if (!joiningDate) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByCorpUser.name,
+            jobApplicationId,
+            ["joiningDate"]
+          );
+        };
+
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          joiningDateDetails: [
+            {
+              joiningDate: joiningDate!,
+              actionByUserId: actionByUserId,
+              actionByUserType: actionByUserType,
+              actionDate: currentActionDateTime,
+            },
+          ],
+        };
+        break;
+
+      default:
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+        };
+        break;
     }
 
     // Update job application by corp user
@@ -1510,7 +1922,276 @@ class UserJobApplicationService {
       await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
         updatedJobApplication,
         currentActionDateTime,
-        jobApplicationRequestBody.applicantName,
+        jobApplicationRequestBody.applicantName
+      );
+    }
+
+    return updatedJobApplication;
+  }
+
+  async updateJobApplicationByApplicant(
+    jobApplicationId: string,
+    jobApplicationRequestBody: UserJobApplicationApplicantUpdateApiDTO
+  ): Promise<DbUserJobApplicationDto> {
+    global.logger.info(`Update Job Application By Applicant [Service]`, {
+      methodName: this.updateJobApplicationByApplicant.name,
+      jobApplicationId,
+    });
+
+    const {
+      status: newJobApplicationStatus,
+      userId: actionByUserId,
+      userType: actionByUserType,
+    } = jobApplicationRequestBody;
+
+    // Fetch job application details
+    const parsedJobApplication: DbUserJobApplicationDto =
+      await this.getJobApplicationById(jobApplicationId);
+
+    const cognitoUserId: string = global.requestLocalContext.userId;
+
+    // Parse the user details
+    const userDetails: DbUserDetailDto = await userDetailServiceObj.getUserByIdOne(
+      cognitoUserId
+    );
+
+    // If the user is not a candidate, throw an error
+    if(parsedJobApplication.PK !== userDetails.PK || !userDetails.userType.includes(UserType.CAND)) {
+      throw new BaseError(`Only candidate can update this type of job application.`, HttpStatusCode.FORBIDDEN_403);
+    }
+
+    this.throwErrorForAlreadyUpdatedJobApplicationStatus(
+      newJobApplicationStatus,
+      parsedJobApplication.status,
+    )
+
+    // Fetch refer and earn details
+    const currentActionDateTime: string = DateTime.now().toISO();
+
+    const commonUpdateStatusTracker: JobApplicationStatusTrackerType = this.prepareStatusTrackerDataForUpdate(
+      parsedJobApplication.status,
+      parsedJobApplication.statusTracker,
+      newJobApplicationStatus,
+      currentActionDateTime,
+      actionByUserId,
+      actionByUserType,
+    )
+
+    let updateData: Partial<UserJobApplicationCommonUpdateDto>;
+
+    switch (newJobApplicationStatus) {
+      case JobApplicationStatus.DOCUMENT_SUBMITTED:
+        const { documentMapping } = jobApplicationRequestBody
+
+        if (!documentMapping || !documentMapping.length) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByApplicant.name,
+            jobApplicationId,
+            ["documentMapping"]
+          );
+        };
+        
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          responseDocumentDetails: [ 
+            ...(parsedJobApplication.responseDocumentDetails ?? []),
+            {
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              documentStatus: UserJobApplicationDocumentStatusEnum.DOCUMENT_SUBMITTED,
+              documentMapping: documentMapping!,
+            },
+          ],
+          documentCurrentStatusMap: documentMapping!.reduce((acc: Record<string, UserJobApplicationDocumentStatusEnum>, doc: UserJobApplicationDocumentMappingDto) => {
+            acc[doc.documentName] = UserJobApplicationDocumentStatusEnum.DOCUMENT_SUBMITTED
+            return acc
+          }, {} as Record<string, UserJobApplicationDocumentStatusEnum>),
+          documentCurrentMapping: documentMapping!.reduce((acc: Record<string, string>, doc: UserJobApplicationDocumentMappingDto) => {
+            acc[doc.documentName] = doc.cloudFileName
+            return acc
+          }, {} as Record<string, string>)
+        };
+        break;
+        
+      case JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED:
+        const {documentMapping: additionalDocumentMapping} = jobApplicationRequestBody;
+
+        if (!additionalDocumentMapping || !additionalDocumentMapping.length) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByApplicant.name,
+            jobApplicationId,
+            ["documentMapping"]
+          );
+        }
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          responseDocumentDetails: [
+            ...(parsedJobApplication.responseDocumentDetails || []),
+            {
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              documentStatus: UserJobApplicationDocumentStatusEnum.DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED,
+              documentMapping: additionalDocumentMapping!,
+            },
+          ],
+          documentCurrentStatusMap: {
+            ...(parsedJobApplication.documentCurrentStatusMap || {}),
+            ...additionalDocumentMapping!.reduce((acc: Record<string, UserJobApplicationDocumentStatusEnum>, doc: UserJobApplicationDocumentMappingDto) => {
+              acc[doc.documentName] = UserJobApplicationDocumentStatusEnum.DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED;
+              return acc;
+            }, {} as Record<string, UserJobApplicationDocumentStatusEnum>)
+          },
+          documentCurrentMapping: {
+            ...(parsedJobApplication.documentCurrentMapping || {}),
+            ...additionalDocumentMapping!.reduce((acc: Record<string, string>, doc: UserJobApplicationDocumentMappingDto) => {
+              acc[doc.documentName] = doc.cloudFileName;
+              return acc;
+            }, {} as Record<string, string>)
+          }
+        };
+        break;
+
+      case JobApplicationStatus.DOCUMENT_REVISION_REQUEST_SUBMITTED:
+        const { documentMapping: revisionDocumentMapping } = jobApplicationRequestBody;
+
+        if (!revisionDocumentMapping || !revisionDocumentMapping.length) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByApplicant.name,
+            jobApplicationId,
+            ["documentMapping"]
+          );
+        }
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          responseDocumentDetails: [
+            ...(parsedJobApplication.responseDocumentDetails || []),
+            {
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              documentStatus: UserJobApplicationDocumentStatusEnum.DOCUMENT_REVISION_REQUEST_SUBMITTED,
+              documentMapping: revisionDocumentMapping!,
+            },
+          ],
+          documentCurrentStatusMap: {
+            ...(parsedJobApplication.documentCurrentStatusMap || {}),
+            ...revisionDocumentMapping!.reduce((acc: Record<string, UserJobApplicationDocumentStatusEnum>, doc: UserJobApplicationDocumentMappingDto) => {
+              acc[doc.documentName] = UserJobApplicationDocumentStatusEnum.DOCUMENT_REVISION_REQUEST_SUBMITTED;
+              return acc;
+            }, {} as Record<string, UserJobApplicationDocumentStatusEnum>)
+          },
+          documentCurrentMapping: {
+            ...(parsedJobApplication.documentCurrentMapping || {}),
+            ...revisionDocumentMapping!.reduce((acc: Record<string, string>, doc: UserJobApplicationDocumentMappingDto) => {
+              acc[doc.documentName] = doc.cloudFileName;
+              return acc;
+            }, {} as Record<string, string>)
+          }
+        };
+        break;
+      
+      case JobApplicationStatus.OFFER_ISSUE_RAISED:
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: commonUpdateStatusTracker,
+          offerLetterIssueRaisedDetails: [
+            {
+              remarks: jobApplicationRequestBody?.offerLetterIssueRemarks ?? "Not Mentioned",
+              userId: actionByUserId,
+              userType: actionByUserType,
+              actionDate: currentActionDateTime,
+              cloudFileName: jobApplicationRequestBody?.offerLetterCloudFileName ?? "Not Mentioned",
+            },
+          ] 
+        }
+        break;
+
+      case JobApplicationStatus.JOINED:
+        const { status: existingJobApplicationStatus, joiningDateDetails } =
+          parsedJobApplication;
+        if (
+          existingJobApplicationStatus === JobApplicationStatus.JOINED &&
+          joiningDateDetails
+        ) {
+          throw new BaseError(
+            "Already submitted joined date details",
+            HttpStatusCode.BAD_REQUEST_400
+          );
+        }
+
+        const {joiningDate} = jobApplicationRequestBody;
+
+        if(!joiningDate) {
+          this.missingRequiredDataErrorWhileUpdatingJobApplication(
+            newJobApplicationStatus,
+            this.updateJobApplicationByApplicant.name,
+            jobApplicationId,
+            ["joiningDate"]
+          );
+        }
+
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: [
+            ...parsedJobApplication.statusTracker,
+            {
+              oldStatus: parsedJobApplication.status,
+              newStatus: newJobApplicationStatus,
+              actionDate: currentActionDateTime,
+              userId: actionByUserId,
+              userType: actionByUserType,
+            },
+          ],
+          joiningDateDetails: [
+            {
+              joiningDate: joiningDate!,
+              hrName: jobApplicationRequestBody?.joiningHrName ?? "",
+              message: jobApplicationRequestBody?.joiningApplicantMessage ?? "",
+              actionByUserId: actionByUserId,
+              actionByUserType: actionByUserType,
+              actionDate: currentActionDateTime,
+            },
+          ],
+        };
+        break;
+
+      default:
+        updateData = {
+          status: newJobApplicationStatus,
+          statusTracker: [
+            ...parsedJobApplication.statusTracker,
+            {
+              oldStatus: parsedJobApplication.status,
+              newStatus: newJobApplicationStatus,
+              actionDate: currentActionDateTime,
+              userId: actionByUserId,
+              userType: actionByUserType,
+            },
+          ],
+        };
+        break;
+    }
+
+    // Update job application by corp user
+    const updatedJobApplication: DbUserJobApplicationDto = await this.updateJobApplicationByIdAndPrimaryEmail(
+      parsedJobApplication.id,
+      parsedJobApplication.PK.split("#")[2],
+      updateData
+    );
+
+    if (updatedJobApplication?.id) {
+      await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+        updatedJobApplication,
+        currentActionDateTime,
+        jobApplicationRequestBody.applicantName
       );
     }
 
@@ -1585,7 +2266,7 @@ class UserJobApplicationService {
           );
         if (updatedJobApplication?.id) {
           jobApplicationMetric.success.count++;
-          jobApplicationMetric.success.primaryIds.push(jobApplicationId);
+          jobApplicationMetric.success.primaryIds!.push(jobApplicationId);
           
           await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
             updatedJobApplication,
@@ -1594,7 +2275,7 @@ class UserJobApplicationService {
           );
         } else {
           jobApplicationMetric.failure.count++;
-          jobApplicationMetric.failure.primaryIds.push(jobApplicationId);
+          jobApplicationMetric.failure.primaryIds!.push(jobApplicationId);
 
           global.logger.error(
             `Failed to update jobApplicationId: ${jobApplicationId} in DynamoDB`,
@@ -1605,7 +2286,7 @@ class UserJobApplicationService {
         }
       } catch (error) {
         jobApplicationMetric.failure.count++;
-        jobApplicationMetric.failure.primaryIds.push(jobApplicationId);
+        jobApplicationMetric.failure.primaryIds!.push(jobApplicationId);
 
         global.logger.error(
           `Failed to update job application id: ${jobApplicationId}`,
@@ -1617,6 +2298,107 @@ class UserJobApplicationService {
     }
 
     return jobApplicationMetric;
+  }
+
+  async getAllNonInitiatedHiringStatusJobApplicationsToRejectWithoutPagination(jobId: string): Promise<DbUserJobApplicationDto[]> {
+    let lastKeyInternal: ObjectType | undefined = undefined;
+    let pageSizeInternal = 50;
+    let allUserJobApplicationsWithoutPagination: DbUserJobApplicationDto[] = [];
+
+    // Continue fetching the data until all the data is fetched
+    do {
+      const filterOptions: RecordListingFilterOptions = {
+        lastKey: lastKeyInternal,
+        pageSize: pageSizeInternal,
+      };
+
+      const userJobApplicationsResponse: PaginatedResultsWithMatchingConditionsResponse<DbUserJobApplicationDto> =
+        await userJobApplicationDao.getAllNonInitiatedHiringStatusJobApplicationsToReject(
+          jobId,
+          filterOptions
+        );
+
+      const {
+        lastKey,
+        count,
+        timesQueried,
+        queriedCount,
+        ...userJobApplicationsData
+      } = userJobApplicationsResponse;
+
+      const userJobApplicationsArray: DbUserJobApplicationDto[] =
+        Object.values(userJobApplicationsData);
+
+      allUserJobApplicationsWithoutPagination =
+        allUserJobApplicationsWithoutPagination.concat(
+          userJobApplicationsArray
+        );
+
+      lastKeyInternal = lastKey ?? undefined;
+    } while (lastKeyInternal);
+
+    return allUserJobApplicationsWithoutPagination;
+  }
+
+  async updateAllNonInitiatedHiringStatusJobApplicationsToReject(jobId: string, jobTitle: string, jobClosedByUserId?: string, jobClosedByUserType?: JobApplicationUserTypeWithAdmin, shortRejectionReason?: string, detailedRejectionReason?: string) {
+    const userJobApplicationsToUpdate: DbUserJobApplicationDto[] =
+      await this.getAllNonInitiatedHiringStatusJobApplicationsToRejectWithoutPagination(
+        jobId
+      );
+
+    userJobApplicationsToUpdate.forEach(async (userJobApplication: DbUserJobApplicationDto) => {
+      const currentActionDateTime: string = dateHelperObj.getISODate();
+      const updatedJobApplication: DbUserJobApplicationDto = await this.updateJobApplicationByIdAndPrimaryEmail(
+        userJobApplication.id,
+        userJobApplication.PK.split("#")[2],
+        {
+          status: JobApplicationStatus.REJECTED,
+          statusTracker: [
+            ...userJobApplication.statusTracker,
+            {
+              oldStatus: userJobApplication.status,
+              newStatus: JobApplicationStatus.REJECTED,
+              actionDate: currentActionDateTime,
+              userId: jobClosedByUserId,
+              userType: jobClosedByUserType,
+            },
+          ],
+          rejectedForJobClose: {
+            userId: jobClosedByUserId,
+            userType: jobClosedByUserType,
+            actionDate: currentActionDateTime,
+            reason: shortRejectionReason,
+            userComment: detailedRejectionReason
+          }
+        }
+      );
+
+      const candidateDetails: DbUserDetailDto = await UserDetailService.getUserDetailsByEmail(
+        userJobApplication.PK.split("#")[2]
+      )
+
+      if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
+        const toAddress: EmailSourceDestinationAddress = {
+          email: updatedJobApplication.PK.split("#")[2],
+          fullName: candidateDetails.name.toTitleCase(),
+        };
+
+        const emailPlaceholders: EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS =
+          {
+            candName: candidateDetails.name.toTitleCase(),
+            jobTitle: jobTitle.toTitleCase(),
+            companyName: updatedJobApplication.companyName,
+            workoAppUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_APP_URL,
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL
+          };
+
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_JOB_CLOSED_UPDATE_STATUS,
+          toAddress,
+          emailPlaceholders
+        )
+      }
+    });
   }
 
   /**
@@ -1693,6 +2475,8 @@ class UserJobApplicationService {
             companyJobApplicantsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL.strtr({
               "{jobId}": parsedJobApplication.jobId,
             }),
+
+            ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 
         // Send email to the corporate user
@@ -1744,6 +2528,9 @@ class UserJobApplicationService {
         candidateName: candidateDetails.name.toTitleCase(),
         jobTitle: jobTitle.toTitleCase(),
         companyName: parsedJobApplication.companyName,
+        candJobApplUrl:
+          APP_CONSTANTS.FRONTEND_URLS.WORKO_CANDIDATE_JOB_APPLICATION_URL,
+        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
 
     const { awsMessageId } = await emailLibrary.sendEmail(
@@ -1825,6 +2612,14 @@ class UserJobApplicationService {
         status: this.formatJobApplicationStatus(
           status as JobApplicationStatusType
         ),
+
+        companyJobApplicantsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL.strtr({
+          "{jobId}": jobApplicationDetails.jobId,
+        }),
+
+        corporateUpdateStatusUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CORPORATE_LOGIN,
+
+        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
 
     // Send email to the corporate user

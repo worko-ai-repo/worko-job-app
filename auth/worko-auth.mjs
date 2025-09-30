@@ -21,7 +21,13 @@ import UrlPattern from "url-pattern";
 const verifier = CognitoJwtVerifier.create({
   userPoolId: process.env.USER_POOL,
   tokenUse: "access",
-  clientId: process.env.CLIENT_ID, // Optional, only if you need to verify the token audience
+
+  /**
+   * @description
+   * 1. If we don't specify client id explicitly as null then it will throw below error:
+   *    "ParameterValidationError: clientId must be provided or set to null explicitly"
+   */
+  clientId: null, // Accept tokens from any client in this User Pool
 });
 
 // Constants for HTTP methods
@@ -90,8 +96,28 @@ export const handler = async function (event, context, callback) {
         event.requestContext.httpMethod
       );
 
+      // check if evaluator url
+      const isAnEvaluatorUrl = isEvaluatorUrl(
+        event.path,
+        event.requestContext.httpMethod
+      );
+
       let payload = {};
-      if (isACorporateRecruiterUrl) {
+      if (isAnEvaluatorUrl) {
+        // Verify the token with group admin
+        payload = await verifier.verify(token, {
+          /**
+           * groups (optional): verify that the JWT's cognito:groups claim matches your expectation.
+           * Provide a string, or an array of strings to allow multiple groups (i.e. one of these groups must match the JWT).
+           */
+          groups: [
+            "admin",
+            "corporate-admin",
+            "corporate-recruiter",
+            "evaluator",
+          ],
+        });
+      } else if (isACorporateRecruiterUrl) {
         // Verify the token with group admin
         payload = await verifier.verify(token, {
           /**
@@ -142,20 +168,16 @@ export const handler = async function (event, context, callback) {
       }, */
       /*
       {
-        sub: 'REDACTED',
-        'cognito:groups': [ 'admin' ],
-        iss: 'https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_xGreJKkNc',
-        version: 2,
-        client_id: '16sh5s2bo3169886fdm8gtp0e4',
-        origin_jti: 'c395bd80-00a6-4711-a612-8c3f17a24816',
-        event_id: 'db8ae270-20c8-4e7c-8ce4-a3fbfe8f5a34',
+        sub: '1lql4bdit9k1vrmdfms4cf2fmi',
         token_use: 'access',
-        scope: 'phone openid email',
-        auth_time: 1753360707,
-        exp: 1753447107,
-        iat: 1753360707,
-        jti: '3b9940b1-872f-4eaf-8986-4113cd674a37',
-        username: 'REDACTED'
+        scope: 'default-m2m-resource-server-mzjxgt/read',
+        auth_time: 1752843922,
+        iss: 'https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_xGreJKkNc',
+        exp: 1752847522,
+        iat: 1752843922,
+        version: 2,
+        jti: 'bce38927-7062-4bab-a70a-f9954429e5e6',
+        client_id: '1lql4bdit9k1vrmdfms4cf2fmi',
       }
       */
       console.log("payload:", {
@@ -334,12 +356,47 @@ var checkWhitelistedUrl = function (url, httpMethod) {
     // corporate invite routes
     { path: "/corporate-invite/:id", method: HttpMethodsConstants.GET },
 
+    // request evaluation routes
+    {
+      path: "/request-evaluation/:jobApplicationId/:evaluationRequestId",
+      method: HttpMethodsConstants.GET,
+    },
+
     // job routes
-    { path: "/job*", method: HttpMethodsConstants.GET },
+    { path: "/job/:id", method: HttpMethodsConstants.GET },
+    { path: "/job/", method: HttpMethodsConstants.GET },
+    { path: "/job", method: HttpMethodsConstants.GET },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
 
+  return result;
+};
+
+/**
+ * isEvaluatorUrl
+ *
+ * Checks if a given URL is an Evaluator URL and matches the given HTTP method.
+ *
+ * @param {string} url - The URL to check.
+ * @param {string} httpMethod - The HTTP method to check against.
+ * @returns {boolean} - True if the URL and HTTP method match any pattern in the
+ *                      Evaluator URL list, otherwise false.
+ */
+var isEvaluatorUrl = function (url, httpMethod) {
+  const urlList = [
+    // Request evaluation routers
+    { path: "/request-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Response evaluation routers
+    { path: "/response-evaluation/", method: HttpMethodsConstants.POST },
+    { path: "/response-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Evaluator detail routers
+    { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
+  ];
+
+  const result = checkMatchingPattern(url, urlList, httpMethod);
   return result;
 };
 
@@ -389,6 +446,31 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
 
     // corporate bulk jd resume routes
     { path: "/corporate-bulk-jd-resume/*", method: HttpMethodsConstants.ANY },
+
+    // Request evaluation routers
+    { path: "/request-evaluation/", method: HttpMethodsConstants.POST },
+    { path: "/request-evaluation/bulk", method: HttpMethodsConstants.POST },
+    { path: "/request-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Response evaluation routers
+    { path: "/response-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Evaluator detail routers
+    { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
+
+    // User Job Application Author Note Routers
+    {
+      path: "/job-application-author-note/",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:authorId",
+      method: HttpMethodsConstants.GET,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:noteId",
+      method: HttpMethodsConstants.PATCH,
+    },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -440,6 +522,31 @@ var isCorporateAdminUrl = function (url, httpMethod) {
 
     // corporate bulk jd resume routes
     { path: "/corporate-bulk-jd-resume/*", method: HttpMethodsConstants.ANY },
+
+    // Request evaluation routers
+    { path: "/request-evaluation/", method: HttpMethodsConstants.POST },
+    { path: "/request-evaluation/bulk", method: HttpMethodsConstants.POST },
+    { path: "/request-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Response evaluation routers
+    { path: "/response-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Evaluator detail routers
+    { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
+
+    // User Job Application Author Note Routers
+    {
+      path: "/job-application-author-note/",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:authorId",
+      method: HttpMethodsConstants.GET,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:noteId",
+      method: HttpMethodsConstants.PATCH,
+    },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -533,6 +640,37 @@ var isAdminUrl = function (url, httpMethod) {
     // File routers
     { path: "/file/gsu2u/COMPANY_LOGO", method: HttpMethodsConstants.POST },
     { path: "/file/gsu2u/BLOG_COVER_IMAGE", method: HttpMethodsConstants.POST },
+
+    // Request evaluation routers
+    { path: "/request-evaluation/", method: HttpMethodsConstants.POST },
+    { path: "/request-evaluation/bulk", method: HttpMethodsConstants.POST },
+    { path: "/request-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Response evaluation routers
+    { path: "/response-evaluation*", method: HttpMethodsConstants.GET },
+
+    // Evaluator detail routers
+    { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
+
+    // Guidance Request routers
+    {
+      path: "/user/guidance-request/:id/WORKO_ADMIN_ACTION",
+      method: HttpMethodsConstants.PATCH,
+    },
+
+    // User Job Application Author Note Routers
+    {
+      path: "/job-application-author-note/",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:authorId",
+      method: HttpMethodsConstants.GET,
+    },
+    {
+      path: "/job-application-author-note/:jobApplicationId/:noteId",
+      method: HttpMethodsConstants.PATCH,
+    },
   ];
 
   const result = checkMatchingPattern(url, adminUrlList, httpMethod);

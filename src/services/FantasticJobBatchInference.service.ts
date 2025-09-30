@@ -8,6 +8,7 @@ import { FANTASTIC_JOB_APP_CONSTANTS } from "../configs/constants/FantasticJob.c
 import { BatchInferenceModelInput } from "../dtos/BatchInference.dto";
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
 import { FantasticJobLogCommonUpdateDto } from "../dtos/FantasticJobLog.dto";
+import { AwsS3VectorJobCreateOrUpdateJobDataDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto } from "../dtos/AwsS3VectorJob.dto";
 
 // Import enums
 import { FantasticJobLogJobsDbStoredStatusEnum } from "../enums/FantasticJobLog.enum";
@@ -21,6 +22,7 @@ import { commonExternalJobBatchInferenceServiceObj } from "./CommonExternalJobBa
 import { jobServiceObj } from "./Job.service";
 import UlidService from "./Ulid.service";
 import { fantasticJobLogServiceObj } from "./FantasticJobLog.service";
+import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 
 // Import utils
 import { BaseError } from "../utils/errors.util";
@@ -249,7 +251,7 @@ class FantasticJobBatchInferenceService {
      * This is the maximum number of jobs that can be indexed in a single bulk request to the OpenSearch index
      * and write to single JSONL file.
      */
-    const batchSize: number = APP_CONSTANTS.AWS_OPENSEARCH_BULK_CREATE_COUNT;
+    const batchSize: number = APP_CONSTANTS.AWS_OPENSEARCH_AND_S3_VECTOR_BULK_CREATE_COUNT;
 
     // Initialize a counter for creating JSONL files
     let fileJsonlRandomId: string = "";
@@ -288,6 +290,11 @@ class FantasticJobBatchInferenceService {
           }
       )[] = [];
 
+      /**
+       * Initialize an empty array to hold the jobs data to create in aws S3 vector 
+       */
+      const bulkS3VectorCreateJobData: AwsS3VectorJobCreateOrUpdateJobDataDto[] = [];
+
       // Loop through the current batch of jobs
       for (const eachFantasticJob of batch) {
         // Generate a unique ULID ID
@@ -308,6 +315,13 @@ class FantasticJobBatchInferenceService {
             },
           },
           transformFantasticJob
+        );
+
+        bulkS3VectorCreateJobData.push(
+          awsS3VectorJobServiceObj.prepareAwsS3VectorJobsDataCreateOrUpdateDto(
+            awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+            transformFantasticJob
+          )
         );
 
         const jsonlObj: BatchInferenceModelInput =
@@ -355,6 +369,24 @@ class FantasticJobBatchInferenceService {
 
       // If batch is successful then increment the `openSearchDbStoredCount`
       openSearchDbStoredCount += batch.length;
+
+      const successAwsS3VectorJobCreate: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs(
+        {
+          jobData: bulkS3VectorCreateJobData,
+          indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+        }
+      );
+
+      if(successAwsS3VectorJobCreate?.results?.success !== bulkS3VectorCreateJobData.length) {
+        global.logger.error(`AwsS3VectorJob create failed`, {
+          methodName: this.processFantasticJobBatchInference.name,
+          successAwsS3VectorJobCreate,
+        });
+
+        /**
+         * @todo: Need to think how to handle the failure and implement rollback
+         */
+      }
 
       // End the file stream and upload the fantastic jobs details to `S3`
       await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(

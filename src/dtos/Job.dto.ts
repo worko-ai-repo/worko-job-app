@@ -20,18 +20,21 @@ export interface JobCreateApiDto {
   otherRequirements?: string;
   experienceRange: MinMaxRange;
   noticePeriod?: number;
+  flexibleNotice?: boolean;
   numOfOpenings: number;
-  salaryRange: MinMaxRange;
+  salaryRange: SalaryRangeDto;
   department: string;
   location: JobLocationDto;
   workMode: JobWorkModeEnum;
   typeofEmployment: string;
   coreSkills: string[]; // Array of skills like [JAVA, PYTHON] i.e skillName
+  goodToHaveSkills: string[]; // Array of skills like [JAVA, PYTHON]
   softSkills: string[]; // Array of skills like [COMMUNICATION, TEAMWORK]
   technicalSkills: string[]; // Array of skills like [MS EXCEL, MS OFFICE, SAP]
   miscellaneousSkills?: string[]; // Array of any skills could be from the above 3 fields.
   status: JobStatusEnum; // This will be asked by the UI team to update the status of the Job. for eg. If the admin leaves the form and close the session it'd be saved as draft.
-  displaySalaryRange?: boolean; 
+  displaySalaryRange?: boolean;
+  gradeLevel?: number;
 }
 
 /**
@@ -50,6 +53,16 @@ export interface JobCreateDto extends JobCreateApiDto {
  * This is the DTO used by Backend to get the Query Params for the Job Listing.Listing.
  */
 export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilterOptions {
+  /**
+   * If this is true then it means that we will retrieve the jobs from s3 vector.
+   */
+  fromS3Vector?: boolean;
+
+  /**
+   * This is for pagination implementation in s3 vector
+   */
+  s3VectorPageNumber?: number;
+
   dashboard?: JobDashboardEnum;
   companyId?: string;
   location?: string;
@@ -69,6 +82,14 @@ export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilte
   YOE?: number;
   userRole?: CorporateUserTypeEnum;
   corporateRecruiterUserId?: string; // `id` attribute from `CorporateUser.model.ts`
+
+  /**
+   * @description: Whenever `corporate` or `worko-admin` clicks directly the `Applicants` tab directly without
+   * selecting a job, we are showing a popup to search a job and select a job to list all the job applications
+   * for that selected job. But we are attaching the company details also, to avoid attaching company details
+   * for this use case. We are using this field.
+   */
+  includeCompanyDetails?: boolean;
 }
 
 /**
@@ -80,6 +101,8 @@ export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilte
  * and JobListingFilterOptions contains the fields that are specific to the Job 
  */
 export interface JobListingFilterRequestDTO extends AwsOpensearchRecordListingFilterRequestDTO {
+  fromS3Vector?: boolean;
+  s3VectorPageNumber?: string; // "1" which can be convertable to a number at `Joi` schema.
   dashboard?: JobDashboardEnum;
   companyId?: string;
   location?: string;
@@ -111,6 +134,14 @@ export interface JobListingFilterRequestDTO extends AwsOpensearchRecordListingFi
    */
   userRole?: CorporateUserTypeEnum;
   corporateRecruiterUserId?: string; // `id` attribute from `CorporateUser.model.ts`
+
+  /**
+   * @description: Whenever `corporate` or `worko-admin` clicks directly the `Applicants` tab directly without
+   * selecting a job, we are showing a popup to search a job and select a job to list all the job applications
+   * for that selected job. But we are attaching the company details also, to avoid attaching company details
+   * for this use case. We are using this field.
+   */
+  includeCompanyDetails?: boolean;
 }
 
 /**
@@ -147,11 +178,14 @@ export interface ParsedJobDescriptionResponseDto {
   softSkills: string[];
   technicalSkills: string[];
   goodToHaveSkills: string[];
+  mustHaveSkills: string[];
 
   /**
    * Sample value: "<div>\n<section>\n<h2>Company Overview</h2>\n<p>Not provided in the job description.</p>\n</section>\n<section>\n<h2>Role...."
    */
   formattedHTML?: string;
+  mandatoryRequirements?: string[];
+  preferredRequirements?: string[];
 }
 
 /**
@@ -168,17 +202,20 @@ export interface JobUpdateApiDto {
   otherRequirements?: string;
   experienceRange?: MinMaxRange;
   noticePeriod?: number;
+  flexibleNotice?: boolean;
   numOfOpenings?: number;
-  salaryRange?: MinMaxRange;
+  salaryRange?: SalaryRangeDto;
   department?: string;
   location?: JobLocationDto;
   workMode?: JobWorkModeEnum;
   typeofEmployment?: string;
   coreSkills?: string[];
+  goodToHaveSkills?: string[];
   softSkills?: string[];
   technicalSkills?: string[];
   miscellaneousSkills?: string[];
   displaySalaryRange?: boolean;
+  gradeLevel?: number;
 }
 
 /**
@@ -202,6 +239,8 @@ export interface JobUpdateDto extends JobUpdateApiDto {
  */
 export interface JobSoftDeleteApiDto {
   companyId: string;
+  shortSoftDeleteReason: string;
+  detailedSoftDeleteReason?: string;
 }
 
 /**
@@ -210,6 +249,8 @@ export interface JobSoftDeleteApiDto {
 export interface JobUpdateInternalDto {
   isAppliedBySomeone: boolean;
   isDeleted: boolean;
+  shortSoftDeleteReason: string;
+  detailedSoftDeleteReason: string;
 
   /**
    * updatedAt
@@ -268,4 +309,12 @@ export interface JobBulkUpdateApiDto {
 export interface JobBulkUpdateResponseDto {
   opensearchBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
   dynamodbBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
+  awsS3BulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
+}
+
+export interface SalaryRangeDto {
+  min?: number;
+  max?: number;
+  fixedComponentPercentage?: number;
+  variableComponentPercentage?: number;
 }

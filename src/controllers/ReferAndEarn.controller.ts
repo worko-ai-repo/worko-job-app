@@ -159,6 +159,9 @@ class ReferAndEarnController {
       // Return the response
       res.status(HttpStatusCode.OK_200).json(referAndEarnResponse);
     } catch (error) {
+      global.logger.error(`Error while getting refer and earn by filter options`, {
+        error,
+      })
       next(error);
     }
   }
@@ -377,7 +380,7 @@ class ReferAndEarnController {
           "Withdrawal is only allowed after your referred friend has officially joined the company.",
           {
             filePath: __filename,
-            methodName: this.createReferAndEarn.name,
+            methodName: this.updateReferAndEarnRequestWithdrawal.name,
             existingReferAndEarnData,
           }
         );

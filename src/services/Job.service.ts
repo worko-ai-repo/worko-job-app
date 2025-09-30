@@ -15,12 +15,13 @@ import { DateTime } from "luxon";
 import { jobDaoObj } from "../daos/Job.dao";
 
 // Import dtos
-import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
+import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobSoftDeleteApiDto, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
 import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
 import { EntityBulkUpdateMetricDto, MinMaxRange } from "../dtos/Common.dto";
 import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
+import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto, AwsS3VectorJobListingFilterOptions, AwsS3VectorJobMatchingScoreDto, AwsS3VectorJobGetParsedResponseDto, AwsS3VectorJobUpdateDto, AwsS3VectorJobBulkUpdateDataDto, AwsS3VectorJobBulkUpdateParsedResponseDto } from "../dtos/AwsS3VectorJob.dto";
 
 // Import enums
 import { JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
@@ -37,12 +38,14 @@ import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
 
 // Import services
+import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { companyJobServiceObj } from "./CompanyJob.service";
 import InvokeLambdaService from "./InvokeLambda.service";
 import companyServiceObj  from "./Company.service";
+import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 
 // Import types
-import { FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails } from "../types/Job.type";
+import { JobsWithAndWithoutCompanyDetails } from "../types/Job.type";
 
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
@@ -147,6 +150,38 @@ class JobService {
       );
     }
 
+    const opensearchJobDataToStoreInAwsS3Vector = await jobDaoObj.getJobById(
+      companyJobDetailsOnAwsDynamodb.id
+    )
+
+    if(!opensearchJobDataToStoreInAwsS3Vector) {
+      throw new BaseError(
+        "Failed to create Job, please try again.",
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500
+      );
+    }
+
+    const awsS3VectorJobCreateDto: AwsS3VectorJobCreateDto = awsS3VectorJobServiceObj.prepareAwsS3VectorJobCreateDto(
+      awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+      opensearchJobDataToStoreInAwsS3Vector
+    )
+
+    // Create job in s3 vector
+    const jobDetailsOnAwsS3Vector: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.createAwsS3VectorJob(
+      awsS3VectorJobCreateDto
+    );
+    if(!jobDetailsOnAwsS3Vector?.results?.success) {
+      /**
+       * @todo: Need to think and perform deleting the job from aws dynamodb and aws opensearch to 
+       * maintain the consistency
+       */
+
+      throw new BaseError(
+        "Failed to create Job, please try again.",
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500
+      );
+    }
+
     return companyJobDetailsOnAwsDynamodb;
   }
 
@@ -186,54 +221,153 @@ class JobService {
     return JSON.parse(parseJobDescriptionResponse["body"]);
   }
 
-  /**
-   * getAllJobsByFilterOptions
-   *
-   * Fetches all the Jobs for the company with the given filter options.
-   *
-   * @param {JobListingFilterOptions} jobListingFilterRequest - The filter options to apply on the Jobs.
-   * @returns {Promise<AwsOpensearchRecordListingResponseDTO<FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails>>} - Returns the list of all Jobs.
-   */
-  async getAllJobsByFilterOptions(
-    jobListingFilterRequest: JobListingFilterOptions
-  ): Promise<
-    AwsOpensearchRecordListingResponseDTO<FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails>
-  > {
-    global.logger.info("Get All Jobs [Service]", {
-      filePath: __filename,
-      methodName: this.getAllJobsByFilterOptions.name,
-    });
-
-    // Get all jobs by filter options
-    const jobListingResponse: AwsOpensearchRecordListingResponseDTO<
+  private async attachOpensearchJobsWithCompanyDetails(
+    jobListingResponse: AwsOpensearchRecordListingResponseDTO<
       DbJobAwsOpensearchDto[]
-    > = await jobDaoObj.getAllJobsByFilterOptions(jobListingFilterRequest);
+    >,
+    jobListingFilterRequest: JobListingFilterOptions,
+  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>> {
+    if (!jobListingFilterRequest.includeCompanyDetails) {
+      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>;
+    }
 
     // Destructure the response
     const { pagination, data: jobsData } = jobListingResponse;
 
-    // Filter jobsData to only include objects that have a `companyId`
-    const jobsWithCompanyId: DbJobAwsOpensearchDto[] = jobsData.filter(
-      (job: DbJobAwsOpensearchDto) => job.companyId
-    );
+    if(!jobsData.length) {
+      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>
+    }
 
-    // Filter jobsData to only include objects that don't have a `companyId`
-    const jobsWithoutCompanyId: DbJobAwsOpensearchDto[] = jobsData.filter(
-      (job: DbJobAwsOpensearchDto) => !job.companyId
-    );
+    // Partition jobs by companyId in a single iteration
+    const jobsWithCompanyId: DbJobAwsOpensearchDto[] = [];
+    const jobsWithoutCompanyId: DbJobAwsOpensearchDto[] = [];
+
+    jobsData.forEach((job: DbJobAwsOpensearchDto) => {
+      if (job.companyId) {
+        jobsWithCompanyId.push(job);
+      } else {
+        jobsWithoutCompanyId.push(job);
+      }
+    });
 
     // Attach company details
     const jobsWithCompanyDetails: (DbJobAwsOpensearchDto & {
       companyDetails: DbCompanyDetailDto | undefined;
     })[] = await attachCompanyDetails<DbJobAwsOpensearchDto>(jobsWithCompanyId);
 
-    const finalResponseWithPagination: AwsOpensearchRecordListingResponseDTO<FinalJobsResponseWithCompanyDetailsAndWithoutCompanyDetails> =
+    const finalResponseWithPagination: AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails> =
       {
         data: [...jobsWithCompanyDetails, ...jobsWithoutCompanyId],
         pagination: pagination,
       };
 
     return finalResponseWithPagination;
+  }
+
+  async getAllJobsByFilterOptions(
+    jobListingFilterRequest: JobListingFilterOptions
+  ): Promise<
+    AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>
+  > {
+    global.logger.info("Get All Jobs by Filter Options [Service]", {
+      methodName: this.getAllJobsByFilterOptions.name,
+    });
+
+    const jobListingResponse: AwsOpensearchRecordListingResponseDTO<
+      DbJobAwsOpensearchDto[]
+    > = await jobDaoObj.getAllJobsByFilterOptions(
+        jobListingFilterRequest
+      );
+
+    return this.attachOpensearchJobsWithCompanyDetails(
+      jobListingResponse,
+      jobListingFilterRequest
+    );
+  }
+
+  async getAllJobsFromS3VectorAndOpensearchByFilterOptions(
+    jobListingFilterRequest: JobListingFilterOptions
+  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>> {
+    global.logger.info("Get All Jobs from S3 Vector and Opensearch [Service]", {
+      methodName: this.getAllJobsFromS3VectorAndOpensearchByFilterOptions.name,
+    });
+
+    const s3VectorFilterOptions: AwsS3VectorJobListingFilterOptions = {
+      ...jobListingFilterRequest,
+    }
+
+    const s3VectorMatchingJobs: AwsS3VectorJobGetParsedResponseDto = await awsS3VectorJobServiceObj.getAllAwsS3VectorJobsByFilterOptions(s3VectorFilterOptions);
+
+    if (!s3VectorMatchingJobs?.jobs?.length) {
+      global.logger.warn("No Jobs found in S3 Vector", {
+        methodName:
+          this.getAllJobsFromS3VectorAndOpensearchByFilterOptions.name,
+      });
+
+      /**
+       * @todo: if no jobs found in s3 vector We had a plan to search in opensearch
+       * but it will conflict pagination and "ai team" also wants to list whatever results they get from s3 vector
+       */
+
+      return {
+        data: [],
+        pagination: {
+          count: 0,
+          pageSize: jobListingFilterRequest.pageSize,
+          lastKey: undefined,
+          sortOrder: jobListingFilterRequest.sortOrder,
+          timesQueried: 0,
+          queriedCount: 0,
+        },
+      };
+    }
+
+    const s3VectorJobIds: string[] = s3VectorMatchingJobs.jobs.map(
+      (
+        job: AwsS3VectorJobMatchingScoreDto
+      ) => job.jobId
+    );
+
+    const jobListingResponse: AwsOpensearchRecordListingResponseDTO<
+      DbJobAwsOpensearchDto[]
+    > = await jobDaoObj.getAllJobsByListOfS3VectorJobIds(
+      s3VectorJobIds,
+      jobListingFilterRequest,
+    );
+
+    const finalResponse: AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails> = await this.attachOpensearchJobsWithCompanyDetails(
+      jobListingResponse,
+      jobListingFilterRequest,
+    )
+
+    // attach matching score details to jobs
+    finalResponse.data = finalResponse.data.map((job: DbJobAwsOpensearchDto) => {
+      return {
+        ...job,
+        initialMatchingScoreDetails: s3VectorMatchingJobs.jobs.find(
+          (s3VectorJob: AwsS3VectorJobMatchingScoreDto) => s3VectorJob.jobId === job.id
+        ),
+      };
+    });
+
+    finalResponse.pagination.s3VectorLastKey = s3VectorMatchingJobs.s3VectorLastKey;
+    return finalResponse;
+  }
+  
+  async getAllJobsByDashboardFilterOptions(
+    jobListingFilterRequest: JobListingFilterOptions
+  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>>
+ {
+    global.logger.info("Get All Jobs by Dashboard [Service]", {
+      methodName: this.getAllJobsByDashboardFilterOptions.name,
+      dashboard: jobListingFilterRequest.dashboard,
+    });
+
+    if(jobListingFilterRequest.fromS3Vector) {
+      return this.getAllJobsFromS3VectorAndOpensearchByFilterOptions(jobListingFilterRequest);
+    } else {
+      return this.getAllJobsByFilterOptions(jobListingFilterRequest);
+    }
   }
 
   /**
@@ -441,35 +575,21 @@ class JobService {
     return jobDaoObj.createBulkJobs(formattedJobListingArray);
   }
 
-  /**
-   * deleteOldUnappliedExternalJobs
-   *
-   * Deletes unapplied external jobs that are older than a specified number of days.
-   *
-   * This method logs the deletion process and calls the JobDao's deleteOldUnappliedExternalJobs method
-   * to perform the delete by query operation in OpenSearch.
-   *
-   * @returns {Promise<DeleteByQuery_Response>} - A promise resolving to the result of the delete by query operation.
-   */
-  async deleteOldUnappliedExternalJobs(): Promise<DeleteByQuery_Response> {
+  async deleteOldUnappliedExternalJobs(
+    jobIds: string[]
+  ): Promise<DeleteByQuery_Response> {
     global.logger.info("Delete old unapplied external jobs [Service]", {
       methodName: this.deleteOldUnappliedExternalJobs.name,
     });
 
-    return jobDaoObj.deleteOldUnappliedExternalJobs();
+    return jobDaoObj.deleteOldUnappliedExternalJobByIds(jobIds);
   }
 
-  /**
-   * softDeleteOldAppliedExternalJobs
-   * 
-   * Soft deletes old applied external jobs that are older than a specified number of days.
-   *
-   * This method logs the soft deletion process and calls the JobDao's softDeleteOldAppliedExternalJobs method
-   * to perform the update by query operation in OpenSearch.
-   *
-   * @returns {Promise<UpdateByQuery_Response>} - A promise resolving to the result of the update by query operation.
-   */
-  async softDeleteOldAppliedExternalJobs(): Promise<UpdateByQuery_Response> {
+  
+  async softDeleteOldAppliedExternalJobs(    
+    deleteOlderThanDays: number,
+    sourcedFrom: JobSourcedFromEnum
+  ): Promise<UpdateByQuery_Response> {
     global.logger.info("Soft delete old applied external jobs [Service]", {
       methodName: this.softDeleteOldAppliedExternalJobs.name,
     });
@@ -480,28 +600,41 @@ class JobService {
       status: JobStatusEnum.CLOSED,
     };
 
-    return jobDaoObj.softDeleteOldAppliedExternalJobs(updateObject);
+    return jobDaoObj.softDeleteOldAppliedExternalJobs(updateObject, deleteOlderThanDays, sourcedFrom);
+  }
+
+  private async updateJobByIdInAwsS3Vector(
+    retrievedUpdatedJobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto
+  ): Promise<AwsS3VectorJobCreateOrUpdateParsedResponseDto> {
+    global.logger.info("Update job by id in aws s3 vector [Service]", {
+      methodName: this.updateJobByIdInAwsS3Vector.name,
+    });
+
+    const updateData: AwsS3VectorJobUpdateDto = awsS3VectorJobServiceObj.prepareAwsS3VectorJobUpdateDto(
+      awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+      // We should must send entire opensearch job details 
+      // because in aws s3 vector its performing delete and create operation in order to update job details
+      retrievedUpdatedJobDetailsOnAwsOpensearch 
+    )
+
+    const updatedAwsS3VectorJobDetails: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.updateAwsS3VectorJobById(updateData);
+    if(!updatedAwsS3VectorJobDetails || !updatedAwsS3VectorJobDetails.results.success) {
+      throw new BaseError(
+        "Unable to update aws s3 vector job details.",
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500
+      );
+    }
+
+    return updatedAwsS3VectorJobDetails;
   }
 
   /**
-   * updateInternalOrExternalJobById
-   *
-   * Updates a job by its ID using the provided update data.
-   *
-   * This method retrieves the job details from the `worko-jobs` index on `AWS Opensearch` and throws an error if the job is not found.
-   * If the job is found, it updates the job details in `worko-jobs` index on `AWS Opensearch` and if the job is internal then it updates the `companyJob` details in dynamodb.
-   *
-   * If the job is external then it returns the updated job details from `worko-jobs` index on `AWS Opensearch`.
-   *
-   * @param {string} jobId - The ID of the job to update.
-   * @param {JobUpdateDto} jobUpdateDto - The update data for the job.
-   *
-   * @returns {Promise<DbJobAwsOpensearchDto | DbCompanyJobDto | undefined>} - A promise that resolves to the updated job details from `worko-jobs` index on `AWS Opensearch` or undefined if the job is not found.
+   * @todo: Need to think aborting the job update if any one of update in opensearch or dynamodb or aws s3 vector fails.
    */
   async updateInternalOrExternalJobById(
     jobId: string,
     jobUpdateDto: JobUpdateDto
-  ): Promise<DbJobAwsOpensearchDto | DbCompanyJobDto | undefined> {
+  ): Promise<DbJobAwsOpensearchDto | undefined> {
     // Logger
     global.logger.debug(`Update job by id [service]`, {
       methodName: this.updateInternalOrExternalJobById.name,
@@ -537,9 +670,17 @@ class JobService {
       );
     }
 
-    // If the job is internal then update the `companyJob` details in dynamodb.
-    if(jobDetailsOnAwsOpensearch.companyId) {
+    const retrievedUpdatedJobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto | undefined =
+      await jobDaoObj.getJobById(jobId);
+    if (!retrievedUpdatedJobDetailsOnAwsOpensearch) {
+      throw new BaseError(
+        "The Updated Job Details not found.",
+        HttpStatusCode.NOT_FOUND_404
+      );
+    }
 
+    // If the job is internal then update the `companyJob` details in dynamodb.
+    if(retrievedUpdatedJobDetailsOnAwsOpensearch.companyId) {
       /**
        * Removes the `updatedAt` property from `jobUpdateDto` before updating the item in DynamoDB.
        *
@@ -555,29 +696,35 @@ class JobService {
       };
 
       // Return updated `companyJob` details
-      return companyJobServiceObj.updateCompanyJobById(
+      const updatedCompanyJobDetails: DbCompanyJobDto = await companyJobServiceObj.updateCompanyJobById(
         jobId,
-        jobDetailsOnAwsOpensearch.companyId,
+        retrievedUpdatedJobDetailsOnAwsOpensearch.companyId,
         companyJobUpdateDto
       );
+
+      if(!updatedCompanyJobDetails || !updatedCompanyJobDetails.id) {
+        throw new BaseError(
+          "Unable to update company job details.",
+          HttpStatusCode.INTERNAL_SERVER_ERROR_500
+        );
+      }
     }
 
+    await this.updateJobByIdInAwsS3Vector(
+      retrievedUpdatedJobDetailsOnAwsOpensearch
+    );
+
     // Return the external job details
-    return jobDaoObj.getJobById(jobId);
+    return retrievedUpdatedJobDetailsOnAwsOpensearch;
   }
 
   /**
-   * softDeleteJobById
-   * 
-   * NOTE: As of now soft delete is implemented on the `CompanyJobs` present in `dynamodb`(CompanyJob.model.ts) and Job documents containing `companyId` in `opensearch`
-   *
-   * @param {string} jobId - The ID of the job to be soft deleted.
-   * @param {string} companyId - The ID of the company associated with the job.
-   * @returns {Promise<DbCompanyJobDto>} A promise that resolves to the soft deleted job details.
+   * @todo: Need to think aborting the job update if any one of update in opensearch or dynamodb or aws s3 vector fails.
    */
   async softDeleteJobById(
     jobId: string,
-    companyId: string
+    companyId: string,
+    requestBody: JobSoftDeleteApiDto
   ): Promise<DbCompanyJobDto> {
     // Global Logger for the Delete Job Controller
     global.logger.info("Deleting Job. [controller]", {
@@ -587,10 +734,20 @@ class JobService {
       companyId: companyId,
     });
 
+    let jobClosedByUserId: string | undefined;
+    const {actionByUserId, actionByCorporateUserId} = getActionByUserId();
+    if(actionByUserId) {
+      jobClosedByUserId = actionByUserId;
+    } else if(actionByCorporateUserId) {
+      jobClosedByUserId = actionByCorporateUserId;
+    }
+
     // Prepare Update Object for opensearch
     const updateObjectForOpensearch: Partial<JobUpdateInternalDto> = {
       isDeleted: true,
       status: JobStatusEnum.CLOSED,
+      shortSoftDeleteReason: requestBody.shortSoftDeleteReason,
+      detailedSoftDeleteReason: requestBody.detailedSoftDeleteReason,
     };
 
     // Soft deleting the job from opensearch database
@@ -607,8 +764,42 @@ class JobService {
         softDeleteJobOnAwsOpensearch.statusCode,
     });
 
+    const prepareSoftDeletData: Partial<CompanyJobCommonUpdateDto> = {
+      isDeleted: true,
+      status: JobStatusEnum.CLOSED,
+      shortSoftDeleteReason: requestBody.shortSoftDeleteReason,
+      detailedSoftDeleteReason: requestBody.detailedSoftDeleteReason,
+    }
+
+
     // Soft delete the job from `CompanyJob` 
-    return companyJobServiceObj.softDeleteJobById(jobId, companyId);
+    const updatedJobDetails: DbCompanyJobDto = await companyJobServiceObj.softDeleteJobById(jobId, companyId,prepareSoftDeletData);
+
+    const retrievedUpdatedJobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto | undefined =
+      await jobDaoObj.getJobById(jobId);
+    if (!retrievedUpdatedJobDetailsOnAwsOpensearch) {
+      throw new BaseError(
+        "The Updated Job Details not found.",
+        HttpStatusCode.NOT_FOUND_404
+      );
+    }
+
+    await Promise.all([
+      this.updateJobByIdInAwsS3Vector(
+        retrievedUpdatedJobDetailsOnAwsOpensearch
+      ),
+
+      userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
+        jobId,
+        updatedJobDetails.jobTitle,
+        jobClosedByUserId,
+        undefined,
+        updatedJobDetails.shortSoftDeleteReason,
+        updatedJobDetails.detailedSoftDeleteReason,
+      )
+    ])
+
+    return updatedJobDetails;
   }
 
   /**
@@ -631,6 +822,75 @@ class JobService {
     });
 
     return jobDaoObj.getJobById(id);
+  }
+
+  async getJobByIdFromS3Vector(
+    id: string,
+    jobListingFilterRequest: JobListingFilterOptions
+  ): Promise<DbJobAwsOpensearchDto & {
+    initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
+  }> {
+    global.logger.info(`Get Job By Id From s3 vector [Service]`, {
+      methodName: this.getJobByIdFromAwsOpensearch.name,
+      requestedJobId: id,
+    });
+
+    const jobDetailsOnOpensearch: (DbJobAwsOpensearchDto & {
+      initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+    }) | undefined = await this.getJobByIdFromAwsOpensearch(id);
+    if(!jobDetailsOnOpensearch) {
+      global.logger.warn("Job details not found in aws opensearch", {
+        requestedJobId: id,
+        methodName: this.getJobByIdFromAwsOpensearch.name,
+      })
+      return {} as DbJobAwsOpensearchDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+      };
+    }
+
+    const s3VectorFilterOptions: AwsS3VectorJobListingFilterOptions = {
+      jobId: id,
+      ...jobListingFilterRequest,
+    };
+
+    const s3VectorMatchingJobs: AwsS3VectorJobGetParsedResponseDto = await awsS3VectorJobServiceObj.getAllAwsS3VectorJobsByFilterOptions(s3VectorFilterOptions);
+
+    if (!s3VectorMatchingJobs?.jobs?.length) {
+      global.logger.warn("No Jobs found in S3 Vector", {
+        requestedJobId: id,
+        methodName: this.getJobByIdFromS3Vector.name,
+      });
+
+      // We are returning the job details from opensearch as a fallback if no jobs found in s3 vector
+      return jobDetailsOnOpensearch as DbJobAwsOpensearchDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+      };
+    }
+
+    const initialMatchingScoreDetails: AwsS3VectorJobMatchingScoreDto | undefined = s3VectorMatchingJobs.jobs.find(
+      (s3VectorJob: AwsS3VectorJobMatchingScoreDto) => s3VectorJob.jobId === id
+    );
+
+    if(!initialMatchingScoreDetails) {
+      // Initial matching score details not found
+      global.logger.warn("Initial matching score details not found", {
+        requestedJobId: id,
+        methodName: this.getJobByIdFromS3Vector.name,
+      });
+
+      // We are returning the job details from opensearch as a fallback, if initial matching score details not found from vector
+      return jobDetailsOnOpensearch as DbJobAwsOpensearchDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+      };
+    }
+
+    jobDetailsOnOpensearch.initialMatchingScoreDetails = initialMatchingScoreDetails;
+
+    return jobDetailsOnOpensearch;
+  }
+
+  async getAllOldUnappliedExternalJobs(deleteOlderThanDays: number, sourcedFrom: JobSourcedFromEnum) {
+    return jobDaoObj.getAllOldUnappliedExternalJobs(deleteOlderThanDays, sourcedFrom);
   }
 
   /**
@@ -658,16 +918,7 @@ class JobService {
   }
 
   /**
-   * updateBulkJob
-   *
-   * Updates multiple jobs in the OpenSearch index and DynamoDB table by their IDs.
-   *
-   * This method logs the update operation, processes each job update in the request body, and sends update requests to the OpenSearch client and DynamoDB.
-   * It also keeps metrics of the success and failure of the update operations on both OpenSearch and DynamoDB.
-   *
-   * @param {JobBulkUpdateApiDto} validatedJobRequestBody - The validated request body containing the bulk job update data.
-   *
-   * @returns {Promise<JobBulkUpdateResponseDto>} - A promise that resolves to the bulk job update response containing metrics of the update operations on both OpenSearch and DynamoDB.
+   * @todo: Need to think aborting the bulk job update if any one of update in opensearch or dynamodb or aws s3 vector fails.
    */
   async updateBulkJob(
     validatedJobRequestBody: JobBulkUpdateApiDto
@@ -701,6 +952,8 @@ class JobService {
       failure: { count: 0, primaryIds: [] },
     };
 
+    let s3VectorUpdateJobs: AwsS3VectorJobBulkUpdateDataDto[] = [];  
+
     // Process each job update
     for (const jobUpdate of validatedJobRequestBody.bulkJobUpdate) {
       const { companyId, jobId, status } = jobUpdate;
@@ -718,10 +971,10 @@ class JobService {
 
         if (opensearchResponse.statusCode === HttpStatusCode.OK_200) {
           opensearchResult.success.count++;
-          opensearchResult.success.primaryIds.push(jobId);
+          opensearchResult.success.primaryIds!.push(jobId);
         } else {
           opensearchResult.failure.count++;
-          opensearchResult.failure.primaryIds.push(jobId);
+          opensearchResult.failure.primaryIds!.push(jobId);
 
           global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`,{
             opensearchResponse
@@ -729,7 +982,7 @@ class JobService {
         }
       } catch (error) {
         opensearchResult.failure.count++;
-        opensearchResult.failure.primaryIds.push(jobId);
+        opensearchResult.failure.primaryIds!.push(jobId);
 
         global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`, {
           error: error,
@@ -747,10 +1000,44 @@ class JobService {
 
         if (updateResult?.id) {
           dynamodbResult.success.count++;
-          dynamodbResult.success.primaryIds.push(jobId);
+          dynamodbResult.success.primaryIds!.push(jobId);
+          const {
+            jobTitle,
+            location,
+            department,
+            salaryRange,
+            experienceRange,
+            status: dynamodbUpdatedStatus,
+            otherRequirements,
+            coreSkills,
+            technicalSkills,
+            miscellaneousSkills,
+          } = updateResult;
+
+          // Prepare update data for S3
+          s3VectorUpdateJobs.push({
+            jobId: jobId,
+            jobData: {
+              _index: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+              _id: jobId,
+              _source: {
+                id: jobId,
+                jobTitle,
+                location,
+                department,
+                salaryRange,
+                coreSkills,
+                technicalSkills,
+                miscellaneousSkills,
+                experienceRange,
+                otherRequirements, 
+                status: dynamodbUpdatedStatus,
+              },
+            },
+          });
         } else {
           dynamodbResult.failure.count++;
-          dynamodbResult.failure.primaryIds.push(jobId);
+          dynamodbResult.failure.primaryIds!.push(jobId);
 
           global.logger.error(`Failed to update jobId: ${jobId} in DynamoDB`, {
             updateResult,
@@ -758,7 +1045,7 @@ class JobService {
         }
       } catch (error) {
         dynamodbResult.failure.count++;
-        dynamodbResult.failure.primaryIds.push(jobId);
+        dynamodbResult.failure.primaryIds!.push(jobId);
 
         global.logger.error(`Failed to update job ${jobId} in DynamoDB:`, {
           error: error,
@@ -766,10 +1053,31 @@ class JobService {
       }
     }
 
+    const s3VectorUpdateResponse: AwsS3VectorJobBulkUpdateParsedResponseDto = await awsS3VectorJobServiceObj.updateBulkAwsS3VectorJobs(
+      {
+        updateJobs: s3VectorUpdateJobs,
+        indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+      }
+    );
+
     // Prepare the response
     const bulkJobUpdateResponse: JobBulkUpdateResponseDto = {
       opensearchBulkJobUpdateMetrics: opensearchResult,
       dynamodbBulkJobUpdateMetrics: dynamodbResult,
+
+      /**
+       * @todo To make consistence response we should send `primaryIds` in response
+       * but currently it is not supported by `AwsS3VectorJobService`, we may update
+       * this response in near future
+       */
+      awsS3BulkJobUpdateMetrics: {
+        success: {
+          count: s3VectorUpdateResponse.results.successfulUpdates,
+        },
+        failure: {
+          count: s3VectorUpdateResponse.results.failedUpdates,
+        },
+      },
     };
 
     return bulkJobUpdateResponse;

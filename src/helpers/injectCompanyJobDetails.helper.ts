@@ -28,6 +28,8 @@ export async function injectCompanyJobDetails<
     jobUrl: string | undefined;
     jobTitle: string | undefined;
     jdExtracted: string | undefined;
+    jobCreatedByUserId: string | undefined;
+    jobCreatedByCorporateUserId: string | undefined;
   })[]
 > {
   // logger
@@ -65,6 +67,8 @@ export async function injectCompanyJobDetails<
         jobUrl: eachCompanyJobDetail?.jobUrl,
         jobTitle: eachCompanyJobDetail?.jobTitle,
         jdExtracted: eachCompanyJobDetail?.jobDescription,
+        jobCreatedByUserId: eachCompanyJobDetail?.createdByUserId,
+        jobCreatedByCorporateUserId: eachCompanyJobDetail?.createdByCorporateUserId,
       };
 
       // Return the entity with companyJob details

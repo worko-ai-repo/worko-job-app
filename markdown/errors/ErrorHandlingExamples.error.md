@@ -775,6 +775,91 @@ Batch inference is not supported for model arn:aws:bedrock:ap-south-1::foundatio
 ```
 
 36. 
+```ts
+/**
+ * -> Tip-1: @see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/fgac.html#fgac-more-masters
+ */
+```
+```json
+{
+    "errorCode": 500,
+    "errorMsg": "security_exception: [security_exception] Reason: no permissions for [indices:data/read/search] and User [name=arn:aws:iam::211125353899:role/worko-job-app-dev-ap-south-1-lambdaRole, backend_roles=[arn:aws:iam::211125353899:role/worko-job-app-dev-ap-south-1-lambdaRole], requestedTenant=null]",
+    "timeStamp": "2025-07-05T09:37:10.357Z"
+}
+```
+
+37. 
+```ts
+/**
+ * Try add in `serverless.ts` file
+ */
+```
+```json
+{
+    "error": {
+        "$fault": "client",
+        "$metadata": {
+            "attempts": 1,
+            "httpStatusCode": 400,
+            "requestId": "3dde64c7-fdeb-491c-8b79-35e90f65e146",
+            "totalRetryDelay": 0
+        },
+        "__type": "AccessDeniedException",
+        "message": "User: arn:aws:sts::211125353899:assumed-role/worko-job-app-dev-ap-south-1-lambdaRole/worko-job-app-dev-workoJobApp is not authorized to perform: cognito-idp:AdminGetUser on resource: arn:aws:cognito-idp:ap-south-1:211125353899:userpool/ap-south-1_xGreJKkNc because no identity-based policy allows the cognito-idp:AdminGetUser action",
+        "name": "AccessDeniedException"
+    }
+}
+```
+
+38. 
+```json
+{
+  "$metadata": {
+    "attempts": 3,
+    "totalRetryDelay": 179
+  },
+  "address": "2406:da1a:93d:8500:964c:e200:2421:1de2",
+  "code": "ETIMEDOUT",
+  "errno": -110,
+  "name": "TimeoutError",
+  "port": 443,
+  "syscall": "connect"
+}
+```
+
+39. 
 ```sh
 Error: connect ETIMEDOUT 2406:da1a:93d:8500:9dee:a635:da3c:dc24:443
+```
+
+40. 
+```ts
+/**
+ * Solution 1:- Force token refresh after group assignment
+ */
+```
+```sh
+ERROR	CognitoJwtInvalidGroupError: Missing Cognito group. Expected one of: admin, corporate-admin, corporate-recruiter, evaluator
+```
+
+41. 
+```json
+// in Joi "allow([]) will not be correct syntax
+{
+    "errorType": "Error",
+    "errorMessage": "Method no longer accepts array arguments: allow",
+    "stack": [
+        "Error: Method no longer accepts array arguments: allow",
+        "    at new module.exports (/var/task/dist/src/app.js:35628:19)",
+        "    at module.exports (/var/task/dist/src/app.js:35087:11)",
+        "    at exports.verifyFlat (/var/task/dist/src/app.js:143294:9)",
+        "    at internals.Base.allow (/var/task/dist/src/app.js:141924:16)",
+        "    at 54109 (/var/task/dist/src/app.js:201830:79)",
+        "    at __webpack_require__ (/var/task/dist/src/app.js:224075:42)",
+        "    at 57907 (/var/task/dist/src/app.js:189757:47)",
+        "    at __webpack_require__ (/var/task/dist/src/app.js:224075:42)",
+        "    at 31841 (/var/task/dist/src/app.js:199789:67)",
+        "    at __webpack_require__ (/var/task/dist/src/app.js:224075:42)"
+    ]
+}
 ```
