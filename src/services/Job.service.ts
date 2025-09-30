@@ -824,6 +824,71 @@ class JobService {
     return jobDaoObj.getJobById(id);
   }
 
+  async getJobByIdFromS3Vector(
+    id: string,
+    jobListingFilterRequest: JobListingFilterOptions
+  ): Promise<DbJobAwsOpensearchDto & {
+    initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
+  }> {
+    global.logger.info(`Get Job By Id From s3 vector [Service]`, {
+      methodName: this.getJobByIdFromAwsOpensearch.name,
+      requestedJobId: id,
+    });
+
+    const jobDetailsOnOpensearch: (DbJobAwsOpensearchDto & {
+      initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+    }) | undefined = await this.getJobByIdFromAwsOpensearch(id);
+    if(!jobDetailsOnOpensearch) {
+      global.logger.warn("Job details not found in aws opensearch", {
+        requestedJobId: id,
+        methodName: this.getJobByIdFromAwsOpensearch.name,
+      })
+      return {} as DbJobAwsOpensearchDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+      };
+    }
+
+    const s3VectorFilterOptions: AwsS3VectorJobListingFilterOptions = {
+      jobId: id,
+      ...jobListingFilterRequest,
+    };
+
+    const s3VectorMatchingJobs: AwsS3VectorJobGetParsedResponseDto = await awsS3VectorJobServiceObj.getAllAwsS3VectorJobsByFilterOptions(s3VectorFilterOptions);
+
+    if (!s3VectorMatchingJobs?.jobs?.length) {
+      global.logger.warn("No Jobs found in S3 Vector", {
+        requestedJobId: id,
+        methodName: this.getJobByIdFromS3Vector.name,
+      });
+
+      // We are returning the job details from opensearch as a fallback if no jobs found in s3 vector
+      return jobDetailsOnOpensearch as DbJobAwsOpensearchDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+      };
+    }
+
+    const initialMatchingScoreDetails: AwsS3VectorJobMatchingScoreDto | undefined = s3VectorMatchingJobs.jobs.find(
+      (s3VectorJob: AwsS3VectorJobMatchingScoreDto) => s3VectorJob.jobId === id
+    );
+
+    if(!initialMatchingScoreDetails) {
+      // Initial matching score details not found
+      global.logger.warn("Initial matching score details not found", {
+        requestedJobId: id,
+        methodName: this.getJobByIdFromS3Vector.name,
+      });
+
+      // We are returning the job details from opensearch as a fallback, if initial matching score details not found from vector
+      return jobDetailsOnOpensearch as DbJobAwsOpensearchDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
+      };
+    }
+
+    jobDetailsOnOpensearch.initialMatchingScoreDetails = initialMatchingScoreDetails;
+
+    return jobDetailsOnOpensearch;
+  }
+
   async getAllOldUnappliedExternalJobs(deleteOlderThanDays: number, sourcedFrom: JobSourcedFromEnum) {
     return jobDaoObj.getAllOldUnappliedExternalJobs(deleteOlderThanDays, sourcedFrom);
   }

@@ -10,8 +10,18 @@ import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
 
 export interface AwsS3VectorJobListingFilterOptions extends AwsS3VectorRecordListingFilterOptions {
+  jobId?: string;
+
+  /**
+   * If this is true then it means that we will retrieve the jobs from s3 vector.
+   */
   fromS3Vector?: boolean;
+
+  /**
+   * This is for pagination implementation in s3 vector
+   */
   s3VectorPageNumber?: number;
+
   dashboard?: JobDashboardEnum;
   companyId?: string;
   location?: string;
