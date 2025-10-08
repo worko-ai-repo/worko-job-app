@@ -125,6 +125,7 @@ class BrightDataJobBatchInferenceService {
   ) {
     global.logger.info("Processing BrightData Jobs [Service]", {
       methodName: this.processBrightDataJobBatchInference.name,
+      totalLengthOfBrightDataJobs: brightDataJobs.length,
     });
 
     // Initialize the upload directory
@@ -223,8 +224,15 @@ class BrightDataJobBatchInferenceService {
         fileStream.write(JSON.stringify(jsonlObj) + "\n");
       }
 
-      // Bulk index the current batch of jobs
-      const success: boolean = await jobServiceObj.createBulkJobs(bulkJobData);
+      // Run bulk operations in parallel
+      const [success, successAwsS3VectorJobCreate] = await Promise.all([
+        jobServiceObj.createBulkJobs(bulkJobData),
+        awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs({
+          jobData: bulkS3VectorCreateJobData,
+          indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+        })
+      ]);
+
       global.logger.debug(
         `Bulk index jobs in aws opensearch success status [SERVICE]`,
         { success }
@@ -236,7 +244,7 @@ class BrightDataJobBatchInferenceService {
           methodName: this.processBrightDataJobBatchInference.name,
         });
 
-        // End the file stream without uploading fantastic jobs details to `S3`
+        // End the file stream without uploading bright data jobs details to `S3`
         await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
           fileStream,
           filePath,
@@ -249,13 +257,6 @@ class BrightDataJobBatchInferenceService {
         return false;
       }
 
-      const successAwsS3VectorJobCreate: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs(
-        {
-          jobData: bulkS3VectorCreateJobData,
-          indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-        }
-      );
-
       if(successAwsS3VectorJobCreate?.results?.success !== bulkS3VectorCreateJobData.length) {
         global.logger.error(`AwsS3VectorJob create failed`, {
           methodName: this.processBrightDataJobBatchInference.name,
@@ -265,9 +266,21 @@ class BrightDataJobBatchInferenceService {
         /**
          * @todo: Need to think how to handle the failure and implement rollback
          */
+
+        // End the file stream without uploading bright data jobs details to `S3`
+        await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
+          fileStream,
+          filePath,
+          false,
+          s3CurrentDate,
+          s3UlidId,
+          externalJobSource
+        );
+
+        return false;
       }
 
-      // End the file stream and upload the fantastic jobs details to `S3`
+      // End the file stream and upload the brightData jobs details to `S3`
       await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
         fileStream,
         filePath,

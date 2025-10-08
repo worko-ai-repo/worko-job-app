@@ -23,7 +23,7 @@ EvaluatorDetailRouter.post("/", evaluatorDetailController.createEvaluatorDetail)
 EvaluatorDetailRouter.get("/:id", evaluatorDetailController.getEvaluatorDetailById);
 
 /**
- * Route to ger evaluator details by email id
+ * Route to get evaluator details by email id
  * @authorisedRoles ["evaluator"]
  */
 EvaluatorDetailRouter.get("/:emailId/email", evaluatorDetailController.getEvaluatorDetailByEmail);

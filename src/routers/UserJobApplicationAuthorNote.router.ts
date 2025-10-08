@@ -25,6 +25,8 @@ UserJobApplicationAuthorNoteRouter.get("/:jobApplicationId/:authorId", userJobAp
 
 /**
  * Update job application note by id
+ * 
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
  */
 UserJobApplicationAuthorNoteRouter.patch("/:jobApplicationId/:noteId", userJobApplicationAuthorNoteController.updateUserJobApplicationAuthorNote);
 

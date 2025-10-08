@@ -863,3 +863,8 @@ ERROR	CognitoJwtInvalidGroupError: Missing Cognito group. Expected one of: admin
     ]
 }
 ```
+
+42. 
+```sh
+Duration: 900000.00 ms	Billed Duration: 900000 ms	Memory Size: 1024 MB	Max Memory Used: 392 MB	Status: timeout
+```
