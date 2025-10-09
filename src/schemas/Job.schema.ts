@@ -6,7 +6,7 @@ import Joi from "joi";
 import APP_CONSTANTS from "../configs/constants.config";
 
 // Import enums
-import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
+import { JobAllowedBulkUpdateStatusEnum, JobAllowedUpdateStatusEnum, JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import schemas
@@ -556,9 +556,9 @@ export const jobUpdateApiDtoValidation = Joi.object({
     status: Joi
       .string()
       .optional()
-      .valid(...Object.values(JobStatusEnum))
+      .valid(...Object.values(JobAllowedUpdateStatusEnum))
       .messages({
-        "any.only": `The Status field must be one of the allowed values i.e. ${Object.values(JobStatusEnum).join(", ")} `,
+        "any.only": `The Status field must be one of the allowed values i.e. ${Object.values(JobAllowedUpdateStatusEnum).join(", ")} `,
       }),
 
     jobTitle: Joi
@@ -853,11 +853,11 @@ export const jobBulkUpdateApiDtoValidation = Joi.object({
 
         status: Joi.string()
           .required()
-          .valid(...Object.values(JobStatusEnum))
+          .valid(...Object.values(JobAllowedBulkUpdateStatusEnum))
           .messages({
             "any.required": "The Status field is required.",
             "any.only": `The Status field must be one of the allowed values  i.e. ${Object.values(
-              JobStatusEnum
+              JobAllowedBulkUpdateStatusEnum
             ).join(", ")} `,
           }),
       })

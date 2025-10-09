@@ -18,6 +18,26 @@ export enum JobStatusEnum {
   CLOSED = "CLOSED",
 }
 
+export enum JobAllowedBulkUpdateStatusEnum {
+  // JOB IS ARCHIVED WHERE ADMIN WANT TO HIDE THE JOB
+  ARCHIVED = "ARCHIVED",
+
+  // JOB IS CREATED AND ACTIVE
+  PUBLISHED = "PUBLISHED",
+
+  DRAFT = "DRAFT",
+}
+
+export enum JobAllowedUpdateStatusEnum {
+  // JOB IS ARCHIVED WHERE ADMIN WANT TO HIDE THE JOB
+  ARCHIVED = "ARCHIVED",
+
+  // JOB IS CREATED AND ACTIVE
+  PUBLISHED = "PUBLISHED",
+
+  DRAFT = "DRAFT",
+}
+
 /** 
  * JobWorkModeEnum
  * 
