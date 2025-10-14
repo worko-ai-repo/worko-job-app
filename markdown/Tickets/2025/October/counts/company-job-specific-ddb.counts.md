@@ -16,7 +16,8 @@
       jobId!: string;
 
       // When entityType is "JOB_APPLICATION"
-      userJobApplicationCounts?: {
+      // For all applications against single job
+      allJobApplicationCounts?: {
          total: number;
          applied: number;
          processingInterview: number;

@@ -444,7 +444,7 @@ class UserJobApplicationDao implements BaseDao {
         if(!jobApplicationRequestBody.userEmail) {
           searchCondition = searchCondition
             .or()
-            .where("PK")
+          .where("PK")
             .contains(`USR#EML#${searchTextValue.toLowerCase()}`);
         }
 

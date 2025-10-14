@@ -12,7 +12,7 @@
       companyId!: string;
 
       // When entityType is "JOB_APPLICATION"
-      userJobApplicationCounts?: {
+      allJobApplicationCounts?: {
          total: number;
 
          applied: number;

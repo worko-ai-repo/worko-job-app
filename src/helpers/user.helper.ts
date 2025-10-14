@@ -4,6 +4,16 @@ import { uuidToULID } from "ulidx";
 // Import configs
 import APP_CONSTANTS from "../configs/constants.config";
 
+// Import models
+import { DbUserDetailDto } from "../db/models/UserDetail.model";
+
+// Import services
+import UserDetailService from "../services/UserDetail.service";
+
+// Import utils
+import { BaseError } from "../utils/errors.util";
+import HttpStatusCode from "../utils/http-codes.util";
+
 
 /**
  * getActionByUserId
@@ -99,4 +109,25 @@ export const getPhoneCountryCodeAndNumber = (
     phoneCountryCode: parseInt(phoneCountryCode),
     phoneNumber: parseInt(phoneNumber),
   };
+};
+
+/**
+ * validateUserAccess
+ *
+ * Validates if the current user has access to the requested resource.
+ * Admins have access to all resources, while non-admin users can only access their own resources.
+ *
+ * @param {string} registeredEmail - The email of the resource being accessed.
+ * @throws {BaseError} Throws a FORBIDDEN error if the user doesn't have access.
+ */
+export const validateUserAccess = async (registeredEmail: string): Promise<void> => {
+  const cognitoUserId: string = global.requestLocalContext.userId;
+  const cognitoUserGroups: string[] = global.requestLocalContext.cognitoUserGroups;
+  const registeredUserDetails: DbUserDetailDto = await UserDetailService.getUserByIdOne(cognitoUserId);
+
+  if(!cognitoUserGroups.includes(APP_CONSTANTS.COGNITO_IDENTITY_POOL_GROUPS.ADMIN)) {
+     if (registeredEmail !== getEmailFromPK(registeredUserDetails.PK)) {
+        throw new BaseError("You are not allowed to access this resource.", HttpStatusCode.FORBIDDEN_403);
+     }
+  }
 };

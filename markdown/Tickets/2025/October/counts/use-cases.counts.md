@@ -65,7 +65,7 @@
          1. Count of only `APPLIED` job applications for choosen single `company job`
       5. Hired
          1. Count of only `HIRED` job applications for choosen single `company job`
-### All Applicants
+### All Applicants 
    1. Counts header:
       1. Total applicants
          1. Count of total job applications(except `REJECTED` job application status) for all the `company jobs`

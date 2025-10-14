@@ -1,0 +1,7 @@
+export enum CountGlobalDbEntityTypeEnum {
+  CANDIDATE = "CANDIDATE",
+  EMPLOYEE = "EMPLOYEE",
+  COMPANY_JOB = "COMPANY_JOB",
+  REFERRAL = "REFERRAL",
+  REFER_AND_EARN = "REFER_AND_EARN",
+}

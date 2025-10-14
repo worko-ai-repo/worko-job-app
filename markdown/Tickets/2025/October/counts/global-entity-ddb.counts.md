@@ -2,15 +2,16 @@
 ### 1. Global Metrics
 ```ts
 modelName = "GlobalEntityMetrics";
-partitionKey = "GLOBAL#";
+partitionKey = "GLBL#COUNT";
 sortKey = "MET#ENT#{entityType}"; // "CANDIDATE", "EMPLOYEE", "COMPANY_JOB", "REFERRAL", "REFER_AND_EARN"
 ```
 
 ```ts
 class DbGlobalEntityMetricsDto extends BaseDbDto {
-   entityType!: "CANDIDATE" | "EMPLOYEE" | "JOB" | "REFERRAL" | "REFER_AND_EARN";
+   entityType!: "CANDIDATE" | "EMPLOYEE" | "COMPANY_JOB" | "REFERRAL" | "REFER_AND_EARN";
 
    // When entityType is "CANDIDATE"
+   // All `job application counts` For all the "candidates" 
    candidateJobApplicationCounts?: {
       total: number;
       rejected: number;
@@ -20,6 +21,7 @@ class DbGlobalEntityMetricsDto extends BaseDbDto {
    };
 
    // When entityType is "EMPLOYEE"
+   // All `job application counts` For all the "employees"
    employeeJobApplicationCounts?: {
       total: number;
       rejected: number;
@@ -29,6 +31,7 @@ class DbGlobalEntityMetricsDto extends BaseDbDto {
    };
 
    // When entityType is "COMPANY_JOB"
+   // All `job application counts` For all the "company jobs"
    companyJobApplicationCounts?: {
       total: number;
       rejected: number;
@@ -38,6 +41,7 @@ class DbGlobalEntityMetricsDto extends BaseDbDto {
    };
 
    // When entityType is "REFERRAL"
+   // All `referral counts` for all entire referral entity
    referralCounts?: {
       totalReferee: number;
       awaiting: number;
@@ -47,6 +51,7 @@ class DbGlobalEntityMetricsDto extends BaseDbDto {
    };
 
    // When entityType is "REFER_AND_EARN"
+   // All `refer and earn job application counts` for all `refer and earn` entity
    referAndEarnJobApplicationCounts?: {
       total: number;
       pending: number;

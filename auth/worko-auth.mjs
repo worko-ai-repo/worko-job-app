@@ -471,6 +471,18 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
       path: "/job-application-author-note/:jobApplicationId/:noteId",
       method: HttpMethodsConstants.PATCH,
     },
+
+    // Count Company Job routers
+    {
+      path: "/counts/:companyId/:jobId/:entityType/company-job",
+      method: HttpMethodsConstants.GET,
+    },
+
+    // Count Company Routers
+    {
+      path: "/counts/:companyId/:entityType/company",
+      method: HttpMethodsConstants.GET,
+    },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -546,6 +558,18 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     {
       path: "/job-application-author-note/:jobApplicationId/:noteId",
       method: HttpMethodsConstants.PATCH,
+    },
+
+    // Count Company Job routers
+    {
+      path: "/counts/:companyId/:jobId/:entityType/company-job",
+      method: HttpMethodsConstants.GET,
+    },
+
+    // Count Company Routers
+    {
+      path: "/counts/:companyId/:entityType/company",
+      method: HttpMethodsConstants.GET,
     },
   ];
 
@@ -670,6 +694,18 @@ var isAdminUrl = function (url, httpMethod) {
     {
       path: "/job-application-author-note/:jobApplicationId/:noteId",
       method: HttpMethodsConstants.PATCH,
+    },
+
+    // Count global routers
+    {
+      path: "/counts/:entityType/global-count",
+      method: HttpMethodsConstants.GET,
+    },
+
+    // Count Company Job routers
+    {
+      path: "/counts/:companyId/:jobId/:entityType/company-job",
+      method: HttpMethodsConstants.GET,
     },
   ];
 

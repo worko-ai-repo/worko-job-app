@@ -28,6 +28,10 @@ import { RequestEvaluationModel } from "./models/RequestEvaluation.model";
 import { ResponseEvaluationModel } from "./models/ResponseEvaluation.model";
 import { EvaluatorDetailModel } from "./models/EvaluatorDetail.model";
 import { UserJobApplicationAuthorNoteModel } from "./models/UserJobApplicationAuthorNote.model";
+import { CountUserModel } from "./models/CountUser.model";
+import { CountGlobalModel } from "./models/CountGlobal.model";
+import { CountCompanyJobModel } from "./models/CountCompanyJob.model";
+import { CountCompanyModel } from "./models/CountCompany.model";
 
 /**
  * DBConfig
@@ -109,6 +113,19 @@ class DBConfig {
     );
   }
 
+  registerDynamooseWorkoCountModels() {
+    global.logger.info(`Registering all available models for "${DB_CONSTANTS.WORKO_TABLE_NAMES.workoJobAppTableName}" dynamodb table.`);
+    const workoCountTable = new dynamoose.Table(
+      DB_CONSTANTS.WORKO_TABLE_NAMES.workoCountTableName,
+      [
+        CountUserModel,
+        CountGlobalModel,
+        CountCompanyJobModel,
+        CountCompanyModel,
+      ]
+    );
+  }
+
   /**
    * registerDynamooseWorkoModels
    *
@@ -143,6 +160,7 @@ class DBConfig {
   registerDynamooseModels() {
     this.registerDynamooseWorkoModels();
     this.registerDynamooseWorkoJobAppModels();
+    this.registerDynamooseWorkoCountModels();
   }
 }
 

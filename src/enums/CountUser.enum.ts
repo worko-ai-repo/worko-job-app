@@ -1,0 +1,6 @@
+
+export enum CountUserDbEntityTypeEnum {
+   JOB_APPLICATION = "JOB_APPLICATION",
+   REFERRAL = "REFERRAL",
+   REFER_AND_EARN = "REFER_AND_EARN"
+}

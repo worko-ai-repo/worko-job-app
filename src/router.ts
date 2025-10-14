@@ -12,6 +12,10 @@ import UserJobApplicationAuthorNoteRouter from "./routers/UserJobApplicationAuth
 import ResponseEvaluationRouter from "./routers/ResponseEvaluation.router";
 import EvaluatorDetailRouter from "./routers/EvaluatorDetail.router";
 import FileRouter from "./routers/File.router";
+import CountUserRouter from "./routers/CountUser.router";
+import CountGlobalRouter from "./routers/CountGlobal.router";
+import CountCompanyJobRouter from "./routers/CountCompanyJob.router";
+import CountCompanyRouter from "./routers/CountCompany.router";
 
 // Router that contains all the routes/endpoints in the application
 const router = Router();
@@ -29,6 +33,26 @@ const router = Router();
  *    "corporate-admin" - Only corporate admin users can access these routes
  *    "evaluator" - Only evaluators can access these routes 
  */
+
+/**
+ * COUNT COMPANY ROUTERS
+ */
+router.use("/counts", CountCompanyRouter);
+
+/**
+ * COUNT COMPANY JOB ROUTERS
+ */
+router.use("/counts", CountCompanyJobRouter);
+
+/**
+ * COUNT GLOBAL ROUTERS
+ */
+router.use("/counts", CountGlobalRouter);
+
+/**
+ * COUNT USER ROUTERS
+ */
+router.use("/counts", CountUserRouter);
 
 /**
  * Evaluator detail routers

@@ -21,6 +21,7 @@ const DB_CONSTANTS = {
   WORKO_TABLE_NAMES: {
     workoJobAppTableName: "worko-job-app",
     workoTableName: "worko",
+    workoCountTableName: "worko-count",
   },
 };
 
