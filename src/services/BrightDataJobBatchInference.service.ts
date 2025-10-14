@@ -7,7 +7,7 @@ import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJo
 // Import dtos
 import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
 import { BatchInferenceModelInput } from "../dtos/BatchInference.dto";
-import { AwsS3VectorJobCreateOrUpdateJobDataDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto } from "../dtos/AwsS3VectorJob.dto";
+import { JobLocationDto } from "../dtos/Common.dto";
 
 // Import helpers
 import { brightDataJobValidateHelperObj } from "../helpers/BrightDataJobValidate.helper";
@@ -19,7 +19,6 @@ import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.mod
 import { commonExternalJobBatchInferenceServiceObj } from "./CommonExternalJobBatchInference.service";
 import { jobServiceObj } from "./Job.service";
 import UlidService from "./Ulid.service";
-import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 
 // Import utils
 import { fileUtilObj } from "../utils/file.util";
@@ -69,23 +68,15 @@ class BrightDataJobBatchInferenceService {
     return uploadDir;
   }
 
-  /**
-   * buildBrightDataBatchInferenceRecord
-   *
-   * Constructs a BatchInferenceModelInput object from a job description for batch inference.
-   *
-   * This method takes a unique identifier and a job description string, then creates
-   * a BatchInferenceModelInput object. The object contains the record ID and model input
-   * details, including versioning, token limits, and user messages with the job description
-   * embedded in a specific prompt format.
-   *
-   * @param {string} ulidId - A unique identifier for the job record.
-   * @param {string} jobDescription - The job description to include in the model input.
-   * @returns {BatchInferenceModelInput} - The formatted JSONL object for batch inference.
-   */
+
   private buildBrightDataBatchInferenceRecord(
     ulidId: string,
-    jobDescription: string
+    jobDescription: string,
+    opensearchJobDetails: {
+      jobTitle: string;
+      location: JobLocationDto;
+      otherRequirements: string;
+    }
   ): BatchInferenceModelInput {
     // Prepare JSONL line for model input
     const jsonlObj: BatchInferenceModelInput = {
@@ -101,7 +92,19 @@ class BrightDataJobBatchInferenceService {
           {
             role: BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
               .BATCH_INFERENCE_MODEL_INPUT.ROLES.USER,
+              // location, jobTitle, otherRequirements(as empty string)
             content: [
+              {
+                type: "text",
+                /**
+                 * @description 
+                 *  First we are storing "Bright data external jobs" in to opensearch,
+                 *  next we are storing these job details in to `s3 path` as part of batch inference.
+                 *  And we create batch inference in aws bedrock then batch inference will generate output in 
+                 *  s3 path and these "opensearchJobDetails" will be used to store in "s3 vector"
+                 */
+                text: JSON.stringify(opensearchJobDetails),
+              },
               {
                 type: BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
                   .BATCH_INFERENCE_MODEL_INPUT.CONTENT_TYPES.TEXT,
@@ -171,11 +174,6 @@ class BrightDataJobBatchInferenceService {
           }
       )[] = [];
 
-      /**
-       * Initialize an empty array to hold the jobs data to create in aws S3 vector 
-       */
-      const bulkS3VectorCreateJobData: AwsS3VectorJobCreateOrUpdateJobDataDto[] = [];
-
       // Loop through the current batch of jobs
       for (const eachJob of batch) {
         const validateCompanyName: boolean = brightDataJobValidateHelperObj.validateBrightDataJobCompanyName(
@@ -206,32 +204,28 @@ class BrightDataJobBatchInferenceService {
           transformedBrightDataJob
         );
 
-        bulkS3VectorCreateJobData.push(
-          awsS3VectorJobServiceObj.prepareAwsS3VectorJobsDataCreateOrUpdateDto(
-            awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-            transformedBrightDataJob
-          )
-        );
-
         const jsonlObj: BatchInferenceModelInput =
           this.buildBrightDataBatchInferenceRecord(
             brightDataJobId,
             transformedBrightDataJob.jobDescription ??
-              "Job Description Not Found."
+              "Job Description Not Found.",
+            {
+              jobTitle: transformedBrightDataJob.jobTitle,
+              location: transformedBrightDataJob.location ?? {
+                city: [],
+                state: [],
+                country: [],
+                fullLocation: [],
+              },
+              otherRequirements: transformedBrightDataJob.otherRequirements ?? "",
+            }
           );
 
         // Write JSONL line for model input
         fileStream.write(JSON.stringify(jsonlObj) + "\n");
       }
 
-      // Run bulk operations in parallel
-      const [success, successAwsS3VectorJobCreate] = await Promise.all([
-        jobServiceObj.createBulkJobs(bulkJobData),
-        awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs({
-          jobData: bulkS3VectorCreateJobData,
-          indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-        })
-      ]);
+      const success: boolean = await jobServiceObj.createBulkJobs(bulkJobData);
 
       global.logger.debug(
         `Bulk index jobs in aws opensearch success status [SERVICE]`,
@@ -243,29 +237,6 @@ class BrightDataJobBatchInferenceService {
         global.logger.error(`Bulk index jobs in aws opensearch failed`, {
           methodName: this.processBrightDataJobBatchInference.name,
         });
-
-        // End the file stream without uploading bright data jobs details to `S3`
-        await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
-          fileStream,
-          filePath,
-          false,
-          s3CurrentDate,
-          s3UlidId,
-          externalJobSource
-        );
-
-        return false;
-      }
-
-      if(successAwsS3VectorJobCreate?.results?.success !== bulkS3VectorCreateJobData.length) {
-        global.logger.error(`AwsS3VectorJob create failed`, {
-          methodName: this.processBrightDataJobBatchInference.name,
-          successAwsS3VectorJobCreate,
-        });
-
-        /**
-         * @todo: Need to think how to handle the failure and implement rollback
-         */
 
         // End the file stream without uploading bright data jobs details to `S3`
         await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(

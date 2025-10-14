@@ -59,7 +59,7 @@ class AwsS3VectorJobDao {
   private async performAwsS3VectorActionsOnRequestResponseInvocationType<PayloadAwsS3VectorJobDto, ResponseAwsS3VectorJobDto>(
     lambdaFunctionName: string,
     payload: PayloadAwsS3VectorJobDto,
-  ) {
+  ): Promise<ResponseAwsS3VectorJobDto> {
     global.logger.info("Interacting with aws s3 vector job.", {
       lambdaFunctionName, 
       methodName: this.performAwsS3VectorActionsOnRequestResponseInvocationType.name,

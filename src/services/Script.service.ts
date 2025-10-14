@@ -55,12 +55,12 @@ import { companyJobServiceObj } from "./CompanyJob.service";
 import { jobServiceObj } from "./Job.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { fantasticJobServiceObj } from "./FantasticJob.service";
+import { brightDataJobServiceObj } from "./BrightDataJob.service";
 
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
 import { BaseError } from "../utils/errors.util";
 import ErrorCodeName from "../utils/error-code-name.util";
-import { brightDataJobServiceObj } from "./BrightDataJob.service";
 
 /**
  * ScriptService
@@ -73,7 +73,7 @@ class ScriptService {
       `Script for sample entity test [Script Service]`
     );
 
-    // return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(""); 
+    // return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs("s_mfv4waje20ydwun043"); 
 
     return false;
   }
