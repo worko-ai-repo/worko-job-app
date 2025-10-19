@@ -186,9 +186,10 @@ class JobDao {
 
     // Add typeofEmployment filter if provided
     if (typeofEmployment) {
-      queryBoolMust.push({
-        match: { typeofEmployment: typeofEmployment },
-      });
+      global.logger.warn(`As of now typeofEmployment filter is disabled, we may enable or remove permanently in near future.`);
+      // queryBoolMust.push({
+      //   match: { typeofEmployment: typeofEmployment },
+      // });
     }
 
     if(companyName) {
@@ -198,9 +199,10 @@ class JobDao {
     }
 
     if(workMode) {
-      queryBoolMust.push({
-        match: { workMode: workMode },
-      });
+      global.logger.warn(`As of now workMode filter is disabled, we may enable or remove permanently in near future.`);
+      // queryBoolMust.push({
+      //   match: { workMode: workMode },
+      // });
     }
 
     global.logger.debug(`aws opensearch query for s3 vector job ids`, {
