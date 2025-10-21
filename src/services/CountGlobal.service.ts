@@ -47,7 +47,7 @@ class CountGlobalService {
       entityType: CountGlobalDbEntityTypeEnum, 
       updateData: Partial<CountGlobalCommonUpdateDto>,
       isCountGlobalExists: boolean
-   ) {
+   ): Promise<DbCountGlobalDto> {
       global.logger.info("Create Or Update Count Global [Service]", {
          entityType,
          updateData,
@@ -63,7 +63,7 @@ class CountGlobalService {
    async createOrUpdateCountGlobalForCandidateEntityType(
       updateData: CountGlobalCandidateEntityUpdateDto,
       isCountGlobalExists: boolean
-   ) {
+   ): Promise<DbCountGlobalDto> {
       global.logger.info("Create Or Update Count Global For Candidate Entity Type [Service]", {
          updateData,
       });
@@ -78,7 +78,7 @@ class CountGlobalService {
    async createOrUpdateCountGlobalForCompanyJobEntityType(
       updateData: CountGlobalCompanyJobEntityUpdateDto,
       isCountGlobalExists: boolean
-   ) {
+   ): Promise<DbCountGlobalDto> {
       global.logger.info("Create Or Update Count Global For Company Job Entity Type [Service]", {
          updateData,
       });
@@ -93,7 +93,7 @@ class CountGlobalService {
    async createOrUpdateCountGlobalForReferAndEarnEntityType(
       updateData: CountGlobalReferAndEarnEntityUpdateDto,
       isCountGlobalExists: boolean
-   ) {
+   ): Promise<DbCountGlobalDto> {
       global.logger.info("Create Or Update Count Global For Refer And Earn Entity Type [Service]", {
          updateData,
       });

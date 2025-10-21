@@ -54,6 +54,19 @@ class CountCompanyJobService {
     );
   }
 
+  async getBatchCountCompanyJobByInputKeys(
+    inputKeys: {
+      PK: string;
+      SK: string;
+    }[]
+  ) {
+    global.logger.info("Get Batch Count Company Job By Input Keys [Service]", {
+      methodName: this.getBatchCountCompanyJobByInputKeys.name,
+      inputKeysLength: inputKeys.length,
+    });
+    return countCompanyJobDaoObj.getBatchCountCompanyJobByInputKeys(inputKeys);
+  }
+
   async validateAndGetCountCompanyJobByCompanyIdJobIdAndEntityType(
     companyId: string,
     jobId: string,

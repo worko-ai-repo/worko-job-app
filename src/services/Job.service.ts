@@ -26,16 +26,19 @@ import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto,
 // Import enums
 import { JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
 import { JobSourcedFromEnum } from "../enums/Common.enum";
+import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
 
 // Import helpers
 import { attachCompanyDetails } from "../helpers/companyDetailsInjector.helper";
 import { htmlToTextHelperObj } from "../helpers/htmlToText.helper";
 import { getActionByUserId } from "../helpers/user.helper";
+import { injectCountCompanyJobByEntityTypeDetailsHelper } from "../helpers/injectCountCompanyJobDetails.helper";
 
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
 import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbCountCompanyJobDto } from "../db/models/CountCompanyJob.model";
 
 // Import services
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
@@ -45,7 +48,7 @@ import companyServiceObj  from "./Company.service";
 import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 
 // Import types
-import { JobsWithAndWithoutCompanyDetails } from "../types/Job.type";
+import { JobsWithOrWithoutEntityDetails } from "../types/Job.type";
 
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
@@ -226,16 +229,16 @@ class JobService {
       DbJobAwsOpensearchDto[]
     >,
     jobListingFilterRequest: JobListingFilterOptions,
-  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>> {
+  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>> {
     if (!jobListingFilterRequest.includeCompanyDetails) {
-      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>;
+      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>;
     }
 
     // Destructure the response
     const { pagination, data: jobsData } = jobListingResponse;
 
     if(!jobsData.length) {
-      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>
+      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>
     }
 
     // Partition jobs by companyId in a single iteration
@@ -255,7 +258,7 @@ class JobService {
       companyDetails: DbCompanyDetailDto | undefined;
     })[] = await attachCompanyDetails<DbJobAwsOpensearchDto>(jobsWithCompanyId);
 
-    const finalResponseWithPagination: AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails> =
+    const finalResponseWithPagination: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> =
       {
         data: [...jobsWithCompanyDetails, ...jobsWithoutCompanyId],
         pagination: pagination,
@@ -267,7 +270,7 @@ class JobService {
   async getAllJobsByFilterOptions(
     jobListingFilterRequest: JobListingFilterOptions
   ): Promise<
-    AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>
+    AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>
   > {
     global.logger.info("Get All Jobs by Filter Options [Service]", {
       methodName: this.getAllJobsByFilterOptions.name,
@@ -279,15 +282,32 @@ class JobService {
         jobListingFilterRequest
       );
 
-    return this.attachOpensearchJobsWithCompanyDetails(
+    const jobListingResponseWithCompanyDetails: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> = await this.attachOpensearchJobsWithCompanyDetails(
       jobListingResponse,
       jobListingFilterRequest
     );
+
+    if(jobListingFilterRequest.includeCountCompanyJobEntityJobApplication) {
+      const jobsWithCompanyDetails = jobListingResponseWithCompanyDetails.data;
+      const jobsWithCountCompanyJobDetails = await injectCountCompanyJobByEntityTypeDetailsHelper<(
+        DbJobAwsOpensearchDto
+      )>(
+        CountCompanyJobDbEntityTypeEnum.JOB_APPLICATION,
+        jobsWithCompanyDetails
+      );
+
+      return {
+        data: jobsWithCountCompanyJobDetails,
+        pagination: jobListingResponseWithCompanyDetails.pagination,
+      }
+    }
+
+    return jobListingResponseWithCompanyDetails;
   }
 
   async getAllJobsFromS3VectorAndOpensearchByFilterOptions(
     jobListingFilterRequest: JobListingFilterOptions
-  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>> {
+  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>> {
     global.logger.info("Get All Jobs from S3 Vector and Opensearch [Service]", {
       methodName: this.getAllJobsFromS3VectorAndOpensearchByFilterOptions.name,
     });
@@ -335,7 +355,7 @@ class JobService {
       jobListingFilterRequest,
     );
 
-    const finalResponse: AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails> = await this.attachOpensearchJobsWithCompanyDetails(
+    const finalResponse: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> = await this.attachOpensearchJobsWithCompanyDetails(
       jobListingResponse,
       jobListingFilterRequest,
     )
@@ -356,7 +376,7 @@ class JobService {
   
   async getAllJobsByDashboardFilterOptions(
     jobListingFilterRequest: JobListingFilterOptions
-  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails>>
+  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>>
  {
     global.logger.info("Get All Jobs by Dashboard [Service]", {
       methodName: this.getAllJobsByDashboardFilterOptions.name,

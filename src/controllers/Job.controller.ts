@@ -21,7 +21,7 @@ import { jobServiceObj } from '../services/Job.service';
 import { jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
 
 // Import types
-import { JobsWithAndWithoutCompanyDetails } from '../types/Job.type';
+import { JobsWithOrWithoutEntityDetails } from '../types/Job.type';
 
 // Import utils
 import { BaseError, RequestValidationError } from '../utils/errors.util';
@@ -166,7 +166,7 @@ class JobController {
       }
 
       // Get all jobs by filter options
-      const jobDetails: AwsOpensearchRecordListingResponseDTO<JobsWithAndWithoutCompanyDetails> =
+      const jobDetails: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> =
         await jobServiceObj.getAllJobsByDashboardFilterOptions(jobFilterOptions);
 
       // Respond with job details

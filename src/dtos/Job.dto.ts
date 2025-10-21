@@ -90,6 +90,12 @@ export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilte
    * for this use case. We are using this field.
    */
   includeCompanyDetails?: boolean;
+
+  /**
+   * @description: While listing jobs in `corporate` or `worko-admin` dashboard
+   * we will show the counts of user job applications for each job, If we want to show this count we will set this field to `true`.
+   */
+  includeCountCompanyJobEntityJobApplication?: boolean;
 }
 
 /**
@@ -142,6 +148,12 @@ export interface JobListingFilterRequestDTO extends AwsOpensearchRecordListingFi
    * for this use case. We are using this field.
    */
   includeCompanyDetails?: boolean;
+
+  /**
+   * @description: While listing jobs in `corporate` or `worko-admin` dashboard
+   * we will show the counts of job applications for each job, If we want to show this count we will set this field to `true`.
+   */
+  includeCountCompanyJobEntityJobApplication?: boolean;
 }
 
 /**

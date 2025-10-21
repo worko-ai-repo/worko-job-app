@@ -105,6 +105,19 @@ class CountCompanyJobDao implements BaseDao {
     return CountCompanyJobModel.query("PK").eq(PK).where("SK").eq(SK).exec();
   }
 
+  async getBatchCountCompanyJobByInputKeys(
+    inputKeys: {
+      PK: string;
+      SK: string;
+    }[]
+  ) {
+    global.logger.info("Get Batch Count Company Job By Input Keys [DAO]", {
+      methodName: this.getBatchCountCompanyJobByInputKeys.name,
+      inputKeysLength: inputKeys.length,
+    });
+    return CountCompanyJobModel.batchGet(inputKeys);
+  }
+
   async updateCountCompanyJob(
     companyId: string,
     jobId: string,
@@ -119,7 +132,7 @@ class CountCompanyJobDao implements BaseDao {
     });
 
     return CountCompanyJobModel.update(
-      this.preparePKAndSKForQuery(companyId,jobId, entityType),
+      this.preparePKAndSKForQuery(companyId, jobId, entityType),
       updateData
     );
   }

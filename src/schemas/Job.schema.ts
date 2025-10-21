@@ -338,6 +338,13 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
         "boolean.base": "The includeCompanyDetails field must be a boolean.",
       }),
 
+    includeCountCompanyJobEntityJobApplication: Joi
+      .boolean()
+      .optional()
+      .messages({
+        "boolean.base": "The includeCountCompanyJobEntityJobApplication field must be a boolean.",
+      }),
+
     fromS3Vector: Joi
       .boolean()
       .optional()
