@@ -84,7 +84,6 @@ export interface ReferAndEarnListingFilterRequestDTO extends RecordListingFilter
 export interface ReferAndEarnUpdateApiDto {
   status?: ReferAndEarnStatusEnum;
   withDrawalRequestRejectedReason?: string;
-  jobApplicationStatus?: ReferAndEarnJobApplicationStatusEnum;
   paymentDoneDetails?: ReferAndEarnPaymentDoneDetailsDto;
   referrerBankDetails?: ReferAndEarnReferrerBankDetails;
   commissionAmount?: number;

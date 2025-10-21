@@ -64,23 +64,23 @@ const CountCompanyJobSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         applied: {
           type: Number,
-          required: true,
+          required: false,
         },
         hired: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         processingInterview: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },

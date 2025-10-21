@@ -3,6 +3,9 @@ import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 // Import daos
 import { countCompanyJobDaoObj } from "../daos/CountCompanyJob.dao";
 
+// Import dtos
+import { CountCompanyJobCommonUpdateDto, CountCompanyJobCreateDto, CountCompanyJobJobApplicationEntityUpdateDto } from "../dtos/CountCompanyJob.dto";
+
 // Import enums
 import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
 
@@ -20,6 +23,16 @@ import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
 
 class CountCompanyJobService {
+  private async createCountCompanyJob(
+    createData: CountCompanyJobCreateDto
+  ): Promise<DbCountCompanyJobDto> {
+    global.logger.info("Create Count Company Job [Service]", {
+      createData,
+    });
+
+    return countCompanyJobDaoObj.createCountCompany(createData);
+  }
+
   async getCountCompanyJobByCompanyIdJobIdAndEntityType(
     companyId: string,
     jobId: string,
@@ -89,6 +102,63 @@ class CountCompanyJobService {
       jobId,
       entityType
     );
+  }
+
+  private async updateCountCompanyJob(
+    companyId: string,
+    jobId: string,
+    entityType: CountCompanyJobDbEntityTypeEnum,
+    updateData: Partial<CountCompanyJobCommonUpdateDto>
+  ): Promise<DbCountCompanyJobDto> {
+    global.logger.info("Update Count Company Job [Service]", {
+      companyId,
+      jobId,
+      entityType,
+      updateData,
+    });
+
+    return countCompanyJobDaoObj.updateCountCompanyJob(
+      companyId,
+      jobId,
+      entityType,
+      updateData
+    );
+  }
+
+  private async createOrUpdateCountCompanyJob(
+    companyId: string,
+    jobId: string,
+    entityType: CountCompanyJobDbEntityTypeEnum,
+    updateData: Partial<CountCompanyJobCommonUpdateDto>,
+    isCountCompanyJobExists: boolean
+  ): Promise<DbCountCompanyJobDto> {
+    global.logger.info("Create Or Update Count Company Job [Service]", {
+      companyId,
+      jobId,
+      entityType,
+      updateData,
+    });
+
+    if (isCountCompanyJobExists) {
+      return this.updateCountCompanyJob(companyId, jobId, entityType, updateData);
+    } else {
+      return this.createCountCompanyJob({ companyId, jobId, entityType, ...updateData });
+    }
+  }
+
+  async createOrUpdateCountCompanyJobForJobApplicationEntityType(
+    companyId: string,
+    jobId: string,
+    updateData: CountCompanyJobJobApplicationEntityUpdateDto,
+    isCountCompanyJobExists: boolean
+  ): Promise<DbCountCompanyJobDto> {
+    global.logger.info("Create Or Update Count Company Job For Job Application Entity Type [Service]", {
+      companyId,
+      jobId,
+      updateData,
+    });
+
+    return this.createOrUpdateCountCompanyJob(companyId, jobId, CountCompanyJobDbEntityTypeEnum.JOB_APPLICATION, updateData, isCountCompanyJobExists);
   }
 }
 

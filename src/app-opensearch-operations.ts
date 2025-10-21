@@ -150,9 +150,15 @@ export const handler = async (
         );
 
       default:
+        global.logger.error("Invalid operation", {
+          operation 
+        });
         return {
           statusCode: HttpStatusCode.BAD_REQUEST_400,
-          body: JSON.stringify({ error: "Invalid operation" }),
+          body: JSON.stringify({ error: {
+            message: "Invalid operation",
+            recievedOperationFromRequest: operation
+          }}),
         };
     }
   } catch (error: any) {

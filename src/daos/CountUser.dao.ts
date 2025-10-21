@@ -5,6 +5,9 @@ import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 // import daos
 import BaseDao from "./Base.dao";
 
+// Import dtos
+import { CountUserCommonUpdateDto, CountUserCreateDto } from "../dtos/CountUser.dto";
+
 // Import enums
 import { CountUserDbEntityTypeEnum } from "../enums/CountUser.enum";
 
@@ -35,6 +38,39 @@ class CountUserDao implements BaseDao {
     };
   }
 
+  prepareGsi1PkAndGsi1SkForQuery(
+    entityType: CountUserDbEntityTypeEnum
+  ): {
+    GSI1PK: string;
+    GSI1SK: string;
+  } {
+    return {
+      GSI1PK: this.GSI1PK,
+      GSI1SK: this.GSI1SK.strtr({
+        "{entityType}": entityType,
+      }),
+    };
+  }
+
+   async createCountUser(
+      createData: CountUserCreateDto
+   ): Promise<DbCountUserDto> {
+      global.logger.info("Create Count User [DAO]", {
+         createData,
+      });
+
+      const { PK, SK } = this.preparePKAndSKForQuery(createData.email, createData.entityType); 
+      const { GSI1PK, GSI1SK } = this.prepareGsi1PkAndGsi1SkForQuery(createData.entityType);
+
+      return CountUserModel.create({
+        ...createData,
+        PK: PK,
+        SK: SK,
+        GSI1PK: GSI1PK,
+        GSI1SK: GSI1SK,
+      });
+   }
+
   async getCountUserByRegisteredEmailAndEntityType(
     registeredEmail: string,
     entityType: CountUserDbEntityTypeEnum
@@ -51,6 +87,20 @@ class CountUserDao implements BaseDao {
     const { PK, SK } = this.preparePKAndSKForQuery(registeredEmail, entityType);
     return CountUserModel.query("PK").eq(PK).where("SK").eq(SK).exec();
   }
+
+   async updateCountUserByRegisteredEmailAndEntityType(
+      registeredEmail: string, 
+      entityType: CountUserDbEntityTypeEnum, 
+      updateData: Partial<CountUserCommonUpdateDto>
+   ): Promise<DbCountUserDto> {
+      global.logger.info("Update Count User By Registered Email And Entity Type [DAO]", {
+         registeredEmail,
+         entityType,
+         updateData
+      });
+
+      return CountUserModel.update(this.preparePKAndSKForQuery(registeredEmail, entityType), updateData);
+   }
 }
 
 const countUserDaoObj: CountUserDao = new CountUserDao();

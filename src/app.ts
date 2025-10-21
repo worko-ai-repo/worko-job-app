@@ -72,7 +72,9 @@ class App {
    */
   registerMiddleWares() {
     const origins: string[] = process.env.APP_STAGE === APP_CONSTANTS.STAGES.PROD ? APP_CONSTANTS.FRONTEND_ORIGINS.PROD : APP_CONSTANTS.FRONTEND_ORIGINS.DEV;
-    this.app.use(cors({ origin: origins })); 
+    this.app.use(cors({ 
+      origin: origins,
+    })); 
     this.app.use(express.json()); // 100 KB default limit
   }
 

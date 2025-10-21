@@ -4,6 +4,9 @@ import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 // import daos
 import BaseDao from "./Base.dao";
 
+// Import dtos
+import { CountGlobalCommonUpdateDto, CountGlobalCreateDto } from "../dtos/CountGlobal.dto";
+
 // Import enums
 import { CountGlobalDbEntityTypeEnum } from "../enums/CountGlobal.enum";
 
@@ -29,6 +32,24 @@ class CountGlobalDao implements BaseDao {
     };
   }
 
+  async createCountGlobal(
+    createData: CountGlobalCreateDto
+  ): Promise<DbCountGlobalDto> {
+    global.logger.info("Create Count Global [dao]", {
+      createData,
+    });
+
+    const { PK, SK } = this.preparePKAndSKForQuery(
+      createData.entityType
+    );
+
+    return CountGlobalModel.create({
+      ...createData,
+      PK: PK,
+      SK: SK,
+    });
+  }
+
   async getCountGlobalByEntityType(
     entityType: CountGlobalDbEntityTypeEnum
   ): Promise<QueryResponse<DbCountGlobalDto>> {
@@ -43,6 +64,18 @@ class CountGlobalDao implements BaseDao {
     const { PK, SK } = this.preparePKAndSKForQuery(entityType);
     return CountGlobalModel.query("PK").eq(PK).where("SK").eq(SK).exec();
   }
+
+   async updateCountGlobalByEntityType(
+      entityType: CountGlobalDbEntityTypeEnum, 
+      updateData: Partial<CountGlobalCommonUpdateDto>
+   ): Promise<DbCountGlobalDto> {
+      global.logger.info("Update Count Global By Entity Type [DAO]", {
+         entityType,
+         updateData
+      });
+
+      return CountGlobalModel.update(this.preparePKAndSKForQuery(entityType), updateData);
+   }
 }
 
 const countGlobalDaoObj: CountGlobalDao = new CountGlobalDao();

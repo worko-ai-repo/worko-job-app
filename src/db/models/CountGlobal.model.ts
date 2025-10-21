@@ -8,7 +8,7 @@ import { DB_CONSTANTS } from "../DB.constants";
 import { BaseDbDto } from "./Base.model";
 
 // Import dtos
-import { CountGlobalDbCandidateJobApplicationCountsDto, CountGlobalDbCompanyJobApplicationCountsDto, CountGlobalDbEmployeeJobApplicationCountsDto, CountGlobalDbReferAndEarnJobApplicationCountsDto, CountGlobalDbReferralCountsDto } from "../../dtos/CountGlobal.dto";
+import { CountGlobalDbUserJobApplicationCountsDto, CountGlobalDbCompanyJobApplicationCountsDto, CountGlobalDbReferAndEarnJobApplicationCountsDto, CountGlobalDbReferralCountsDto } from "../../dtos/CountGlobal.dto";
 
 // Import Enums
 import { CountGlobalDbEntityTypeEnum } from "../../enums/CountGlobal.enum";
@@ -16,9 +16,7 @@ import { CountGlobalDbEntityTypeEnum } from "../../enums/CountGlobal.enum";
 class DbCountGlobalDto extends BaseDbDto {
   entityType!: CountGlobalDbEntityTypeEnum;
 
-  candidateJobApplicationCounts?: CountGlobalDbCandidateJobApplicationCountsDto;
-
-  employeeJobApplicationCounts?: CountGlobalDbEmployeeJobApplicationCountsDto;
+  candidateJobApplicationCounts?: CountGlobalDbUserJobApplicationCountsDto;
 
   companyJobApplicationCounts?: CountGlobalDbCompanyJobApplicationCountsDto;
 
@@ -41,49 +39,23 @@ const CountGlobalSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         applied: {
           type: Number,
-          required: true,
+          required: false,
         },
         hired: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         processingInterview: {
           type: Number,
-          required: true,
-        },
-      },
-    },
-    employeeJobApplicationCounts: {
-      type: Object,
-      required: false,
-      schema: {
-        total: {
-          type: Number,
-          required: true,
-        },
-        applied: {
-          type: Number,
-          required: true,
-        },
-        hired: {
-          type: Number,
-          required: true,
-        },
-        rejected: {
-          type: Number,
-          required: true,
-        },
-        processingInterview: {
-          type: Number,
-          required: true,
+          required: false,
         },
       },
     },
@@ -93,23 +65,23 @@ const CountGlobalSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         applied: {
           type: Number,
-          required: true,
+          required: false,
         },
         hired: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         processingInterview: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },
@@ -119,23 +91,23 @@ const CountGlobalSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         applied: {
           type: Number,
-          required: true,
+          required: false,
         },
         hired: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         pending: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },
@@ -145,23 +117,23 @@ const CountGlobalSchema: Schema = new dynamoose.Schema(
       schema: {
         totalReferee: {
           type: Number,
-          required: true,
+          required: false,
         },
         awaiting: {
           type: Number,
-          required: true,
+          required: false,
         },
         accepted: {
           type: Number,
-          required: true,
+          required: false,
         },
         done: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },

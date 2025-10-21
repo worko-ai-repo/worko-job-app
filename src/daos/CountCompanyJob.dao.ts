@@ -4,6 +4,9 @@ import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 // import daos
 import BaseDao from "./Base.dao";
 
+// Import dtos
+import { CountCompanyJobCommonUpdateDto, CountCompanyJobCreateDto } from "../dtos/CountCompanyJob.dto";
+
 // Import enums
 import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
 
@@ -39,6 +42,46 @@ class CountCompanyJobDao implements BaseDao {
     };
   }
 
+  prepareGsi1PkAndGsi1SkForQuery(
+    jobId: string,
+    entityType: CountCompanyJobDbEntityTypeEnum
+  ) {
+    return {
+      GSI1PK: this.GSI1PK.strtr({
+        "{jobId}": jobId,
+      }),
+      GSI1SK: this.GSI1SK.strtr({
+        "{entityType}": entityType,
+      }),
+    };
+  }
+
+  async createCountCompany(
+    createData: CountCompanyJobCreateDto
+  ): Promise<DbCountCompanyJobDto> {
+    global.logger.info("Create Count Company Job [DAO]", {
+      createData,
+    });
+
+    const { PK, SK } = this.preparePKAndSKForQuery(
+      createData.companyId,
+      createData.jobId,
+      createData.entityType
+    );
+    const { GSI1PK, GSI1SK } = this.prepareGsi1PkAndGsi1SkForQuery(
+      createData.jobId,
+      createData.entityType
+    );
+
+    return CountCompanyJobModel.create({
+      ...createData,
+      PK: PK,
+      SK: SK,
+      GSI1PK: GSI1PK,
+      GSI1SK: GSI1SK,
+    });
+  }
+
   async getCountCompanyJobByCompanyIdJobIdAndEntityType(
     companyId: string,
     jobId: string,
@@ -60,6 +103,25 @@ class CountCompanyJobDao implements BaseDao {
       entityType
     );
     return CountCompanyJobModel.query("PK").eq(PK).where("SK").eq(SK).exec();
+  }
+
+  async updateCountCompanyJob(
+    companyId: string,
+    jobId: string,
+    entityType: CountCompanyJobDbEntityTypeEnum,
+    updateData: Partial<CountCompanyJobCommonUpdateDto>
+  ): Promise<DbCountCompanyJobDto> {
+    global.logger.info("Update Count Company Job [DAO]", {
+      companyId,
+      jobId,
+      entityType,
+      updateData,
+    });
+
+    return CountCompanyJobModel.update(
+      this.preparePKAndSKForQuery(companyId,jobId, entityType),
+      updateData
+    );
   }
 }
 

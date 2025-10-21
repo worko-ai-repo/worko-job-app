@@ -142,6 +142,8 @@ class DbUserJobApplicationDto extends BaseDbDto {
   jdMatchErrorCode?: number;
   jdMatchErrorDesc?: string;
   matchingScore?: number;
+  checkEXPdata?: object;
+  rejectCTCAndEXP?: boolean;
 
   /**
    * This is for `corporate-admin/recruiter` and `worko-admin`
@@ -578,6 +580,14 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
     },
     matchingScore: {
       type: Number,
+      required: false,
+    },
+    checkEXPdata: {
+      type: Object,
+      required: false,
+    },
+    rejectCTCAndEXP: {
+      type: Boolean,
       required: false,
     },
     rejectionFeedbackBySystem: {

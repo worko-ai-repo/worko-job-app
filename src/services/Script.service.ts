@@ -73,9 +73,11 @@ class ScriptService {
       `Script for sample entity test [Script Service]`
     );
 
-    // return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs("s_mfv4waje20ydwun043"); 
+    return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
+      "s_mg54z8il1wz7nf0hhx"
+    ); 
 
-    return false;
+    // return false;
   }
 
   /**

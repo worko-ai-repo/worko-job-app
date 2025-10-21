@@ -37,7 +37,9 @@ import {
 // Import enums
 import { WhatsAppBusinessPartnerTemplateNameEnum } from "../enums/WhatsAppBusinessPartnerTemplate.enum";
 import { EmailTemplateEnum } from "../enums/EmailTemplate.enum";
-import { ReferAndEarnJobApplicationStatusEnum, ReferAndEarnStatusEnum } from "../enums/ReferAndEarn.enum";
+import { ReferAndEarnStatusEnum } from "../enums/ReferAndEarn.enum";
+import { CountUserDbEntityTypeEnum } from "../enums/CountUser.enum";
+import { CountGlobalDbEntityTypeEnum } from "../enums/CountGlobal.enum";
 
 // Import helpers
 import { dateHelperObj } from "../helpers/date.helper";
@@ -57,12 +59,16 @@ import { DbUserDetailDto } from "../db/models/UserDetail.model";
 import { DbUserJobApplicationDto } from "../db/models/UserJobApplication.model";
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
+import { DbCountUserDto } from "../db/models/CountUser.model";
+import { DbCountGlobalDto } from "../db/models/CountGlobal.model";
 
 // Import services
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { companyDetailServiceObj } from "./CompanyDetail.service";
 import userDetailServiceObj from "./UserDetail.service";
 import { companyJobServiceObj } from "./CompanyJob.service";
+import { countUserServiceObj } from "./CountUser.service";
+import { countGlobalServiceObj } from "./CountGlobal.service";
 
 // Import utils
 import { BaseError } from "../utils/errors.util";
@@ -208,99 +214,121 @@ class ReferAndEarnService {
         referrerEmail,
         referAndEarnData
       );
+    
+    if(referAndEarnDetails.id) {
+      const countUserReferAndEarnQueryResponse: QueryResponse<DbCountUserDto> =
+        await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+          referAndEarnData.referrerDetails.email,
+          CountUserDbEntityTypeEnum.REFER_AND_EARN
+        );
+      const countUserReferAndEarnData: DbCountUserDto =
+        countUserReferAndEarnQueryResponse[0];
 
-    // Prepare job url with refer and earn id
-    const jobUrl: URL = new URL(companyJobDetails.jobUrl);
-    jobUrl.searchParams.set("referAndEarnId", referAndEarnDetails.id);
-    const updatedJobUrlWithReferAndEarnId: string = jobUrl.toString();
+      countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+        referAndEarnData.referrerDetails.email,
+        {
+          referAndEarnJobApplicationCounts: {
+            ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
 
-    // =========================================================
-    // ==== Prepare data and Send email to recipient ================
-    // =========================================================
-    const toRecipientAddress: EmailSourceDestinationAddress = {
-      email: referAndEarnData.recipientDetails.email,
-      fullName: referAndEarnData.recipientDetails.name,
-    };
+            /**
+             * Whenever the referrer refers the candidate then we are making 
+             * status as "PENDING", and incrementing the "pending" count and "total" count
+             */
+            pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) + 1,
+            total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) + 1,
+          },
+        },
+        !!countUserReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
+      );
 
-    const emailRecipientPlaceholders: EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN =
-      {
-        referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
-        recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
-        companyName: companyDetails.name.toTitleCase(),
-        jobTitle: companyJobDetails.jobTitle.toTitleCase(),
-        jobUrl: updatedJobUrlWithReferAndEarnId,
-        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+      const countGlobalReferAndEarnQueryResponse: QueryResponse<DbCountGlobalDto> =
+        await countGlobalServiceObj.getCountGlobalByEntityType(
+          CountGlobalDbEntityTypeEnum.REFER_AND_EARN
+        );
+      const countGlobalReferAndEarnData: DbCountGlobalDto =
+        countGlobalReferAndEarnQueryResponse[0];
+      countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+        {
+          referAndEarnJobApplicationCounts: {
+            ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
+
+            /**
+             * Whenever the referrer refers the candidate then we are making 
+             * status as "PENDING", and incrementing the "pending" count and "total" count
+             */
+            pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) + 1,
+            total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) + 1,
+          },
+        },
+        !!countGlobalReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
+      );
+
+      // Prepare job url with refer and earn id
+      const jobUrl: URL = new URL(companyJobDetails.jobUrl);
+      jobUrl.searchParams.set("referAndEarnId", referAndEarnDetails.id);
+      const updatedJobUrlWithReferAndEarnId: string = jobUrl.toString();
+
+      // =========================================================
+      // ==== Prepare data and Send email to recipient ================
+      // =========================================================
+      const toRecipientAddress: EmailSourceDestinationAddress = {
+        email: referAndEarnData.recipientDetails.email,
+        fullName: referAndEarnData.recipientDetails.name,
       };
 
-    const recipientEmailResponse: {
-      awsMessageId: string | null;
-      systemLogId: string | null;
-    } = await emailLibrary.sendEmail(
-      EmailTemplateEnum.RECIPIENT_REFER_AND_EARN,
-      toRecipientAddress,
-      emailRecipientPlaceholders
-    );
+      const emailRecipientPlaceholders: EmailTemplatePlaceholderRECIPIENT_REFER_AND_EARN =
+        {
+          referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
+          recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
+          companyName: companyDetails.name.toTitleCase(),
+          jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+          jobUrl: updatedJobUrlWithReferAndEarnId,
+          ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+        };
+        
+      emailLibrary.sendEmail(
+        EmailTemplateEnum.RECIPIENT_REFER_AND_EARN,
+        toRecipientAddress,
+        emailRecipientPlaceholders
+      );
 
-    if (!recipientEmailResponse.awsMessageId) {
-      global.logger.error("Failed to send email to recipient", {
-        filePath: __filename,
-        methodName: this.createReferAndEarn.name,
-        email: referAndEarnData.recipientDetails.name,
-      });
-    }
-
-    // =========================================================
-    // ======= Prepare data and Send email to referrer ================
-    // =========================================================
-    const toReferrerAddress: EmailSourceDestinationAddress = {
-      email: referrerEmail,
-      fullName: referAndEarnData.referrerDetails.name,
-    };
-
-    const emailToReferrerPlaceholders: EmailTemplatePlaceholderREFERRER_REFER_AND_EARN =
-      {
-        referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
-        recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
-        jobTitle: companyJobDetails.jobTitle.toTitleCase(),
-        companyName: companyDetails.name.toTitleCase(),
-        ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
-        dashboardUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_APP_URL,
-      };
-
-    const emailToReferrerSendResponse: {
-      awsMessageId: string | null;
-      systemLogId: string | null;
-    } = await emailLibrary.sendEmail(
-      EmailTemplateEnum.REFERRER_REFER_AND_EARN,
-      toReferrerAddress,
-      emailToReferrerPlaceholders
-    );
-
-    if (!emailToReferrerSendResponse.awsMessageId) {
-      global.logger.error("Failed to send email to referrer", {
-        filePath: __filename,
-        methodName: this.createReferAndEarn.name,
+      // =========================================================
+      // ======= Prepare data and Send email to referrer ================
+      // =========================================================
+      const toReferrerAddress: EmailSourceDestinationAddress = {
         email: referrerEmail,
-      });
-    }
-
-    // =========================================================
-    // ===== Prepare data and Send whatsapp to recipient =============
-    // =========================================================
-    const whatsAppBusinessPartnerRecipientPlaceholders: WhatsAppBusinessPartnerTemplatePlaceholderRECIPIENT_REFER_AND_EARN =
-      {
-        recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
-        referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
-        jobTitle: companyJobDetails.jobTitle.toTitleCase(),
-        companyName: companyDetails.name.toTitleCase(),
-        jobUrl: updatedJobUrlWithReferAndEarnId,
+        fullName: referAndEarnData.referrerDetails.name,
       };
 
-    const sendWhatsAppToRecipientResponse: {
-      systemLogId: string | null;
-      whatsAppBusinessPartnerSendMessageResponseId: string | null | undefined;
-    } =
-      await whatsAppBusinessPartnerLibraryObj.sendWhatsAppBusinessPartnerWhatsappMessage(
+      const emailToReferrerPlaceholders: EmailTemplatePlaceholderREFERRER_REFER_AND_EARN =
+        {
+          referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
+          recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
+          jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+          companyName: companyDetails.name.toTitleCase(),
+          ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+          dashboardUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_APP_URL,
+        };
+
+      emailLibrary.sendEmail(
+        EmailTemplateEnum.REFERRER_REFER_AND_EARN,
+        toReferrerAddress,
+        emailToReferrerPlaceholders
+      );
+
+      // =========================================================
+      // ===== Prepare data and Send whatsapp to recipient =============
+      // =========================================================
+      const whatsAppBusinessPartnerRecipientPlaceholders: WhatsAppBusinessPartnerTemplatePlaceholderRECIPIENT_REFER_AND_EARN =
+        {
+          recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
+          referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
+          jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+          companyName: companyDetails.name.toTitleCase(),
+          jobUrl: updatedJobUrlWithReferAndEarnId,
+        };
+
+      whatsAppBusinessPartnerLibraryObj.sendWhatsAppBusinessPartnerWhatsappMessage(
         WhatsAppBusinessPartnerTemplateNameEnum.RECIPIENT_REFER_AND_EARN,
 
         `${referAndEarnData.recipientDetails.phoneCountryCode}${referAndEarnData.recipientDetails.phoneNumber}`, // To recipient Phone Number
@@ -310,30 +338,18 @@ class ReferAndEarnService {
         referAndEarnData.recipientDetails.email
       );
 
-    if (!sendWhatsAppToRecipientResponse.systemLogId) {
-      global.logger.error("Failed to send whatsapp message to recipient", {
-        filePath: __filename,
-        methodName: this.createReferAndEarn.name,
-        recipientEmail: referAndEarnData.recipientDetails,
-      });
-    }
-
-    // =========================================================
-    // ===== Prepare data and Send whatsapp to referrer===========
-    // =========================================================
-    const whatsAppBusinessPartnerReferrerPlaceholders: WhatsAppBusinessPartnerTemplatePlaceholderREFERRER_REFER_AND_EARN =
-      {
-        referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
-        recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
-        jobTitle: companyJobDetails.jobTitle.toTitleCase(),
-        companyName: companyDetails.name.toTitleCase(),
-      };
-
-    const sendWhatsAppToReferrerResponse: {
-      systemLogId: string | null;
-      whatsAppBusinessPartnerSendMessageResponseId: string | null | undefined;
-    } =
-      await whatsAppBusinessPartnerLibraryObj.sendWhatsAppBusinessPartnerWhatsappMessage(
+      // =========================================================
+      // ===== Prepare data and Send whatsapp to referrer===========
+      // =========================================================
+      const whatsAppBusinessPartnerReferrerPlaceholders: WhatsAppBusinessPartnerTemplatePlaceholderREFERRER_REFER_AND_EARN =
+        {
+          referrerName: referAndEarnData.referrerDetails.name.toTitleCase(),
+          recipientName: referAndEarnData.recipientDetails.name.toTitleCase(),
+          jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+          companyName: companyDetails.name.toTitleCase(),
+        };
+        
+      whatsAppBusinessPartnerLibraryObj.sendWhatsAppBusinessPartnerWhatsappMessage(
         WhatsAppBusinessPartnerTemplateNameEnum.REFERRER_REFER_AND_EARN,
 
         `${referAndEarnData.referrerDetails.phoneCountryCode}${referAndEarnData.referrerDetails.phoneNumber}`,
@@ -342,13 +358,6 @@ class ReferAndEarnService {
 
         referrerEmail
       );
-
-    if (!sendWhatsAppToReferrerResponse.systemLogId) {
-      global.logger.error("Failed to send whatsapp message to referrer", {
-        filePath: __filename,
-        methodName: this.createReferAndEarn.name,
-        recipientEmail: referAndEarnData.recipientDetails,
-      });
     }
 
     return referAndEarnDetails;

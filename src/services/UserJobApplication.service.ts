@@ -32,6 +32,10 @@ import { JobStatusEnum } from "../enums/Job.enum";
 import { ScheduleJobStatus, ScheduleJobType } from "../enums/ScheduleJob.enum";
 import { MatchingScoreEntityEnum } from "../enums/Common.enum";
 import { ReferAndEarnJobApplicationStatusEnum, ReferAndEarnStatusEnum } from "../enums/ReferAndEarn.enum";
+import { CountUserDbEntityTypeEnum } from "../enums/CountUser.enum";
+import { CountGlobalDbEntityTypeEnum } from "../enums/CountGlobal.enum";
+import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
+import { CountCompanyDbEntityTypeEnum } from "../enums/CountCompany.enum";
 
 // import helpers
 import { injectCompanyJobDetails } from "../helpers/injectCompanyJobDetails.helper";
@@ -48,6 +52,10 @@ import { DbCorporateUserDto } from "../db/models/CorporateUser.model";
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
 import { DbScheduleJobDto } from "../db/models/ScheduleJob.model";
 import { DbReferAndEarnDto } from "../db/models/ReferAndEarn.model";
+import { DbCountUserDto } from "../db/models/CountUser.model";
+import { DbCountGlobalDto } from "../db/models/CountGlobal.model";
+import { DbCountCompanyJobDto } from "../db/models/CountCompanyJob.model";
+import { DbCountCompanyDto } from "../db/models/CountCompany.model";
 
 // import services
 import scheduleJobService from "../services/ScheduleJob.service";
@@ -58,6 +66,10 @@ import { companyJobServiceObj } from "./CompanyJob.service";
 import ScheduleJobService from "./ScheduleJob.service";
 import InvokeLambdaService from "./InvokeLambda.service";
 import { referAndEarnServiceObj } from "./ReferAndEarn.service";
+import { countUserServiceObj } from "./CountUser.service";
+import { countGlobalServiceObj } from "./CountGlobal.service";
+import { countCompanyJobServiceObj } from "./CountCompanyJob.service";
+import { countCompanyServiceObj } from "./CountCompany.service";
 
 // import types
 import { UserDetailProfileInfoType } from "../types/UserDetail.type";
@@ -421,26 +433,51 @@ class UserJobApplicationService {
         }
 
         // Update refer and earn status
-        await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+        referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
           parsedReferAndEarnDetails.id,
           getEmailFromPK(parsedReferAndEarnDetails.PK),
           referAndEarnUpdateDto
         );
+
+        const countUserReferAndEarnQueryResponse: QueryResponse<DbCountUserDto> =
+          await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+            parsedReferAndEarnDetails.referrerDetails.email,
+            CountUserDbEntityTypeEnum.REFER_AND_EARN
+          );
+        const countUserReferAndEarnData: DbCountUserDto =
+          countUserReferAndEarnQueryResponse[0];
+
+        countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+          parsedReferAndEarnDetails.referrerDetails.email,
+          {
+            referAndEarnJobApplicationCounts: {
+              ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
+              pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) - 1,
+              applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) + 1,
+            },
+          },
+          !!countUserReferAndEarnQueryResponse.count, // If count user already exists in ddb then `true` else `false`
+        );
+
+        const countGlobalReferAndEarnQueryResponse: QueryResponse<DbCountGlobalDto> =
+          await countGlobalServiceObj.getCountGlobalByEntityType(
+            CountGlobalDbEntityTypeEnum.REFER_AND_EARN
+          );
+        const countGlobalReferAndEarnData: DbCountGlobalDto =
+          countGlobalReferAndEarnQueryResponse[0];
+
+        countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+          {
+            referAndEarnJobApplicationCounts: {
+              ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
+              pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) - 1,
+              applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) + 1,
+            },
+          },
+          !!countGlobalReferAndEarnQueryResponse.count, 
+        );
       }
     }
-
-    // Send email notification to the candidate about the new job application
-    const sendEmailResponse: boolean =
-      await this.sendEmailToCandidateOnNewJobApplication(
-        jobApplicationDetails,
-        candidateDetails,
-        jobDetails.jobTitle
-      );
-    global.logger.debug("send Email To Candidate On New Job Application details", {
-      sendEmailResponse,
-      email: emailId,
-      userId: userId,
-    });
 
     // Prepare the job application SK for the job application to Pass to calculate matching score Lambda
     const jobApplicationSK: string =
@@ -448,8 +485,102 @@ class UserJobApplicationService {
         "{id}": jobApplicationDetails.id,
       });
 
+    this.sendEmailToCandidateOnNewJobApplication(
+      jobApplicationDetails,
+      candidateDetails,
+      jobDetails.jobTitle
+    );
+
+    const countUserJobApplicationQueryResponse: QueryResponse<DbCountUserDto> = await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+      emailId,
+      CountUserDbEntityTypeEnum.JOB_APPLICATION
+    )
+    const countUserJobApplicationData: DbCountUserDto = countUserJobApplicationQueryResponse[0];
+    
+    countUserServiceObj.createOrUpdateCountUserForJobApplicationEntityType(
+      emailId,
+      {
+        userJobApplicationCounts: {
+          ...countUserJobApplicationData?.userJobApplicationCounts,
+          total: (countUserJobApplicationData?.userJobApplicationCounts?.total ?? 0) + 1,
+          applied: (countUserJobApplicationData?.userJobApplicationCounts?.applied ?? 0) + 1,
+        }
+      },
+      !!countUserJobApplicationQueryResponse.count, // If count user already exists in ddb then `true` else `false`
+    );
+
+    const countGlobalCompanyJobQueryResponse: QueryResponse<DbCountGlobalDto> = await countGlobalServiceObj.getCountGlobalByEntityType(
+      CountGlobalDbEntityTypeEnum.COMPANY_JOB
+    );
+    const countGlobalCompanyJobData: DbCountGlobalDto = countGlobalCompanyJobQueryResponse[0]
+
+    countGlobalServiceObj.createOrUpdateCountGlobalForCompanyJobEntityType(
+      {
+        companyJobApplicationCounts: {
+          ...countGlobalCompanyJobData?.companyJobApplicationCounts,
+          total: (countGlobalCompanyJobData?.companyJobApplicationCounts?.total ?? 0) + 1,
+          applied: (countGlobalCompanyJobData?.companyJobApplicationCounts?.applied ?? 0) + 1,
+        }
+      },
+      !!countGlobalCompanyJobQueryResponse.count, 
+    );
+
+    const countGlobalCandidateQueryResponse: QueryResponse<DbCountGlobalDto> = await countGlobalServiceObj.getCountGlobalByEntityType(
+      CountGlobalDbEntityTypeEnum.CANDIDATE
+    );
+    const countGlobalCandidateData: DbCountGlobalDto = countGlobalCandidateQueryResponse[0]
+
+    countGlobalServiceObj.createOrUpdateCountGlobalForCandidateEntityType(
+      {
+        candidateJobApplicationCounts: {
+          ...countGlobalCandidateData?.candidateJobApplicationCounts,
+          total: (countGlobalCandidateData?.candidateJobApplicationCounts?.total ?? 0) + 1,
+          applied: (countGlobalCandidateData?.candidateJobApplicationCounts?.applied ?? 0) + 1,
+        }
+      },
+      !!countGlobalCompanyJobQueryResponse.count, 
+    );
+
+    const countCompanyJobQueryResponse: QueryResponse<DbCountCompanyJobDto> = await countCompanyJobServiceObj.getCountCompanyJobByCompanyIdJobIdAndEntityType(
+      jobDetails.companyId,
+      jobDetails.id,
+      CountCompanyJobDbEntityTypeEnum.JOB_APPLICATION
+    );
+    const countCompanyJobData: DbCountCompanyJobDto = countCompanyJobQueryResponse[0]
+
+    countCompanyJobServiceObj.createOrUpdateCountCompanyJobForJobApplicationEntityType(
+      jobDetails.companyId,
+      jobDetails.id,
+      {
+        allJobApplicationCounts: {
+          ...countCompanyJobData?.allJobApplicationCounts,
+          total: (countCompanyJobData?.allJobApplicationCounts?.total ?? 0) + 1,
+          applied: (countCompanyJobData?.allJobApplicationCounts?.applied ?? 0) + 1,
+        }
+      },
+      !!countCompanyJobQueryResponse.count, 
+    );
+
+    const countCompanyQueryResponse: QueryResponse<DbCountCompanyDto> = await countCompanyServiceObj.getCountCompanyByCompanyIdAndEntityType(
+      jobDetails.companyId,
+      CountCompanyDbEntityTypeEnum.JOB_APPLICATION
+    );
+    const countCompanyData: DbCountCompanyDto = countCompanyQueryResponse[0]
+
+    countCompanyServiceObj.createOrUpdateCountCompanyForJobApplicationEntityType(
+      jobDetails.companyId,
+      {
+        allJobApplicationCounts: {
+          ...countCompanyData?.allJobApplicationCounts,
+          total: (countCompanyData?.allJobApplicationCounts?.total ?? 0) + 1,
+          applied: (countCompanyData?.allJobApplicationCounts?.applied ?? 0) + 1,
+        }
+      },
+      !!countCompanyQueryResponse.count,
+    );
+
     // Invoke a lambda function to calculate matching scores for this job application
-    await InvokeLambdaService.triggerMatchingScoreCalculation(
+    InvokeLambdaService.triggerMatchingScoreCalculation(
       emailId,
       MatchingScoreEntityEnum.JOB_APP,
       jobApplicationSK
@@ -572,29 +703,17 @@ class UserJobApplicationService {
     )
   } 
 
-  /**
-   * prepareUserJobApplicationUpdateDtoToRejectAfterXHours
-   *
-   * Prepares a user job application update dto after a certain number of hours.
-   *
-   * This method fetches the job application details using the provided job application ID and
-   * logs an error if the job application details are not found. It then prepares a user job
-   * application update dto by setting the status to `REJECTED` and adding the current date and time
-   * to the status tracker. Finally, it updates the job application using the prepared update
-   * dto and returns a promise that resolves to `true` if the update was successful, or `false` if
-   * the update failed.
-   *
-   * @param {string} userJobApplicationId - The ID of the job application to be updated.
-   * @param {string} userEmail - The email address of the user who applied for the job.
-   * @returns {Promise<boolean>} A promise that resolves to `true` if the update was successful, or `false` if the update failed.
-   */
   async prepareUserJobApplicationUpdateDtoToRejectAfterXHours(
     userJobApplicationId: string,
-    userEmail: string
+    userEmail: string,
+    userId: string
   ): Promise<boolean> {
     // logger
     global.logger.info("Prepare User Job Application Update Dto [Service]", {
       methodName: this.prepareJobApplicationsWithUserDetails.name,
+      userJobApplicationId,
+      userEmail,
+      userId,
     });
 
     // Fetch job application details using job application ID and log error if not found
@@ -641,9 +760,29 @@ class UserJobApplicationService {
           updateUserJobApplicationDto
         );
 
-      if (!updatedUserJobApplicationDetails) {
+      if (!updatedUserJobApplicationDetails.id) {
         return false;
       }
+
+      this.performCountUserActivitiesAfterJobApplicationUpdate(
+        updatedUserJobApplicationDetails,
+        JobApplicationStatus.APPLIED
+      );
+
+      this.performCountGlobalActivitiesAfterJobApplicationUpdate(
+        updatedUserJobApplicationDetails,
+        JobApplicationStatus.APPLIED
+      );
+
+      this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
+        updatedUserJobApplicationDetails,
+        JobApplicationStatus.APPLIED
+      );
+
+      this.performCountCompanyActivitiesAfterJobApplicationUpdate(
+        updatedUserJobApplicationDetails,
+        JobApplicationStatus.APPLIED
+      );
 
       // Check if the job application is for a refer and earn id
       if (updatedUserJobApplicationDetails.referAndEarnId) {
@@ -689,6 +828,46 @@ class UserJobApplicationService {
           if (!updatedReferAndEarnDetails) {
             return false;
           }
+
+          const countUserReferAndEarnQueryResponse: QueryResponse<DbCountUserDto> =
+            await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+              updatedReferAndEarnDetails.referrerDetails.email,
+              CountUserDbEntityTypeEnum.REFER_AND_EARN
+            );
+          const countUserReferAndEarnData: DbCountUserDto =
+            countUserReferAndEarnQueryResponse[0];
+
+          countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+            updatedReferAndEarnDetails.referrerDetails.email,
+            {
+              referAndEarnJobApplicationCounts: {
+                ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
+                total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) - 1, // count except rejected
+                rejected: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
+                applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+              },
+            },
+            !!countUserReferAndEarnQueryResponse.count, 
+          );
+
+          const countGlobalReferAndEarnQueryResponse: QueryResponse<DbCountGlobalDto> =
+            await countGlobalServiceObj.getCountGlobalByEntityType(
+              CountGlobalDbEntityTypeEnum.REFER_AND_EARN
+            );
+          const countGlobalReferAndEarnData: DbCountGlobalDto =
+            countGlobalReferAndEarnQueryResponse[0];
+
+          countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+            {
+              referAndEarnJobApplicationCounts: {
+                ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
+                total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) - 1, // count except rejected
+                rejected: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
+                applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+              },
+            },
+            !!countGlobalReferAndEarnQueryResponse.count, 
+          );
         }
       }
 
@@ -1364,42 +1543,18 @@ class UserJobApplicationService {
     return placeholderDetails;
   }
 
-  /**
-   * handleReferAndEarnAndNotificationOnJobApplicationUpdate
-   * 
-   * Handles refer and earn and notification on job application update.
-   *
-   * It checks if the job application is for a refer and earn id and if yes, it updates the refer and earn status accordingly.
-   * It also sends an email to the candidate and job poster about the job application update.
-   *
-   * @param {DbUserJobApplicationDto} updatedJobApplication - The updated job application details.
-   * @param {string} currentActionDateTime - The current date and time in ISO format.
-   * @param {string} applicantName - The name of the applicant.
-   *
-   * @returns {Promise<void>} A promise that resolves when the function is done.
-   */
-  private async handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+  private async performReferAndEarnActivitiesAfterJobApplicationUpdate(
     updatedJobApplication: DbUserJobApplicationDto,
-    currentActionDateTime: string,
-    applicantName: string,
+    currentActionDateTime: string
   ): Promise<void> {
     if (
       [
         JobApplicationStatus.REJECTED,
         JobApplicationStatus.PROCESSING_INTERVIEW,
         JobApplicationStatus.HIRED,
+        JobApplicationStatus.JOINED,
       ].includes(updatedJobApplication.status)
     ) {
-      // /**
-      //  * If job application status is "rejected" then invoke rag lambda with the job application details and applicant details
-      //  */
-      // if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
-      //   await InvokeLambdaService.triggerRejectJobApplication({
-      //     applicantEmail: getEmailFromPK(updatedJobApplication.PK),
-      //     jobApplicationId: updatedJobApplication.id
-      //   })
-      // }
-
       // Check if the job application is for a refer and earn id
       if (updatedJobApplication?.referAndEarnId) {
         // Retrieve refer and earn details by refer and earn id
@@ -1412,8 +1567,31 @@ class UserJobApplicationService {
           const parsedReferAndEarnDetails: DbReferAndEarnDto =
             referAndEarnDetails[0];
 
+          const { referrerDetails } = parsedReferAndEarnDetails;
+          const { email: referrerEmail } = referrerDetails;
+
+          const countUserReferAndEarnQueryResponse: QueryResponse<DbCountUserDto> =
+            await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+              referrerEmail,
+              CountUserDbEntityTypeEnum.REFER_AND_EARN
+            );
+          const countUserReferAndEarnData: DbCountUserDto =
+            countUserReferAndEarnQueryResponse[0];
+
+          const countGlobalReferAndEarnQueryResponse: QueryResponse<DbCountGlobalDto> = await countGlobalServiceObj.getCountGlobalByEntityType(
+            CountGlobalDbEntityTypeEnum.REFER_AND_EARN
+          );
+          const countGlobalReferAndEarnData: DbCountGlobalDto =
+            countGlobalReferAndEarnQueryResponse[0];
+
+          const { referAndEarnJobApplicationCounts: countUserReferAndEarnJobApplicationCounts } = countUserReferAndEarnData;
+          const { referAndEarnJobApplicationCounts: countGlobalReferAndEarnJobApplicationCounts } = countGlobalReferAndEarnData;
+
           let referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto>;
 
+          /**
+           * @todo: Optimize the Readability
+           */
           if (updatedJobApplication.status === JobApplicationStatus.REJECTED) {
             // Prepare statusTracker Data to update
             const referAndEarnUpdatedStatusTracker: ReferAndEarnStatusTrackerDto[] =
@@ -1442,6 +1620,49 @@ class UserJobApplicationService {
               getEmailFromPK(parsedReferAndEarnDetails.PK),
               referAndEarnUpdateDto
             );
+
+            countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+              referrerEmail,
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countUserReferAndEarnJobApplicationCounts,
+                  rejected: (countUserReferAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
+                  total: (countUserReferAndEarnJobApplicationCounts?.total ?? 0) - 1,
+
+                  /**
+                   * If Rejection update happened when old refer and earn job application status was `APPLIED` then decrease the `applied` count by 1,
+                   * otherwise don't change the `applied` count.
+                   */
+                  applied: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.applied,
+
+                  hired: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.HIRED ? (countUserReferAndEarnJobApplicationCounts?.hired ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.hired,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
+            );
+
+            countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countGlobalReferAndEarnJobApplicationCounts,
+                  rejected: (countGlobalReferAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
+                  total: (countGlobalReferAndEarnJobApplicationCounts?.total ?? 0) - 1,
+
+                  /**
+                   * If Rejection update happened when old refer and earn job application status was `APPLIED` then decrease the `applied` count by 1,
+                   * otherwise don't change the `applied` count.
+                   */
+                  applied: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countGlobalReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countGlobalReferAndEarnJobApplicationCounts?.applied,
+
+                  hired: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.HIRED ? (countGlobalReferAndEarnJobApplicationCounts?.hired ?? 0) - 1 : countGlobalReferAndEarnJobApplicationCounts?.hired,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
+            );
           } else if (
             updatedJobApplication.status ===
             JobApplicationStatus.PROCESSING_INTERVIEW
@@ -1458,6 +1679,27 @@ class UserJobApplicationService {
               getEmailFromPK(parsedReferAndEarnDetails.PK),
               referAndEarnUpdateDto
             );
+
+            countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+              referrerEmail,
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countUserReferAndEarnJobApplicationCounts,
+                  applied: (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
+            );
+
+            countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countGlobalReferAndEarnJobApplicationCounts,
+                  applied: (countGlobalReferAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
+            );
           } else if (
             updatedJobApplication.status === JobApplicationStatus.HIRED
           ) {
@@ -1471,6 +1713,31 @@ class UserJobApplicationService {
               parsedReferAndEarnDetails.id,
               getEmailFromPK(parsedReferAndEarnDetails.PK),
               referAndEarnUpdateDto
+            );
+
+            countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+              referrerEmail,
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countUserReferAndEarnJobApplicationCounts,
+                  hired: (countUserReferAndEarnJobApplicationCounts?.hired ?? 0) + 1,
+                  applied: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.applied,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
+            );
+
+            countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countGlobalReferAndEarnJobApplicationCounts,
+                  hired: (countGlobalReferAndEarnJobApplicationCounts?.hired ?? 0) + 1,
+                  applied: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countGlobalReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countGlobalReferAndEarnJobApplicationCounts?.applied,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
             );
           } else if(
             updatedJobApplication.status === JobApplicationStatus.JOINED
@@ -1496,23 +1763,656 @@ class UserJobApplicationService {
               parsedReferAndEarnDetails.id,
               getEmailFromPK(parsedReferAndEarnDetails.PK),
               referAndEarnUpdateDto
-            );            
+            );          
+
+            countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+              referrerEmail,
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countUserReferAndEarnJobApplicationCounts,
+                  hired: (countUserReferAndEarnJobApplicationCounts?.hired ?? 0) - 1,
+                  applied: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.applied,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
+            );
+
+            countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countGlobalReferAndEarnJobApplicationCounts,
+                  hired: (countGlobalReferAndEarnJobApplicationCounts?.hired ?? 0) - 1,
+                  applied: parsedReferAndEarnDetails.jobApplicationStatus === 
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countGlobalReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countGlobalReferAndEarnJobApplicationCounts?.applied,
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count,
+            );
           }
         }
       }
     }
+  }
 
-    // send email to candidate
-    await this.sendEmailToCandidateOnJobApplicationUpdate(
-      updatedJobApplication,
-      applicantName
-    );
+  private async performCountUserActivitiesAfterJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    jobApplicationStatusBeforeUpdate: JobApplicationStatus
+  ) {
+    const updatedJobApplicationStatus: JobApplicationStatus = updatedJobApplication.status;
+    const applicantUserEmail: string = getEmailFromPK(updatedJobApplication.PK);
 
-    // send email to job poster on job application update
-    await this.sendEmailToJobPosterOnJobApplicationUpdate(
-      updatedJobApplication,
-      applicantName
+    const countUserJobApplicationQueryResponse: QueryResponse<DbCountUserDto> = await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+      applicantUserEmail,
+      CountUserDbEntityTypeEnum.JOB_APPLICATION
+    )
+    const countUserJobApplicationData: DbCountUserDto = countUserJobApplicationQueryResponse[0]
+
+    const {userJobApplicationCounts: countUserJobApplicationCounts} = countUserJobApplicationData;
+    /**
+     * @todo: Optimize the Readability
+     */
+    if (updatedJobApplicationStatus === JobApplicationStatus.REJECTED ) {
+      countUserServiceObj.createOrUpdateCountUserForJobApplicationEntityType(
+        applicantUserEmail,
+        {
+          userJobApplicationCounts: {
+            ...countUserJobApplicationCounts,
+            total: (countUserJobApplicationCounts?.total ?? 0) - 1,
+            rejected: (countUserJobApplicationCounts?.rejected ?? 0) + 1,
+
+            /**
+             * If previous status was under evaluation then decrease under evaluation count
+             * otherwise keep it as it is
+             */
+            underEvaluation:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.UNDER_EVALUATION
+                ? (countUserJobApplicationCounts?.underEvaluation ?? 0) - 1
+                : (countUserJobApplicationCounts?.underEvaluation ?? 0),
+
+            /**
+             * If previous status was applied then decrease applied count
+             * otherwise keep it as it is
+             */
+            applied:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
+                : (countUserJobApplicationCounts?.applied ?? 0),
+
+            /**
+             * If previous status was hired then decrease hired count
+             * otherwise keep it as it is
+             */
+            hired:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countUserJobApplicationCounts?.hired ?? 0) - 1
+                : (countUserJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countUserJobApplicationQueryResponse.count, 
+      )
+    }
+    else if (updatedJobApplicationStatus === JobApplicationStatus.UNDER_EVALUATION) {
+      countUserServiceObj.createOrUpdateCountUserForJobApplicationEntityType(
+        applicantUserEmail,
+        {
+          userJobApplicationCounts: {
+            ...countUserJobApplicationCounts,
+            underEvaluation: (countUserJobApplicationCounts?.underEvaluation ?? 0) + 1,
+
+            /**
+             * If previous status was applied then decrease applied count
+             * otherwise keep it as it is
+             */
+            applied:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
+                : (countUserJobApplicationCounts?.applied ?? 0),
+          }
+        },
+        !!countUserJobApplicationQueryResponse.count, 
+      )        
+    } 
+    else if (updatedJobApplicationStatus === JobApplicationStatus.HIRED) {
+      countUserServiceObj.createOrUpdateCountUserForJobApplicationEntityType(
+        applicantUserEmail,
+        {
+          userJobApplicationCounts: {
+            ...countUserJobApplicationCounts,
+            hired: (countUserJobApplicationCounts?.hired ?? 0) + 1,
+
+            /**
+             * If previous status was under evaluation then decrease under evaluation count
+             * otherwise keep it as it is
+             */
+            underEvaluation:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.UNDER_EVALUATION
+                ? (countUserJobApplicationCounts?.underEvaluation ?? 0) - 1
+                : (countUserJobApplicationCounts?.underEvaluation ?? 0),
+
+            /**
+             * If previous status was applied then decrease applied count
+             * otherwise keep it as it is
+             */
+            applied:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
+                : (countUserJobApplicationCounts?.applied ?? 0),
+          }
+        },
+        !!countUserJobApplicationQueryResponse.count, 
+      )        
+    } else if(
+      [
+        JobApplicationStatus.UNDER_EVALUATION,
+        JobApplicationStatus.APPLIED,
+        JobApplicationStatus.HIRED
+      ].includes(jobApplicationStatusBeforeUpdate)
+    ) {
+      countUserServiceObj.createOrUpdateCountUserForJobApplicationEntityType(
+        applicantUserEmail,
+        {
+          userJobApplicationCounts: {
+            ...countUserJobApplicationCounts,
+            /**
+             * If previous status was under evaluation then decrease under evaluation count
+             * otherwise keep it as it is
+             */
+            underEvaluation:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.UNDER_EVALUATION
+                ? (countUserJobApplicationCounts?.underEvaluation ?? 0) - 1
+                : (countUserJobApplicationCounts?.underEvaluation ?? 0),
+
+            /**
+             * If previous status was applied then decrease applied count
+             * otherwise keep it as it is
+             */
+            applied:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
+                : (countUserJobApplicationCounts?.applied ?? 0),
+
+            /**
+             * If previous status was hired then decrease hired count
+             * otherwise keep it as it is
+             */
+            hired:
+              jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countUserJobApplicationCounts?.hired ?? 0) - 1
+                : (countUserJobApplicationCounts?.hired ?? 0),            
+          }
+        },
+        !!countUserJobApplicationQueryResponse.count, 
+      )  
+    }
+  }
+
+  private async performCountGlobalActivitiesAfterJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    jobApplicationStatusBeforeUpdate: JobApplicationStatus
+  ) {
+    const updatedJobApplicationStatus: JobApplicationStatus = updatedJobApplication.status;
+
+    const countGlobalCompanyJobQueryResponse: QueryResponse<DbCountGlobalDto> = await countGlobalServiceObj.getCountGlobalByEntityType(
+      CountGlobalDbEntityTypeEnum.COMPANY_JOB
     );
+    const countGlobalCompanyJobData: DbCountGlobalDto = countGlobalCompanyJobQueryResponse[0];
+    const {companyJobApplicationCounts: countGlobalCompanyJobApplicationCounts} = countGlobalCompanyJobData;
+
+    const countGlobalCandidateQueryResponse: QueryResponse<DbCountGlobalDto> = await countGlobalServiceObj.getCountGlobalByEntityType(
+      CountGlobalDbEntityTypeEnum.CANDIDATE
+    );
+    const countGlobalCandidateData: DbCountGlobalDto = countGlobalCandidateQueryResponse[0]
+    const {candidateJobApplicationCounts: countGlobalCandidateJobApplicationCounts} = countGlobalCandidateData
+
+    /**
+     * @todo: Optimize the Readability
+     */
+    if (updatedJobApplicationStatus === JobApplicationStatus.REJECTED ) {
+      countGlobalServiceObj.createOrUpdateCountGlobalForCompanyJobEntityType(
+        {
+          companyJobApplicationCounts: {
+            ...countGlobalCompanyJobApplicationCounts,
+            total: (countGlobalCompanyJobApplicationCounts?.total ?? 0) - 1,
+            rejected: (countGlobalCompanyJobApplicationCounts?.rejected ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countGlobalCompanyJobApplicationCounts?.hired ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.hired ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countGlobalCompanyJobQueryResponse.count,
+      );
+      countGlobalServiceObj.createOrUpdateCountGlobalForCandidateEntityType(
+        {
+          candidateJobApplicationCounts: {
+            ...countGlobalCandidateJobApplicationCounts,
+            total: (countGlobalCandidateJobApplicationCounts?.total ?? 0) - 1,
+            rejected: (countGlobalCandidateJobApplicationCounts?.rejected ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countGlobalCandidateJobApplicationCounts?.hired ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.hired ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countGlobalCandidateQueryResponse.count, 
+      );
+    } else if (updatedJobApplicationStatus === JobApplicationStatus.PROCESSING_INTERVIEW) {
+      countGlobalServiceObj.createOrUpdateCountGlobalForCompanyJobEntityType(
+        {
+          companyJobApplicationCounts: {
+            ...countGlobalCompanyJobApplicationCounts,
+            processingInterview: (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countGlobalCompanyJobApplicationCounts?.hired ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countGlobalCompanyJobQueryResponse.count,
+      );
+
+      countGlobalServiceObj.createOrUpdateCountGlobalForCandidateEntityType(
+        {
+          candidateJobApplicationCounts: {
+            ...countGlobalCandidateJobApplicationCounts,
+            processingInterview: (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countGlobalCandidateJobApplicationCounts?.hired ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countGlobalCandidateQueryResponse.count
+      )
+    } else if (updatedJobApplication.status === JobApplicationStatus.HIRED) {
+      countGlobalServiceObj.createOrUpdateCountGlobalForCompanyJobEntityType(
+        {
+          companyJobApplicationCounts: {
+            ...countGlobalCompanyJobApplicationCounts,
+            hired: (countGlobalCompanyJobApplicationCounts?.hired ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countGlobalCompanyJobQueryResponse.count
+      );
+
+      countGlobalServiceObj.createOrUpdateCountGlobalForCandidateEntityType(
+        {
+          candidateJobApplicationCounts: {
+            ...countGlobalCandidateJobApplicationCounts,
+            hired: (countGlobalCandidateJobApplicationCounts?.hired ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countGlobalCandidateQueryResponse.count
+      )
+    } else if(
+      [
+        JobApplicationStatus.APPLIED,
+        JobApplicationStatus.PROCESSING_INTERVIEW,
+        JobApplicationStatus.HIRED
+      ].includes(jobApplicationStatusBeforeUpdate)
+    ) {
+      countGlobalServiceObj.createOrUpdateCountGlobalForCompanyJobEntityType(
+        {
+          companyJobApplicationCounts: {
+            ...countGlobalCompanyJobApplicationCounts,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countGlobalCompanyJobApplicationCounts?.hired ?? 0) - 1
+                : (countGlobalCompanyJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countGlobalCompanyJobQueryResponse.count
+      );
+
+      countGlobalServiceObj.createOrUpdateCountGlobalForCandidateEntityType(
+        {
+          candidateJobApplicationCounts: {
+            ...countGlobalCandidateJobApplicationCounts,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countGlobalCandidateJobApplicationCounts?.hired ?? 0) - 1
+                : (countGlobalCandidateJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countGlobalCandidateQueryResponse.count
+      )
+    }
+  }
+
+  private async performCountCompanyJobActivitiesAfterJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    jobApplicationStatusBeforeUpdate: JobApplicationStatus,
+  ): Promise<void> {
+    const countCompanyJobQueryResponse: QueryResponse<DbCountCompanyJobDto> = await countCompanyJobServiceObj.getCountCompanyJobByCompanyIdJobIdAndEntityType(
+      updatedJobApplication.companyId,
+      updatedJobApplication.jobId,
+      CountCompanyJobDbEntityTypeEnum.JOB_APPLICATION
+    );
+    const countCompanyJobData: DbCountCompanyJobDto = countCompanyJobQueryResponse[0];
+    const {
+      allJobApplicationCounts: countCompanyJobAllJobApplicationCounts
+    } = countCompanyJobData;
+    
+    /**
+     * @todo Optimize the Readability
+     */
+    if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
+      countCompanyJobServiceObj.createOrUpdateCountCompanyJobForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        updatedJobApplication.jobId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyJobAllJobApplicationCounts,
+            total: (countCompanyJobAllJobApplicationCounts?.total ?? 0) - 1,
+            rejected: (countCompanyJobAllJobApplicationCounts?.rejected ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countCompanyJobAllJobApplicationCounts?.hired ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.hired ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countCompanyJobQueryResponse.count,
+      )
+    } else if (updatedJobApplication.status === JobApplicationStatus.PROCESSING_INTERVIEW) {
+      countCompanyJobServiceObj.createOrUpdateCountCompanyJobForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        updatedJobApplication.jobId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyJobAllJobApplicationCounts,
+            processingInterview: (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countCompanyJobAllJobApplicationCounts?.hired ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countCompanyJobQueryResponse.count,
+      )
+    } else if (updatedJobApplication.status === JobApplicationStatus.HIRED) {
+      countCompanyJobServiceObj.createOrUpdateCountCompanyJobForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        updatedJobApplication.jobId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyJobAllJobApplicationCounts,
+            hired: (countCompanyJobAllJobApplicationCounts?.hired ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countCompanyJobQueryResponse.count
+      )
+    } else if (
+      [
+        JobApplicationStatus.APPLIED,
+        JobApplicationStatus.PROCESSING_INTERVIEW,
+        JobApplicationStatus.HIRED
+      ].includes(jobApplicationStatusBeforeUpdate)
+    ) {
+      countCompanyJobServiceObj.createOrUpdateCountCompanyJobForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        updatedJobApplication.jobId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyJobAllJobApplicationCounts,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countCompanyJobAllJobApplicationCounts?.hired ?? 0) - 1
+                : (countCompanyJobAllJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countCompanyJobQueryResponse.count
+      )
+    }
+  }
+
+  private async performCountCompanyActivitiesAfterJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    jobApplicationStatusBeforeUpdate: JobApplicationStatus,
+  ): Promise<void> {
+    const countCompanyQueryResponse: QueryResponse<DbCountCompanyDto> = await countCompanyServiceObj.getCountCompanyByCompanyIdAndEntityType(
+      updatedJobApplication.companyId,
+      CountCompanyDbEntityTypeEnum.JOB_APPLICATION
+    );
+    const countCompanyData: DbCountCompanyDto = countCompanyQueryResponse[0]
+    const {
+      allJobApplicationCounts: countCompanyAllJobApplicationCounts
+    } = countCompanyData;
+
+    /**
+     * @todo: Optimize the Readability
+     */
+    if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
+      countCompanyServiceObj.createOrUpdateCountCompanyForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyAllJobApplicationCounts,
+            total: (countCompanyAllJobApplicationCounts?.total ?? 0) - 1,
+            rejected: (countCompanyAllJobApplicationCounts?.rejected ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countCompanyAllJobApplicationCounts?.hired ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.hired ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countCompanyQueryResponse.count,
+      )
+    } else if (updatedJobApplication.status === JobApplicationStatus.PROCESSING_INTERVIEW) {
+      countCompanyServiceObj.createOrUpdateCountCompanyForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyAllJobApplicationCounts,
+            processingInterview: (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countCompanyAllJobApplicationCounts?.hired ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countCompanyQueryResponse.count,
+      )
+    } else if (updatedJobApplication.status === JobApplicationStatus.HIRED) {
+      countCompanyServiceObj.createOrUpdateCountCompanyForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyAllJobApplicationCounts,
+            hired: (countCompanyAllJobApplicationCounts?.hired ?? 0) + 1,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.processingInterview ?? 0),
+          }
+        },
+        !!countCompanyQueryResponse.count
+      )
+    } else if (
+      [
+        JobApplicationStatus.APPLIED,
+        JobApplicationStatus.PROCESSING_INTERVIEW,
+        JobApplicationStatus.HIRED
+      ].includes(jobApplicationStatusBeforeUpdate)
+    ) {
+      countCompanyServiceObj.createOrUpdateCountCompanyForJobApplicationEntityType(
+        updatedJobApplication.companyId,
+        {
+          allJobApplicationCounts: {
+            ...countCompanyAllJobApplicationCounts,
+            applied: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.APPLIED
+                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+            processingInterview: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.PROCESSING_INTERVIEW
+                ? (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.processingInterview ?? 0),
+            hired: jobApplicationStatusBeforeUpdate ===
+              JobApplicationStatus.HIRED
+                ? (countCompanyAllJobApplicationCounts?.hired ?? 0) - 1
+                : (countCompanyAllJobApplicationCounts?.hired ?? 0),
+          }
+        },
+        !!countCompanyQueryResponse.count
+      )
+    }
+  }
+
+  private async performActivitiesAfterJobApplicationUpdate(
+    jobApplicationStatusBeforeUpdate: JobApplicationStatus,
+    updatedJobApplication: DbUserJobApplicationDto,
+    currentActionDateTime: string,
+    applicantName: string,
+  ): Promise<void> {
+
+    await Promise.all([
+      this.performCountUserActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        jobApplicationStatusBeforeUpdate,
+      ),
+
+      this.performCountGlobalActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        jobApplicationStatusBeforeUpdate,
+      ),
+
+      this.performReferAndEarnActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        currentActionDateTime
+      ),
+
+      this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        jobApplicationStatusBeforeUpdate,
+      ),
+
+      this.performCountCompanyActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        jobApplicationStatusBeforeUpdate
+      ),
+
+      // send email to candidate
+      this.sendEmailToCandidateOnJobApplicationUpdate(
+        updatedJobApplication,
+        applicantName
+      ),
+
+      // send email to job poster on job application update
+      this.sendEmailToJobPosterOnJobApplicationUpdate(
+        updatedJobApplication,
+        applicantName
+      )
+    ]);
   }
 
   private prepareStatusTrackerDataForUpdate(
@@ -1566,18 +2466,10 @@ class UserJobApplicationService {
     );
   }
 
-  /**
-   * updateJobApplicationByCorpUser
-   *
-   * Updates a job application by corporate user.
-   *
-   * @param {string} jobApplicationId - The ID of the job application to be updated.
-   * @param {UserJobApplicationUpdateApiDTO} jobApplicationRequestBody - The update data for the job application.
-   * @returns {Promise<DbUserJobApplicationDto>} A promise that resolves to the updated job application data.
-   */
+
   async updateJobApplicationByCorpUser(
     jobApplicationId: string,
-    jobApplicationRequestBody: UserJobApplicationUpdateApiDTO
+    jobApplicationRequestBody: UserJobApplicationUpdateApiDTO,
   ): Promise<DbUserJobApplicationDto> {
     global.logger.info(`Update Job Application By Corp User [Service]`, {
       filePath: __filename,
@@ -1917,12 +2809,12 @@ class UserJobApplicationService {
         updateData
       );
 
-    // Send email to candidate on job application update
     if (updatedJobApplication?.id) {
-      await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+      this.performActivitiesAfterJobApplicationUpdate(
+        parsedJobApplication.status, // Job application status before update
         updatedJobApplication,
         currentActionDateTime,
-        jobApplicationRequestBody.applicantName
+        jobApplicationRequestBody.applicantName,
       );
     }
 
@@ -2188,10 +3080,11 @@ class UserJobApplicationService {
     );
 
     if (updatedJobApplication?.id) {
-      await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+      this.performActivitiesAfterJobApplicationUpdate(
+        parsedJobApplication.status,
         updatedJobApplication,
         currentActionDateTime,
-        jobApplicationRequestBody.applicantName
+        jobApplicationRequestBody.applicantName,
       );
     }
 
@@ -2268,7 +3161,8 @@ class UserJobApplicationService {
           jobApplicationMetric.success.count++;
           jobApplicationMetric.success.primaryIds!.push(jobApplicationId);
           
-          await this.handleReferAndEarnAndNotificationOnJobApplicationUpdate(
+          this.performActivitiesAfterJobApplicationUpdate(
+            oldStatus,
             updatedJobApplication,
             currentActionDateTime,
             applicantName,

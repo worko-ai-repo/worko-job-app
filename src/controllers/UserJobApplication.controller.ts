@@ -394,7 +394,7 @@ class UserJobApplicationController {
       const userJobApplicationDetails: DbUserJobApplicationDto =
         await userJobApplicationServiceObj.updateJobApplicationByCorpUser(
           jobApplicationId,
-          jobApplicationRequestBody
+          jobApplicationRequestBody,
         );
 
       // return the response
@@ -592,13 +592,6 @@ class UserJobApplicationController {
         jobApplicationRequestBody
       );
 
-      /**
-       * @todo: Discuss with "CTO" instead of logging, 
-       * if any single job id is failed to update in DynamoDB or Opensearch,
-       * then we need to store it in new "dynamodb" logs partition.
-       * If all the job Ids are success then we no need to store it in new "dynamodb" logs partition to
-       * save the cost of storing it in new "dynamodb" logs partition.
-       */
       global.logger.info(
         `Bulk update job application response. [Controller]`,
         {

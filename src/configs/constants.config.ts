@@ -440,7 +440,7 @@ const APP_CONSTANTS = {
    */
   get USER_JOB_APPLICATION_UPDATE_AFTER_X_HOURS(): number {
     const PROD_HOURS = 1 * 24; // 24 hours
-    const DEV_HOURS = 10 / 60; // 10 minutes converted to hour
+    const DEV_HOURS = 1 * 24; // 10 / 60; // 10 minutes converted to hour
 
     // return the time based on the environment
     return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_HOURS : DEV_HOURS;

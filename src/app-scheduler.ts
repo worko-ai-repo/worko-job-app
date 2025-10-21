@@ -110,11 +110,14 @@ export const handler = async (
         userJobApplicationRejectedStatusInputDetails["userJobApplicationId"];
       const userEmail: string =
         userJobApplicationRejectedStatusInputDetails["userEmail"];
+      const userId: string =
+        userJobApplicationRejectedStatusInputDetails["userId"];
 
       const updatedDetails: boolean =
         await userJobApplicationServiceObj.prepareUserJobApplicationUpdateDtoToRejectAfterXHours(
           userJobApplicationId,
-          userEmail
+          userEmail,
+          userId
         );
       if (!updatedDetails) {
         global.logger.error(`Failed to update user job application status`, {

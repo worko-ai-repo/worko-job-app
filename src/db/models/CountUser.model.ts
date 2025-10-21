@@ -20,11 +20,6 @@ class DbCountUserDto extends BaseDbDto {
   entityType!: CountUserDbEntityTypeEnum;
 
   /**
-   * @reference `id` attribute of `UserDetail.model.ts`
-   */
-  userId!: string;
-
-  /**
    * @reference `email` in `PK` attribute of `UserDetail.model.ts`
    */
   email!: string;
@@ -81,10 +76,6 @@ const CountUserSchema: Schema = new dynamoose.Schema(
       required: true,
       enum: Object.values(CountUserDbEntityTypeEnum),
     },
-    userId: {
-      type: String,
-      required: true,
-    },
     email: {
       type: String,
       required: true,
@@ -95,23 +86,23 @@ const CountUserSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         applied: {
           type: Number,
-          required: true,
+          required: false,
         },
         hired: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         underEvaluation: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },
@@ -121,23 +112,23 @@ const CountUserSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         accepted: {
           type: Number,
-          required: true,
+          required: false,
         },
         awaiting: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         done: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },
@@ -147,23 +138,23 @@ const CountUserSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         accepted: {
           type: Number,
-          required: true,
+          required: false,
         },
         awaiting: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         done: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },
@@ -173,23 +164,23 @@ const CountUserSchema: Schema = new dynamoose.Schema(
       schema: {
         total: {
           type: Number,
-          required: true,
+          required: false,
         },
         applied: {
           type: Number,
-          required: true,
+          required: false,
         },
         hired: {
           type: Number,
-          required: true,
+          required: false,
         },
         rejected: {
           type: Number,
-          required: true,
+          required: false,
         },
         pending: {
           type: Number,
-          required: true,
+          required: false,
         },
       },
     },

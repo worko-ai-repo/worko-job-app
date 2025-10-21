@@ -114,7 +114,7 @@ class DBConfig {
   }
 
   registerDynamooseWorkoCountModels() {
-    global.logger.info(`Registering all available models for "${DB_CONSTANTS.WORKO_TABLE_NAMES.workoJobAppTableName}" dynamodb table.`);
+    global.logger.info(`Registering all available models for "${DB_CONSTANTS.WORKO_TABLE_NAMES.workoCountTableName}" dynamodb table.`);
     const workoCountTable = new dynamoose.Table(
       DB_CONSTANTS.WORKO_TABLE_NAMES.workoCountTableName,
       [

@@ -50,7 +50,7 @@ class CountGlobalController {
       }
 
       const countGlobalDetails: QueryResponse<DbCountGlobalDto> =
-        await countGlobalServiceObj.getCountUserByEntityType(
+        await countGlobalServiceObj.getCountGlobalByEntityType(
           entityType as CountGlobalDbEntityTypeEnum
         );
 
