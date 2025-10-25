@@ -452,8 +452,8 @@ class UserJobApplicationService {
           {
             referAndEarnJobApplicationCounts: {
               ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
-              pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) - 1,
-              applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) + 1,
+              pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.pending - 1:0),
+              applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.applied + 1:1),
             },
           },
           !!countUserReferAndEarnQueryResponse.count, // If count user already exists in ddb then `true` else `false`
@@ -470,8 +470,8 @@ class UserJobApplicationService {
           {
             referAndEarnJobApplicationCounts: {
               ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
-              pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) - 1,
-              applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) + 1,
+              pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.pending - 1:0),
+              applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.applied + 1:1),
             },
           },
           !!countGlobalReferAndEarnQueryResponse.count, 
@@ -502,8 +502,8 @@ class UserJobApplicationService {
       {
         userJobApplicationCounts: {
           ...countUserJobApplicationData?.userJobApplicationCounts,
-          total: (countUserJobApplicationData?.userJobApplicationCounts?.total ?? 0) + 1,
-          applied: (countUserJobApplicationData?.userJobApplicationCounts?.applied ?? 0) + 1,
+          total: (countUserJobApplicationData?.userJobApplicationCounts?.total ? countUserJobApplicationData.userJobApplicationCounts.total + 1 : 1),
+          applied: (countUserJobApplicationData?.userJobApplicationCounts?.applied ? countUserJobApplicationData.userJobApplicationCounts.applied + 1:1),
         }
       },
       !!countUserJobApplicationQueryResponse.count, // If count user already exists in ddb then `true` else `false`
@@ -518,8 +518,8 @@ class UserJobApplicationService {
       {
         companyJobApplicationCounts: {
           ...countGlobalCompanyJobData?.companyJobApplicationCounts,
-          total: (countGlobalCompanyJobData?.companyJobApplicationCounts?.total ?? 0) + 1,
-          applied: (countGlobalCompanyJobData?.companyJobApplicationCounts?.applied ?? 0) + 1,
+          total: (countGlobalCompanyJobData?.companyJobApplicationCounts?.total ? countGlobalCompanyJobData.companyJobApplicationCounts.total + 1:1),
+          applied: (countGlobalCompanyJobData?.companyJobApplicationCounts?.applied ? countGlobalCompanyJobData.companyJobApplicationCounts.applied + 1:1),
         }
       },
       !!countGlobalCompanyJobQueryResponse.count, 
@@ -534,8 +534,8 @@ class UserJobApplicationService {
       {
         candidateJobApplicationCounts: {
           ...countGlobalCandidateData?.candidateJobApplicationCounts,
-          total: (countGlobalCandidateData?.candidateJobApplicationCounts?.total ?? 0) + 1,
-          applied: (countGlobalCandidateData?.candidateJobApplicationCounts?.applied ?? 0) + 1,
+          total: (countGlobalCandidateData?.candidateJobApplicationCounts?.total ? countGlobalCandidateData.candidateJobApplicationCounts.total + 1:1),
+          applied: (countGlobalCandidateData?.candidateJobApplicationCounts?.applied ? countGlobalCandidateData.candidateJobApplicationCounts.applied + 1:1),
         }
       },
       !!countGlobalCompanyJobQueryResponse.count, 
@@ -554,8 +554,8 @@ class UserJobApplicationService {
       {
         allJobApplicationCounts: {
           ...countCompanyJobData?.allJobApplicationCounts,
-          total: (countCompanyJobData?.allJobApplicationCounts?.total ?? 0) + 1,
-          applied: (countCompanyJobData?.allJobApplicationCounts?.applied ?? 0) + 1,
+          total: (countCompanyJobData?.allJobApplicationCounts?.total ? countCompanyJobData.allJobApplicationCounts.total + 1:1),
+          applied: (countCompanyJobData?.allJobApplicationCounts?.applied ? countCompanyJobData.allJobApplicationCounts.applied + 1:1),
         }
       },
       !!countCompanyJobQueryResponse.count, 
@@ -572,8 +572,8 @@ class UserJobApplicationService {
       {
         allJobApplicationCounts: {
           ...countCompanyData?.allJobApplicationCounts,
-          total: (countCompanyData?.allJobApplicationCounts?.total ?? 0) + 1,
-          applied: (countCompanyData?.allJobApplicationCounts?.applied ?? 0) + 1,
+          total: (countCompanyData?.allJobApplicationCounts?.total ? countCompanyData.allJobApplicationCounts.total + 1:1),
+          applied: (countCompanyData?.allJobApplicationCounts?.applied ? countCompanyData.allJobApplicationCounts.applied + 1:1),
         }
       },
       !!countCompanyQueryResponse.count,
@@ -766,22 +766,22 @@ class UserJobApplicationService {
 
       this.performCountUserActivitiesAfterJobApplicationUpdate(
         updatedUserJobApplicationDetails,
-        JobApplicationStatus.APPLIED
+        userJobApplicationDetails.status
       );
 
       this.performCountGlobalActivitiesAfterJobApplicationUpdate(
         updatedUserJobApplicationDetails,
-        JobApplicationStatus.APPLIED
+        userJobApplicationDetails.status
       );
 
       this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
         updatedUserJobApplicationDetails,
-        JobApplicationStatus.APPLIED
+        userJobApplicationDetails.status
       );
 
       this.performCountCompanyActivitiesAfterJobApplicationUpdate(
         updatedUserJobApplicationDetails,
-        JobApplicationStatus.APPLIED
+        userJobApplicationDetails.status
       );
 
       // Check if the job application is for a refer and earn id
@@ -842,9 +842,9 @@ class UserJobApplicationService {
             {
               referAndEarnJobApplicationCounts: {
                 ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
-                total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) - 1, // count except rejected
-                rejected: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
-                applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+                total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.total - 1 : 0), // count except rejected
+                rejected: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.rejected  + 1: 1),
+                applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.applied - 1 : 0),
               },
             },
             !!countUserReferAndEarnQueryResponse.count, 
@@ -861,9 +861,9 @@ class UserJobApplicationService {
             {
               referAndEarnJobApplicationCounts: {
                 ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
-                total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) - 1, // count except rejected
-                rejected: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
-                applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+                total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.total - 1:0), // count except rejected
+                rejected: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.rejected + 1:1),
+                applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.applied - 1: 0),
               },
             },
             !!countGlobalReferAndEarnQueryResponse.count, 
@@ -1585,7 +1585,16 @@ class UserJobApplicationService {
             countGlobalReferAndEarnQueryResponse[0];
 
           const { referAndEarnJobApplicationCounts: countUserReferAndEarnJobApplicationCounts } = countUserReferAndEarnData;
+          const totalUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.total;
+          const appliedUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.applied;
+          const hiredUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.hired;
+          const rejectedUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.rejected;
+
           const { referAndEarnJobApplicationCounts: countGlobalReferAndEarnJobApplicationCounts } = countGlobalReferAndEarnData;
+          const totalGlobalReferAndEarnJobApplicationCount: number | undefined = countGlobalReferAndEarnJobApplicationCounts?.total;
+          const appliedGlobalReferAndEarnJobApplicationCount: number | undefined = countGlobalReferAndEarnJobApplicationCounts?.applied;
+          const hiredGlobalReferAndEarnJobApplicationCount: number | undefined = countGlobalReferAndEarnJobApplicationCounts?.hired;
+          const rejectedGlobalReferAndEarnJobApplicationCount: number | undefined = countGlobalReferAndEarnJobApplicationCounts?.rejected;
 
           let referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto>;
 
@@ -1626,18 +1635,18 @@ class UserJobApplicationService {
               {
                 referAndEarnJobApplicationCounts: {
                   ...countUserReferAndEarnJobApplicationCounts,
-                  rejected: (countUserReferAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
-                  total: (countUserReferAndEarnJobApplicationCounts?.total ?? 0) - 1,
+                  rejected: (rejectedUserReferAndEarnJobApplicationCount ? rejectedUserReferAndEarnJobApplicationCount + 1 : 1),
+                  total: (totalUserReferAndEarnJobApplicationCount ? totalUserReferAndEarnJobApplicationCount - 1 : 0),
 
                   /**
                    * If Rejection update happened when old refer and earn job application status was `APPLIED` then decrease the `applied` count by 1,
                    * otherwise don't change the `applied` count.
                    */
                   applied: parsedReferAndEarnDetails.jobApplicationStatus === 
-                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.applied,
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (appliedUserReferAndEarnJobApplicationCount ? appliedUserReferAndEarnJobApplicationCount - 1 : 0) : appliedUserReferAndEarnJobApplicationCount,
 
                   hired: parsedReferAndEarnDetails.jobApplicationStatus === 
-                    ReferAndEarnJobApplicationStatusEnum.HIRED ? (countUserReferAndEarnJobApplicationCounts?.hired ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.hired,
+                    ReferAndEarnJobApplicationStatusEnum.HIRED ? (hiredUserReferAndEarnJobApplicationCount ? hiredUserReferAndEarnJobApplicationCount - 1 : 0) : hiredUserReferAndEarnJobApplicationCount,
                 },
               },
               !!countUserReferAndEarnQueryResponse.count,
@@ -1647,18 +1656,18 @@ class UserJobApplicationService {
               {
                 referAndEarnJobApplicationCounts: {
                   ...countGlobalReferAndEarnJobApplicationCounts,
-                  rejected: (countGlobalReferAndEarnJobApplicationCounts?.rejected ?? 0) + 1,
-                  total: (countGlobalReferAndEarnJobApplicationCounts?.total ?? 0) - 1,
+                  rejected: (rejectedGlobalReferAndEarnJobApplicationCount ? rejectedGlobalReferAndEarnJobApplicationCount + 1 : 1),
+                  total: (totalGlobalReferAndEarnJobApplicationCount ? totalGlobalReferAndEarnJobApplicationCount - 1 : 0),
 
                   /**
                    * If Rejection update happened when old refer and earn job application status was `APPLIED` then decrease the `applied` count by 1,
                    * otherwise don't change the `applied` count.
                    */
                   applied: parsedReferAndEarnDetails.jobApplicationStatus === 
-                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countGlobalReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countGlobalReferAndEarnJobApplicationCounts?.applied,
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (appliedGlobalReferAndEarnJobApplicationCount ? appliedGlobalReferAndEarnJobApplicationCount - 1 : 0) : appliedGlobalReferAndEarnJobApplicationCount,
 
                   hired: parsedReferAndEarnDetails.jobApplicationStatus === 
-                    ReferAndEarnJobApplicationStatusEnum.HIRED ? (countGlobalReferAndEarnJobApplicationCounts?.hired ?? 0) - 1 : countGlobalReferAndEarnJobApplicationCounts?.hired,
+                    ReferAndEarnJobApplicationStatusEnum.HIRED ? (hiredGlobalReferAndEarnJobApplicationCount ? hiredGlobalReferAndEarnJobApplicationCount - 1 : 0) : hiredGlobalReferAndEarnJobApplicationCount,
                 },
               },
               !!countUserReferAndEarnQueryResponse.count,
@@ -1685,7 +1694,7 @@ class UserJobApplicationService {
               {
                 referAndEarnJobApplicationCounts: {
                   ...countUserReferAndEarnJobApplicationCounts,
-                  applied: (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+                  applied: (appliedUserReferAndEarnJobApplicationCount ? appliedUserReferAndEarnJobApplicationCount - 1 : 0),
                 },
               },
               !!countUserReferAndEarnQueryResponse.count,
@@ -1695,7 +1704,7 @@ class UserJobApplicationService {
               {
                 referAndEarnJobApplicationCounts: {
                   ...countGlobalReferAndEarnJobApplicationCounts,
-                  applied: (countGlobalReferAndEarnJobApplicationCounts?.applied ?? 0) - 1,
+                  applied: (appliedGlobalReferAndEarnJobApplicationCount ? appliedGlobalReferAndEarnJobApplicationCount - 1 : 0),
                 },
               },
               !!countUserReferAndEarnQueryResponse.count,
@@ -1720,7 +1729,7 @@ class UserJobApplicationService {
               {
                 referAndEarnJobApplicationCounts: {
                   ...countUserReferAndEarnJobApplicationCounts,
-                  hired: (countUserReferAndEarnJobApplicationCounts?.hired ?? 0) + 1,
+                  hired: (hiredUserReferAndEarnJobApplicationCount ? hiredUserReferAndEarnJobApplicationCount + 1 : 1),
                   applied: parsedReferAndEarnDetails.jobApplicationStatus === 
                     ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.applied,
                 },
@@ -1770,9 +1779,9 @@ class UserJobApplicationService {
               {
                 referAndEarnJobApplicationCounts: {
                   ...countUserReferAndEarnJobApplicationCounts,
-                  hired: (countUserReferAndEarnJobApplicationCounts?.hired ?? 0) - 1,
+                  hired: (hiredUserReferAndEarnJobApplicationCount ? hiredUserReferAndEarnJobApplicationCount - 1 : 0),
                   applied: parsedReferAndEarnDetails.jobApplicationStatus === 
-                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countUserReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countUserReferAndEarnJobApplicationCounts?.applied,
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (appliedUserReferAndEarnJobApplicationCount ? appliedUserReferAndEarnJobApplicationCount - 1 : 0) : appliedUserReferAndEarnJobApplicationCount,
                 },
               },
               !!countUserReferAndEarnQueryResponse.count,
@@ -1782,9 +1791,9 @@ class UserJobApplicationService {
               {
                 referAndEarnJobApplicationCounts: {
                   ...countGlobalReferAndEarnJobApplicationCounts,
-                  hired: (countGlobalReferAndEarnJobApplicationCounts?.hired ?? 0) - 1,
+                  hired: (hiredGlobalReferAndEarnJobApplicationCount ? hiredGlobalReferAndEarnJobApplicationCount - 1 : 0),
                   applied: parsedReferAndEarnDetails.jobApplicationStatus === 
-                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (countGlobalReferAndEarnJobApplicationCounts?.applied ?? 0) - 1 : countGlobalReferAndEarnJobApplicationCounts?.applied,
+                    ReferAndEarnJobApplicationStatusEnum.APPLIED ? (appliedGlobalReferAndEarnJobApplicationCount ? appliedGlobalReferAndEarnJobApplicationCount - 1 : 0) : appliedGlobalReferAndEarnJobApplicationCount,
                 },
               },
               !!countUserReferAndEarnQueryResponse.count,
@@ -1809,6 +1818,13 @@ class UserJobApplicationService {
     const countUserJobApplicationData: DbCountUserDto = countUserJobApplicationQueryResponse[0]
 
     const {userJobApplicationCounts: countUserJobApplicationCounts} = countUserJobApplicationData;
+
+    const total: number | undefined = countUserJobApplicationCounts?.total;
+    const applied: number | undefined = countUserJobApplicationCounts?.applied;
+    const underEvaluation: number | undefined = countUserJobApplicationCounts?.underEvaluation;
+    const rejected: number | undefined = countUserJobApplicationCounts?.rejected;
+    const hired: number | undefined = countUserJobApplicationCounts?.hired;
+
     /**
      * @todo: Optimize the Readability
      */
@@ -1818,8 +1834,8 @@ class UserJobApplicationService {
         {
           userJobApplicationCounts: {
             ...countUserJobApplicationCounts,
-            total: (countUserJobApplicationCounts?.total ?? 0) - 1,
-            rejected: (countUserJobApplicationCounts?.rejected ?? 0) + 1,
+            total: (total ? total - 1 : 0),
+            rejected: (rejected ? rejected + 1 : 1),
 
             /**
              * If previous status was under evaluation then decrease under evaluation count
@@ -1828,8 +1844,8 @@ class UserJobApplicationService {
             underEvaluation:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.UNDER_EVALUATION
-                ? (countUserJobApplicationCounts?.underEvaluation ?? 0) - 1
-                : (countUserJobApplicationCounts?.underEvaluation ?? 0),
+                ? (underEvaluation ? underEvaluation - 1 : 0)
+                : (underEvaluation),
 
             /**
              * If previous status was applied then decrease applied count
@@ -1838,8 +1854,8 @@ class UserJobApplicationService {
             applied:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
-                : (countUserJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : (applied),
 
             /**
              * If previous status was hired then decrease hired count
@@ -1848,8 +1864,8 @@ class UserJobApplicationService {
             hired:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countUserJobApplicationCounts?.hired ?? 0) - 1
-                : (countUserJobApplicationCounts?.hired ?? 0),
+                ? (hired ? hired - 1 : 0)
+                : (hired),
           }
         },
         !!countUserJobApplicationQueryResponse.count, 
@@ -1861,7 +1877,7 @@ class UserJobApplicationService {
         {
           userJobApplicationCounts: {
             ...countUserJobApplicationCounts,
-            underEvaluation: (countUserJobApplicationCounts?.underEvaluation ?? 0) + 1,
+            underEvaluation: (underEvaluation ? underEvaluation + 1 : 1),
 
             /**
              * If previous status was applied then decrease applied count
@@ -1870,8 +1886,8 @@ class UserJobApplicationService {
             applied:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
-                : (countUserJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : (applied ?? 0),
           }
         },
         !!countUserJobApplicationQueryResponse.count, 
@@ -1883,7 +1899,7 @@ class UserJobApplicationService {
         {
           userJobApplicationCounts: {
             ...countUserJobApplicationCounts,
-            hired: (countUserJobApplicationCounts?.hired ?? 0) + 1,
+            hired: (hired ? hired + 1 : 1),
 
             /**
              * If previous status was under evaluation then decrease under evaluation count
@@ -1892,8 +1908,8 @@ class UserJobApplicationService {
             underEvaluation:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.UNDER_EVALUATION
-                ? (countUserJobApplicationCounts?.underEvaluation ?? 0) - 1
-                : (countUserJobApplicationCounts?.underEvaluation ?? 0),
+                ? (underEvaluation ? underEvaluation- 1 : 0)
+                : (underEvaluation ?? 0),
 
             /**
              * If previous status was applied then decrease applied count
@@ -1902,8 +1918,8 @@ class UserJobApplicationService {
             applied:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
-                : (countUserJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : (applied ?? 0),
           }
         },
         !!countUserJobApplicationQueryResponse.count, 
@@ -1927,8 +1943,8 @@ class UserJobApplicationService {
             underEvaluation:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.UNDER_EVALUATION
-                ? (countUserJobApplicationCounts?.underEvaluation ?? 0) - 1
-                : (countUserJobApplicationCounts?.underEvaluation ?? 0),
+                ? (underEvaluation ? underEvaluation - 1 : 0)
+                : (underEvaluation ?? 0),
 
             /**
              * If previous status was applied then decrease applied count
@@ -1937,8 +1953,8 @@ class UserJobApplicationService {
             applied:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countUserJobApplicationCounts?.applied ?? 0) - 1
-                : (countUserJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : (applied ?? 0),
 
             /**
              * If previous status was hired then decrease hired count
@@ -1947,8 +1963,8 @@ class UserJobApplicationService {
             hired:
               jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countUserJobApplicationCounts?.hired ?? 0) - 1
-                : (countUserJobApplicationCounts?.hired ?? 0),            
+                ? (hired ? hired - 1 : 0)
+                : (hired ?? 0),            
           }
         },
         !!countUserJobApplicationQueryResponse.count, 
@@ -1968,11 +1984,23 @@ class UserJobApplicationService {
     const countGlobalCompanyJobData: DbCountGlobalDto = countGlobalCompanyJobQueryResponse[0];
     const {companyJobApplicationCounts: countGlobalCompanyJobApplicationCounts} = countGlobalCompanyJobData;
 
+    const totalGlobalCompanyJobApplicationCount: number | undefined = countGlobalCompanyJobApplicationCounts?.total;
+    const rejectedGlobalCompanyJobApplicationCount: number | undefined = countGlobalCompanyJobApplicationCounts?.rejected;
+    const appliedGlobalCompanyJobApplicationCount: number | undefined = countGlobalCompanyJobApplicationCounts?.applied;
+    const hiredGlobalCompanyJobApplicationCount: number | undefined = countGlobalCompanyJobApplicationCounts?.hired;
+    const processingInterviewGlobalCompanyJobApplicationCount: number | undefined = countGlobalCompanyJobApplicationCounts?.processingInterview;
+
     const countGlobalCandidateQueryResponse: QueryResponse<DbCountGlobalDto> = await countGlobalServiceObj.getCountGlobalByEntityType(
       CountGlobalDbEntityTypeEnum.CANDIDATE
     );
     const countGlobalCandidateData: DbCountGlobalDto = countGlobalCandidateQueryResponse[0]
-    const {candidateJobApplicationCounts: countGlobalCandidateJobApplicationCounts} = countGlobalCandidateData
+    const {candidateJobApplicationCounts: countGlobalCandidateJobApplicationCounts} = countGlobalCandidateData;
+    
+    const totalGlobalCandidateJobApplicationCount: number | undefined = countGlobalCandidateJobApplicationCounts?.total;
+    const rejectedGlobalCandidateJobApplicationCount: number | undefined = countGlobalCandidateJobApplicationCounts?.rejected;
+    const appliedGlobalCandidateJobApplicationCount: number | undefined = countGlobalCandidateJobApplicationCounts?.applied;
+    const hiredGlobalCandidateJobApplicationCount: number | undefined = countGlobalCandidateJobApplicationCounts?.hired;
+    const processingInterviewGlobalCandidateJobApplicationCount: number | undefined = countGlobalCandidateJobApplicationCounts?.processingInterview;
 
     /**
      * @todo: Optimize the Readability
@@ -1982,20 +2010,20 @@ class UserJobApplicationService {
         {
           companyJobApplicationCounts: {
             ...countGlobalCompanyJobApplicationCounts,
-            total: (countGlobalCompanyJobApplicationCounts?.total ?? 0) - 1,
-            rejected: (countGlobalCompanyJobApplicationCounts?.rejected ?? 0) + 1,
+            total: (totalGlobalCompanyJobApplicationCount ? totalGlobalCompanyJobApplicationCount - 1 : 0),
+            rejected: (rejectedGlobalCompanyJobApplicationCount ? rejectedGlobalCompanyJobApplicationCount + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+                ? (appliedGlobalCompanyJobApplicationCount ? appliedGlobalCompanyJobApplicationCount - 1 : 0)
+                : (appliedGlobalCompanyJobApplicationCount ?? 0),
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countGlobalCompanyJobApplicationCounts?.hired ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.hired ?? 0),
+                ? (hiredGlobalCompanyJobApplicationCount ? hiredGlobalCompanyJobApplicationCount - 1 : 0)
+                : (hiredGlobalCompanyJobApplicationCount ?? 0),
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterviewGlobalCompanyJobApplicationCount ? processingInterviewGlobalCompanyJobApplicationCount - 1 : 0)
+                : (processingInterviewGlobalCompanyJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCompanyJobQueryResponse.count,
@@ -2004,20 +2032,20 @@ class UserJobApplicationService {
         {
           candidateJobApplicationCounts: {
             ...countGlobalCandidateJobApplicationCounts,
-            total: (countGlobalCandidateJobApplicationCounts?.total ?? 0) - 1,
-            rejected: (countGlobalCandidateJobApplicationCounts?.rejected ?? 0) + 1,
+            total: (totalGlobalCandidateJobApplicationCount ? totalGlobalCandidateJobApplicationCount - 1 : 0),
+            rejected: (rejectedGlobalCandidateJobApplicationCount ? rejectedGlobalCandidateJobApplicationCount + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+                ? (appliedGlobalCandidateJobApplicationCount ? appliedGlobalCandidateJobApplicationCount - 1 : 0)
+                : (appliedGlobalCandidateJobApplicationCount ?? 0),
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countGlobalCandidateJobApplicationCounts?.hired ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.hired ?? 0),
+                ? (hiredGlobalCandidateJobApplicationCount ? hiredGlobalCandidateJobApplicationCount - 1 : 0)
+                : (hiredGlobalCandidateJobApplicationCount ?? 0),
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterviewGlobalCandidateJobApplicationCount ? processingInterviewGlobalCandidateJobApplicationCount - 1 : 0)
+                : (processingInterviewGlobalCandidateJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCandidateQueryResponse.count, 
@@ -2027,15 +2055,15 @@ class UserJobApplicationService {
         {
           companyJobApplicationCounts: {
             ...countGlobalCompanyJobApplicationCounts,
-            processingInterview: (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) + 1,
+            processingInterview: (processingInterviewGlobalCompanyJobApplicationCount ? processingInterviewGlobalCompanyJobApplicationCount + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+                ? (appliedGlobalCompanyJobApplicationCount ? appliedGlobalCompanyJobApplicationCount - 1 : 0)
+                : (appliedGlobalCompanyJobApplicationCount ?? 0),
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countGlobalCompanyJobApplicationCounts?.hired ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.hired ?? 0),
+                ? (hiredGlobalCompanyJobApplicationCount ? hiredGlobalCompanyJobApplicationCount - 1 : 0)
+                : (hiredGlobalCompanyJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCompanyJobQueryResponse.count,
@@ -2045,15 +2073,15 @@ class UserJobApplicationService {
         {
           candidateJobApplicationCounts: {
             ...countGlobalCandidateJobApplicationCounts,
-            processingInterview: (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) + 1,
+            processingInterview: (processingInterviewGlobalCandidateJobApplicationCount ? processingInterviewGlobalCandidateJobApplicationCount + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+                ? (appliedGlobalCandidateJobApplicationCount ? appliedGlobalCandidateJobApplicationCount - 1 : 0)
+                : (appliedGlobalCandidateJobApplicationCount ?? 0),
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countGlobalCandidateJobApplicationCounts?.hired ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.hired ?? 0),
+                ? (hiredGlobalCandidateJobApplicationCount ? hiredGlobalCandidateJobApplicationCount - 1 : 0)
+                : (hiredGlobalCandidateJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCandidateQueryResponse.count
@@ -2063,15 +2091,15 @@ class UserJobApplicationService {
         {
           companyJobApplicationCounts: {
             ...countGlobalCompanyJobApplicationCounts,
-            hired: (countGlobalCompanyJobApplicationCounts?.hired ?? 0) + 1,
+            hired: hiredGlobalCompanyJobApplicationCount ? hiredGlobalCompanyJobApplicationCount + 1 : 1,
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+                ? appliedGlobalCompanyJobApplicationCount ? appliedGlobalCompanyJobApplicationCount - 1 : 0
+                : (appliedGlobalCompanyJobApplicationCount ?? 0),
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0),
+                ? processingInterviewGlobalCompanyJobApplicationCount ? processingInterviewGlobalCompanyJobApplicationCount - 1 : 0
+                : (processingInterviewGlobalCompanyJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCompanyJobQueryResponse.count
@@ -2081,15 +2109,15 @@ class UserJobApplicationService {
         {
           candidateJobApplicationCounts: {
             ...countGlobalCandidateJobApplicationCounts,
-            hired: (countGlobalCandidateJobApplicationCounts?.hired ?? 0) + 1,
+            hired: hiredGlobalCandidateJobApplicationCount ? hiredGlobalCandidateJobApplicationCount + 1 : 1,
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+                ? appliedGlobalCandidateJobApplicationCount ? appliedGlobalCandidateJobApplicationCount - 1 : 0
+                : (appliedGlobalCandidateJobApplicationCount ?? 0),
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0),
+                ? processingInterviewGlobalCandidateJobApplicationCount ? processingInterviewGlobalCandidateJobApplicationCount - 1 : 0
+                : (processingInterviewGlobalCandidateJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCandidateQueryResponse.count
@@ -2107,16 +2135,16 @@ class UserJobApplicationService {
             ...countGlobalCompanyJobApplicationCounts,
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCompanyJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.applied ?? 0),
+                ? (appliedGlobalCompanyJobApplicationCount ? appliedGlobalCompanyJobApplicationCount - 1 : 0)
+                : (appliedGlobalCompanyJobApplicationCount ?? 0),
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterviewGlobalCompanyJobApplicationCount ? processingInterviewGlobalCompanyJobApplicationCount - 1 : 0)
+                : (processingInterviewGlobalCompanyJobApplicationCount ?? 0),
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countGlobalCompanyJobApplicationCounts?.hired ?? 0) - 1
-                : (countGlobalCompanyJobApplicationCounts?.hired ?? 0),
+                ? (hiredGlobalCompanyJobApplicationCount ? hiredGlobalCompanyJobApplicationCount - 1 : 0)
+                : (hiredGlobalCompanyJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCompanyJobQueryResponse.count
@@ -2128,16 +2156,16 @@ class UserJobApplicationService {
             ...countGlobalCandidateJobApplicationCounts,
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countGlobalCandidateJobApplicationCounts?.applied ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.applied ?? 0),
+                ? (appliedGlobalCandidateJobApplicationCount ? appliedGlobalCandidateJobApplicationCount - 1 : 0)
+                : (appliedGlobalCandidateJobApplicationCount ?? 0),
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterviewGlobalCandidateJobApplicationCount ? processingInterviewGlobalCandidateJobApplicationCount - 1 : 0)
+                : (processingInterviewGlobalCandidateJobApplicationCount ?? 0),
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countGlobalCandidateJobApplicationCounts?.hired ?? 0) - 1
-                : (countGlobalCandidateJobApplicationCounts?.hired ?? 0),
+                ? (hiredGlobalCandidateJobApplicationCount ? hiredGlobalCandidateJobApplicationCount - 1 : 0)
+                : (hiredGlobalCandidateJobApplicationCount ?? 0),
           }
         },
         !!countGlobalCandidateQueryResponse.count
@@ -2159,6 +2187,12 @@ class UserJobApplicationService {
       allJobApplicationCounts: countCompanyJobAllJobApplicationCounts
     } = countCompanyJobData;
     
+    const total: number | undefined = countCompanyJobAllJobApplicationCounts?.total;
+    const rejected: number | undefined = countCompanyJobAllJobApplicationCounts?.rejected;
+    const applied: number | undefined = countCompanyJobAllJobApplicationCounts?.applied;
+    const hired: number | undefined = countCompanyJobAllJobApplicationCounts?.hired;
+    const processingInterview: number | undefined = countCompanyJobAllJobApplicationCounts?.processingInterview;
+    
     /**
      * @todo Optimize the Readability
      */
@@ -2169,20 +2203,20 @@ class UserJobApplicationService {
         {
           allJobApplicationCounts: {
             ...countCompanyJobAllJobApplicationCounts,
-            total: (countCompanyJobAllJobApplicationCounts?.total ?? 0) - 1,
-            rejected: (countCompanyJobAllJobApplicationCounts?.rejected ?? 0) + 1,
+            total: (total ? total - 1 : 0),
+            rejected: (rejected ? rejected + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : applied,
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countCompanyJobAllJobApplicationCounts?.hired ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.hired ?? 0),
+                ? (hired ? hired - 1 : 0)
+                : hired,
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterview ? processingInterview - 1 : 0)
+                : processingInterview,
           }
         },
         !!countCompanyJobQueryResponse.count,
@@ -2194,15 +2228,15 @@ class UserJobApplicationService {
         {
           allJobApplicationCounts: {
             ...countCompanyJobAllJobApplicationCounts,
-            processingInterview: (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) + 1,
+            processingInterview: (processingInterview ? processingInterview + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : applied,
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countCompanyJobAllJobApplicationCounts?.hired ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.hired ?? 0),
+                ? (hired ? hired - 1 : 0)
+                : hired,
           }
         },
         !!countCompanyJobQueryResponse.count,
@@ -2214,15 +2248,15 @@ class UserJobApplicationService {
         {
           allJobApplicationCounts: {
             ...countCompanyJobAllJobApplicationCounts,
-            hired: (countCompanyJobAllJobApplicationCounts?.hired ?? 0) + 1,
+            hired: (hired ? hired + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : applied,
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterview ? processingInterview - 1 : 0)
+                : processingInterview,
           }
         },
         !!countCompanyJobQueryResponse.count
@@ -2242,16 +2276,16 @@ class UserJobApplicationService {
             ...countCompanyJobAllJobApplicationCounts,
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyJobAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied -1 : 0)
+                : applied,
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterview ? processingInterview - 1 : 0)
+                : processingInterview,
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countCompanyJobAllJobApplicationCounts?.hired ?? 0) - 1
-                : (countCompanyJobAllJobApplicationCounts?.hired ?? 0),
+                ? (hired ? hired - 1 : 0)
+                : hired,
           }
         },
         !!countCompanyJobQueryResponse.count
@@ -2271,6 +2305,11 @@ class UserJobApplicationService {
     const {
       allJobApplicationCounts: countCompanyAllJobApplicationCounts
     } = countCompanyData;
+    const total: number | undefined = countCompanyAllJobApplicationCounts?.total;
+    const rejected: number | undefined = countCompanyAllJobApplicationCounts?.rejected;
+    const applied: number | undefined = countCompanyAllJobApplicationCounts?.applied;
+    const hired: number | undefined = countCompanyAllJobApplicationCounts?.hired;
+    const processingInterview: number | undefined = countCompanyAllJobApplicationCounts?.processingInterview;
 
     /**
      * @todo: Optimize the Readability
@@ -2281,20 +2320,20 @@ class UserJobApplicationService {
         {
           allJobApplicationCounts: {
             ...countCompanyAllJobApplicationCounts,
-            total: (countCompanyAllJobApplicationCounts?.total ?? 0) - 1,
-            rejected: (countCompanyAllJobApplicationCounts?.rejected ?? 0) + 1,
+            total: (total ? total - 1 : 0),
+            rejected: (rejected ? rejected + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : applied,
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countCompanyAllJobApplicationCounts?.hired ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.hired ?? 0),
+                ? (hired ? hired - 1 : 0)
+                : hired,
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterview ? processingInterview - 1 : 0)
+                : processingInterview,
           }
         },
         !!countCompanyQueryResponse.count,
@@ -2305,15 +2344,15 @@ class UserJobApplicationService {
         {
           allJobApplicationCounts: {
             ...countCompanyAllJobApplicationCounts,
-            processingInterview: (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) + 1,
+            processingInterview: (processingInterview ? processingInterview + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : applied,
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countCompanyAllJobApplicationCounts?.hired ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.hired ?? 0),
+                ? (hired ? hired - 1 : 0)
+                : hired,
           }
         },
         !!countCompanyQueryResponse.count,
@@ -2324,15 +2363,15 @@ class UserJobApplicationService {
         {
           allJobApplicationCounts: {
             ...countCompanyAllJobApplicationCounts,
-            hired: (countCompanyAllJobApplicationCounts?.hired ?? 0) + 1,
+            hired: (hired ? hired + 1 : 1),
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied -1 : 0)
+                : applied,
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterview ? processingInterview - 1: 0)
+                : processingInterview,
           }
         },
         !!countCompanyQueryResponse.count
@@ -2351,16 +2390,16 @@ class UserJobApplicationService {
             ...countCompanyAllJobApplicationCounts,
             applied: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.APPLIED
-                ? (countCompanyAllJobApplicationCounts?.applied ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.applied ?? 0),
+                ? (applied ? applied - 1 : 0)
+                : applied,
             processingInterview: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.PROCESSING_INTERVIEW
-                ? (countCompanyAllJobApplicationCounts?.processingInterview ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.processingInterview ?? 0),
+                ? (processingInterview ? processingInterview - 1 : 0)
+                : processingInterview,
             hired: jobApplicationStatusBeforeUpdate ===
               JobApplicationStatus.HIRED
-                ? (countCompanyAllJobApplicationCounts?.hired ?? 0) - 1
-                : (countCompanyAllJobApplicationCounts?.hired ?? 0),
+                ? (hired ? hired -1 : 0)
+                : hired,
           }
         },
         !!countCompanyQueryResponse.count

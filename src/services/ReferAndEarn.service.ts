@@ -234,8 +234,8 @@ class ReferAndEarnService {
              * Whenever the referrer refers the candidate then we are making 
              * status as "PENDING", and incrementing the "pending" count and "total" count
              */
-            pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) + 1,
-            total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) + 1,
+            pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.pending + 1:1),
+            total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.total + 1:1),
           },
         },
         !!countUserReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
@@ -256,8 +256,8 @@ class ReferAndEarnService {
              * Whenever the referrer refers the candidate then we are making 
              * status as "PENDING", and incrementing the "pending" count and "total" count
              */
-            pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ?? 0) + 1,
-            total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ?? 0) + 1,
+            pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.pending + 1:1),
+            total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.total + 1:1),
           },
         },
         !!countGlobalReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
