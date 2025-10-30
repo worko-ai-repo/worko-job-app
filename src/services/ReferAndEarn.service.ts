@@ -224,44 +224,46 @@ class ReferAndEarnService {
       const countUserReferAndEarnData: DbCountUserDto =
         countUserReferAndEarnQueryResponse[0];
 
-      countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
-        referAndEarnData.referrerDetails.email,
-        {
-          referAndEarnJobApplicationCounts: {
-            ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
-
-            /**
-             * Whenever the referrer refers the candidate then we are making 
-             * status as "PENDING", and incrementing the "pending" count and "total" count
-             */
-            pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.pending + 1:1),
-            total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.total + 1:1),
-          },
-        },
-        !!countUserReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
-      );
-
       const countGlobalReferAndEarnQueryResponse: QueryResponse<DbCountGlobalDto> =
         await countGlobalServiceObj.getCountGlobalByEntityType(
           CountGlobalDbEntityTypeEnum.REFER_AND_EARN
         );
       const countGlobalReferAndEarnData: DbCountGlobalDto =
         countGlobalReferAndEarnQueryResponse[0];
-      countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
-        {
-          referAndEarnJobApplicationCounts: {
-            ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
 
-            /**
-             * Whenever the referrer refers the candidate then we are making 
-             * status as "PENDING", and incrementing the "pending" count and "total" count
-             */
-            pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.pending + 1:1),
-            total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.total + 1:1),
+      await Promise.all([
+        countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+          referAndEarnData.referrerDetails.email,
+          {
+            referAndEarnJobApplicationCounts: {
+              ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
+
+              /**
+               * Whenever the referrer refers the candidate then we are making 
+               * status as "PENDING", and incrementing the "pending" count and "total" count
+               */
+              pending: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.pending + 1:1),
+              total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.total + 1:1),
+            },
           },
-        },
-        !!countGlobalReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
-      );
+          !!countUserReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
+        ),
+        countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+          {
+            referAndEarnJobApplicationCounts: {
+              ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
+
+              /**
+               * Whenever the referrer refers the candidate then we are making 
+               * status as "PENDING", and incrementing the "pending" count and "total" count
+               */
+              pending: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.pending ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.pending + 1:1),
+              total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.total + 1:1),
+            },
+          },
+          !!countGlobalReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
+        )
+      ]);
 
       // Prepare job url with refer and earn id
       const jobUrl: URL = new URL(companyJobDetails.jobUrl);
