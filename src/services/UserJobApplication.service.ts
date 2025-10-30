@@ -3311,6 +3311,108 @@ class UserJobApplicationService {
       )
 
       if(updatedJobApplication.status === JobApplicationStatus.REJECTED) {
+        this.performCountUserActivitiesAfterJobApplicationUpdate(
+          updatedJobApplication,
+          userJobApplication.status
+        );
+
+        this.performCountGlobalActivitiesAfterJobApplicationUpdate(
+          updatedJobApplication,
+          userJobApplication.status
+        );
+
+        this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
+          updatedJobApplication,
+          userJobApplication.status
+        );
+
+        this.performCountCompanyActivitiesAfterJobApplicationUpdate(
+          updatedJobApplication,
+          userJobApplication.status
+        );     
+        
+        // Check if the job application is for a refer and earn id
+        if (updatedJobApplication.referAndEarnId) {
+          // Retrieve refer and earn details by refer and earn id
+          const referAndEarnDetails: QueryResponse<DbReferAndEarnDto> =
+            await referAndEarnServiceObj.getReferAndEarnById(
+              updatedJobApplication.referAndEarnId
+            );
+          if (referAndEarnDetails.count) {
+            // Parse the refer and earn details
+            const parsedReferAndEarnDetails: DbReferAndEarnDto =
+              referAndEarnDetails[0];
+
+            // Prepare statusTracker Data to update 
+            const referAndEarnUpdatedStatusTracker: ReferAndEarnStatusTrackerDto[] = [
+              ...parsedReferAndEarnDetails.statusTracker,
+              {
+                oldStatus: parsedReferAndEarnDetails.status,
+                newStatus: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+                actionDate: currentActionDateTime,
+                actionByUserId: undefined,
+                description: undefined
+              },
+            ]
+
+            // Prepare refer and earn update dto
+            const referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto> =
+              {
+                status: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+                statusTracker: referAndEarnUpdatedStatusTracker,
+                jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.REJECTED,
+              };
+
+            // Update refer and earn status
+            const updatedReferAndEarnDetails: DbReferAndEarnDto =
+              await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+                parsedReferAndEarnDetails.id,
+                getEmailFromPK(parsedReferAndEarnDetails.PK),
+                referAndEarnUpdateDto
+              );
+
+            const countUserReferAndEarnQueryResponse: QueryResponse<DbCountUserDto> =
+              await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+                updatedReferAndEarnDetails.referrerDetails.email,
+                CountUserDbEntityTypeEnum.REFER_AND_EARN
+              );
+            const countUserReferAndEarnData: DbCountUserDto =
+              countUserReferAndEarnQueryResponse[0];
+
+            countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+              updatedReferAndEarnDetails.referrerDetails.email,
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
+                  total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.total - 1 : 0), // count except rejected
+                  rejected: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.rejected  + 1: 1),
+                  applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.applied - 1 : 0),
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count, 
+            );
+
+            const countGlobalReferAndEarnQueryResponse: QueryResponse<DbCountGlobalDto> =
+              await countGlobalServiceObj.getCountGlobalByEntityType(
+                CountGlobalDbEntityTypeEnum.REFER_AND_EARN
+              );
+            const countGlobalReferAndEarnData: DbCountGlobalDto =
+              countGlobalReferAndEarnQueryResponse[0];
+
+            countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
+                  total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.total - 1:0), // count except rejected
+                  rejected: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.rejected + 1:1),
+                  applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.applied - 1: 0),
+                },
+              },
+              !!countGlobalReferAndEarnQueryResponse.count, 
+            );
+          }
+        }
+
         const toAddress: EmailSourceDestinationAddress = {
           email: updatedJobApplication.PK.split("#")[2],
           fullName: candidateDetails.name.toTitleCase(),
