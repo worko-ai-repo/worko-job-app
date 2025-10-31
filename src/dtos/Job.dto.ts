@@ -321,7 +321,6 @@ export interface JobBulkUpdateApiDto {
 export interface JobBulkUpdateResponseDto {
   opensearchBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
   dynamodbBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
-  awsS3BulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
 }
 
 export interface SalaryRangeDto {

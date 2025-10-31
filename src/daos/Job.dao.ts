@@ -107,6 +107,58 @@ class JobDao {
     );
   }
 
+  async getAllJobsByListOfJobIds(
+    jobIds: string[],
+    jobListingFilterRequest: JobListingFilterOptions,
+  ): Promise<
+    AwsOpensearchRecordListingResponseDTO<
+      DbJobAwsOpensearchDto[]
+    >
+  > {
+    global.logger.info(`Get all jobs by list of job ids [DAO]`, {
+      jobIdsLength: jobIds.length,
+      methodName: this.getAllJobsByListOfJobIds.name,
+    });
+
+    // Construct the AWS OpenSearch query based on the filter options
+    let awsOpensearchQuery: Search_RequestBody = {
+      query: {
+        bool: {
+          must: [
+            {
+              terms: {
+                "id.keyword": jobIds,
+              },
+            }, // Uses an array directly
+          ],
+        },
+      },
+      size: jobIds.length,
+    };
+
+    global.logger.debug(`aws opensearch query for list of job ids`, {
+      awsOpensearchQuery,
+      methodName: this.getAllJobsByListOfJobIds.name,
+    })
+
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<
+      {
+        awsOpensearchQuery: Search_RequestBody;
+        filterOptions: JobListingFilterOptions;
+      },
+      AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>
+    >(
+      this.IndexName,
+      {
+        awsOpensearchQuery,
+        filterOptions: jobListingFilterRequest,
+      },
+      OpenSearchOperationsEnum.GET_DOCUMENTS,
+      "list jobs by given job ids",
+      this.getAllJobsByListOfJobIds.name
+    );
+  }
+
   async getAllJobsByListOfS3VectorJobIds(
     jobIds: string[],
     jobListingFilterRequest: JobListingFilterOptions,
@@ -149,7 +201,7 @@ class JobDao {
 
     const queryBoolMust = awsOpensearchQuery.query?.bool?.must as QueryContainer[];
 
-    const {dashboard, pageSize: requestedPageSize, typeofEmployment, companyName, workMode, searchText} = jobListingFilterRequest;
+    const {dashboard, pageSize: requestedPageSize, searchText} = jobListingFilterRequest;
 
     if (searchText) {
       const lowerCaseSearchText: string = searchText.toLowerCase();
@@ -182,27 +234,6 @@ class JobDao {
           field: "companyId",
         },
       });
-    }
-
-    // Add typeofEmployment filter if provided
-    if (typeofEmployment) {
-      global.logger.warn(`As of now typeofEmployment filter is disabled, we may enable or remove permanently in near future.`);
-      // queryBoolMust.push({
-      //   match: { typeofEmployment: typeofEmployment },
-      // });
-    }
-
-    if(companyName) {
-      queryBoolMust.push({
-        match: { companyName: companyName },
-      });
-    }
-
-    if(workMode) {
-      global.logger.warn(`As of now workMode filter is disabled, we may enable or remove permanently in near future.`);
-      // queryBoolMust.push({
-      //   match: { workMode: workMode },
-      // });
     }
 
     global.logger.debug(`aws opensearch query for s3 vector job ids`, {

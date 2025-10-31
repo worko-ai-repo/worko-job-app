@@ -263,7 +263,7 @@ class ReferAndEarnService {
           },
           !!countGlobalReferAndEarnQueryResponse.count // If count user already exists in ddb then `true` else `false`
         )
-      ]);
+      ])
 
       // Prepare job url with refer and earn id
       const jobUrl: URL = new URL(companyJobDetails.jobUrl);

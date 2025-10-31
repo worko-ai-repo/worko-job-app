@@ -117,7 +117,7 @@ export const handler = async (
                 deleteJobIds,
               ),
                 
-              awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobOldUnappliedExternalJobs(
+              awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobsByIds(
                 deleteJobIds
               )
             ])

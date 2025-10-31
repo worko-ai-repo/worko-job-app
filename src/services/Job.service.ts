@@ -21,7 +21,7 @@ import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } f
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
 import { EntityBulkUpdateMetricDto, MinMaxRange } from "../dtos/Common.dto";
 import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
-import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto, AwsS3VectorJobListingFilterOptions, AwsS3VectorJobMatchingScoreDto, AwsS3VectorJobGetParsedResponseDto, AwsS3VectorJobUpdateDto, AwsS3VectorJobBulkUpdateDataDto, AwsS3VectorJobBulkUpdateParsedResponseDto } from "../dtos/AwsS3VectorJob.dto";
+import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto, AwsS3VectorJobListingFilterOptions, AwsS3VectorJobMatchingScoreDto, AwsS3VectorJobGetParsedResponseDto, AwsS3VectorJobUpdateDto, AwsS3VectorJobBulkUpdateDataDto, AwsS3VectorJobBulkUpdateParsedResponseDto, AwsS3VectorJobCreateOrUpdateJobDataDto } from "../dtos/AwsS3VectorJob.dto";
 
 // Import enums
 import { JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
@@ -69,6 +69,28 @@ class JobService {
    */
   getIndexName(): string {
     return jobDaoObj.IndexName;
+  }
+
+  async prepareAndCreateJobInAwsS3Vector(
+    opensearchJobDataToStoreInAwsS3Vector: DbJobAwsOpensearchDto
+  ): Promise<AwsS3VectorJobCreateOrUpdateParsedResponseDto> {
+    const awsS3VectorJobCreateDto: AwsS3VectorJobCreateDto = awsS3VectorJobServiceObj.prepareAwsS3VectorJobCreateDto(
+      awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+      opensearchJobDataToStoreInAwsS3Vector
+    )
+
+    // Create job in s3 vector
+    const jobDetailsOnAwsS3Vector: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.createAwsS3VectorJob(
+      awsS3VectorJobCreateDto
+    );
+    if(!jobDetailsOnAwsS3Vector?.results?.success) {
+      throw new BaseError(
+        "Failed to create Job, please try again.",
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500
+      );
+    }    
+
+    return jobDetailsOnAwsS3Vector
   }
 
   /**
@@ -164,26 +186,7 @@ class JobService {
       );
     }
 
-    const awsS3VectorJobCreateDto: AwsS3VectorJobCreateDto = awsS3VectorJobServiceObj.prepareAwsS3VectorJobCreateDto(
-      awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-      opensearchJobDataToStoreInAwsS3Vector
-    )
-
-    // Create job in s3 vector
-    const jobDetailsOnAwsS3Vector: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.createAwsS3VectorJob(
-      awsS3VectorJobCreateDto
-    );
-    if(!jobDetailsOnAwsS3Vector?.results?.success) {
-      /**
-       * @todo: Need to think and perform deleting the job from aws dynamodb and aws opensearch to 
-       * maintain the consistency
-       */
-
-      throw new BaseError(
-        "Failed to create Job, please try again.",
-        HttpStatusCode.INTERNAL_SERVER_ERROR_500
-      );
-    }
+    await this.prepareAndCreateJobInAwsS3Vector(opensearchJobDataToStoreInAwsS3Vector)
 
     return companyJobDetailsOnAwsDynamodb;
   }
@@ -662,9 +665,9 @@ class JobService {
     });
 
     // Retrieve the job details from `worko-jobs` index on `AWS Opensearch` and throw an error if the job is not found.
-    const jobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto | undefined =
+    const jobDetailsOnAwsOpensearchBeforeUpdate: DbJobAwsOpensearchDto | undefined =
       await jobDaoObj.getJobById(jobId);
-    if (!jobDetailsOnAwsOpensearch) {
+    if (!jobDetailsOnAwsOpensearchBeforeUpdate) {
       throw new BaseError(
         "The Job Details not found.",
         HttpStatusCode.NOT_FOUND_404
@@ -730,9 +733,57 @@ class JobService {
       }
     }
 
-    await this.updateJobByIdInAwsS3Vector(
-      retrievedUpdatedJobDetailsOnAwsOpensearch
-    );
+    // if job status before update is published and job status after update is not published then delete job from aws s3 vector
+    if(
+      jobDetailsOnAwsOpensearchBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
+      retrievedUpdatedJobDetailsOnAwsOpensearch.status !== JobStatusEnum.PUBLISHED
+    ) {
+      global.logger.info("Job status before update is published and job status after update is not published, so delete job from aws s3 vector. [service]", {
+        methodName: this.updateInternalOrExternalJobById.name,
+        jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+      })
+      const isAwsS3VectorJobDeleted: boolean = await awsS3VectorJobServiceObj.deleteAwsS3VectorJobById(
+        retrievedUpdatedJobDetailsOnAwsOpensearch.id
+      );
+
+      if(!isAwsS3VectorJobDeleted) {
+        global.logger.error("Unable to delete aws s3 vector job details. [service]", {
+          methodName: this.updateInternalOrExternalJobById.name,
+          jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+        });
+        throw new BaseError(
+          "Unable to update job details.",
+          HttpStatusCode.INTERNAL_SERVER_ERROR_500
+        );
+      }
+    }
+    // If job status before update is not published and job status after update is published then create job in aws s3 vector
+    else if(
+      jobDetailsOnAwsOpensearchBeforeUpdate.status !== JobStatusEnum.PUBLISHED &&
+      retrievedUpdatedJobDetailsOnAwsOpensearch.status === JobStatusEnum.PUBLISHED
+    ) {
+      global.logger.info("Job status before update is not published and job status after update is published, so create job in aws s3 vector. [service]", {
+        methodName: this.updateInternalOrExternalJobById.name,
+        jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+      });
+
+      await this.prepareAndCreateJobInAwsS3Vector(
+        retrievedUpdatedJobDetailsOnAwsOpensearch
+      );
+    } 
+    // If job status before update is published and job status after update is published then update job in aws s3 vector
+    else if(
+      jobDetailsOnAwsOpensearchBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
+      retrievedUpdatedJobDetailsOnAwsOpensearch.status === JobStatusEnum.PUBLISHED
+    ) {
+      global.logger.info("Job status before update is published and job status after update is published, so update job in aws s3 vector. [service]", {
+        methodName: this.updateInternalOrExternalJobById.name,
+        jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+      })
+      await this.updateJobByIdInAwsS3Vector(
+        retrievedUpdatedJobDetailsOnAwsOpensearch
+      );
+    }
 
     // Return the external job details
     return retrievedUpdatedJobDetailsOnAwsOpensearch;
@@ -791,33 +842,41 @@ class JobService {
       detailedSoftDeleteReason: requestBody.detailedSoftDeleteReason,
     }
 
-
     // Soft delete the job from `CompanyJob` 
     const updatedJobDetails: DbCompanyJobDto = await companyJobServiceObj.softDeleteJobById(jobId, companyId,prepareSoftDeletData);
-
-    const retrievedUpdatedJobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto | undefined =
-      await jobDaoObj.getJobById(jobId);
-    if (!retrievedUpdatedJobDetailsOnAwsOpensearch) {
+    if(updatedJobDetails.status !== JobStatusEnum.CLOSED && updatedJobDetails.isDeleted !== true) {
+      global.logger.error("Unable to soft delete job in dynamodb, Please try again. [service]", {
+        updatedJobDetails
+      })
       throw new BaseError(
-        "The Updated Job Details not found.",
-        HttpStatusCode.NOT_FOUND_404
+        "Unable to Close job.",
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500
       );
     }
 
-    await Promise.all([
-      this.updateJobByIdInAwsS3Vector(
-        retrievedUpdatedJobDetailsOnAwsOpensearch
-      ),
+    const isAwsS3VectorJobDeleted: boolean = await awsS3VectorJobServiceObj.deleteAwsS3VectorJobById(
+      updatedJobDetails.id
+    );
 
-      userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
-        jobId,
-        updatedJobDetails.jobTitle,
-        jobClosedByUserId,
-        undefined,
-        updatedJobDetails.shortSoftDeleteReason,
-        updatedJobDetails.detailedSoftDeleteReason,
-      )
-    ])
+    if(!isAwsS3VectorJobDeleted) {
+      global.logger.error("Unable to hard delete job in aws s3 vector. [service]", {
+        isAwsS3VectorJobDeleted,
+        updatedJobDetails
+      })
+      throw new BaseError(
+        "Unable to Close job.",
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500
+      );
+    }
+
+    userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
+      jobId,
+      updatedJobDetails.jobTitle,
+      jobClosedByUserId,
+      undefined,
+      updatedJobDetails.shortSoftDeleteReason,
+      updatedJobDetails.detailedSoftDeleteReason,
+    )
 
     return updatedJobDetails;
   }
@@ -948,6 +1007,24 @@ class JobService {
       validatedJobRequestBody: validatedJobRequestBody,
     });
 
+    // Retrieve job ids from all jobs and add to array
+    const allJobIdsBeforeUpdate: string[] = validatedJobRequestBody.bulkJobUpdate.map((job: {
+      companyId: string;
+      jobId: string;
+      status: JobStatusEnum;
+    }) => job.jobId);
+
+    // Get all Jobs before update
+    const jobsBeforeUpdate: AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]> = await jobDaoObj.getAllJobsByListOfJobIds(
+      allJobIdsBeforeUpdate,
+      {
+        pageSize: allJobIdsBeforeUpdate.length,
+      }
+    );
+    const jobsDataBeforeUpdate: DbJobAwsOpensearchDto[] = jobsBeforeUpdate.data;
+
+    const jobsMapBeforeUpdate: Map<string, DbJobAwsOpensearchDto> = new Map(jobsDataBeforeUpdate.map((eachJobBeforeUpdate: DbJobAwsOpensearchDto) => [eachJobBeforeUpdate.id, eachJobBeforeUpdate]));
+
     // Get action by user id
     const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
 
@@ -972,17 +1049,18 @@ class JobService {
       failure: { count: 0, primaryIds: [] },
     };
 
-    let s3VectorUpdateJobs: AwsS3VectorJobBulkUpdateDataDto[] = [];  
+    let s3VectorJobIdsToDelete: string[] = [];  
+    let s3VectorJobsToCreate: AwsS3VectorJobCreateOrUpdateJobDataDto[] = [];
 
     // Process each job update
     for (const jobUpdate of validatedJobRequestBody.bulkJobUpdate) {
-      const { companyId, jobId, status } = jobUpdate;
+      const { companyId, jobId, status: newJobStatus } = jobUpdate;
 
       // Prepare update data for OpenSearch
-      opensearchUpdateData.status = status;
+      opensearchUpdateData.status = newJobStatus;
 
       // Prepare update data for DynamoDB
-      dynamodbUpdateData.status = status;
+      dynamodbUpdateData.status = newJobStatus;
 
       try {
         // Update in OpenSearch
@@ -1021,23 +1099,28 @@ class JobService {
         if (updateResult?.id) {
           dynamodbResult.success.count++;
           dynamodbResult.success.primaryIds!.push(jobId);
+
+          const opensearchJobBeforeUpdate: DbJobAwsOpensearchDto | undefined = jobsMapBeforeUpdate.get(jobId);
+
           const {
             jobTitle,
             location,
             department,
             salaryRange,
             experienceRange,
-            status: dynamodbUpdatedStatus,
             otherRequirements,
             coreSkills,
             technicalSkills,
             miscellaneousSkills,
           } = updateResult;
 
-          // Prepare update data for S3
-          s3VectorUpdateJobs.push({
-            jobId: jobId,
-            jobData: {
+          // If job status before update is not published and job status after update is published then prepare to bulk create job in aws s3 vector
+          if(
+            opensearchJobBeforeUpdate
+            && opensearchJobBeforeUpdate.status !== JobStatusEnum.PUBLISHED
+            && updateResult.status === JobStatusEnum.PUBLISHED
+          ) {
+            s3VectorJobsToCreate.push({
               _index: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
               _id: jobId,
               _source: {
@@ -1051,10 +1134,18 @@ class JobService {
                 miscellaneousSkills,
                 experienceRange,
                 otherRequirements, 
-                status: dynamodbUpdatedStatus,
-              },
-            },
-          });
+                companyName: opensearchJobBeforeUpdate.companyName,
+              }
+            })
+          }
+          // If job status before update is published and job status after update is not published then prepare to bulk delete job in aws s3 vector
+          else if(
+            opensearchJobBeforeUpdate
+            && opensearchJobBeforeUpdate.status === JobStatusEnum.PUBLISHED
+            && updateResult.status !== JobStatusEnum.PUBLISHED
+          ) {
+            s3VectorJobIdsToDelete.push(updateResult.id);
+          }
         } else {
           dynamodbResult.failure.count++;
           dynamodbResult.failure.primaryIds!.push(jobId);
@@ -1073,31 +1164,19 @@ class JobService {
       }
     }
 
-    const s3VectorUpdateResponse: AwsS3VectorJobBulkUpdateParsedResponseDto = await awsS3VectorJobServiceObj.updateBulkAwsS3VectorJobs(
-      {
-        updateJobs: s3VectorUpdateJobs,
-        indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-      }
+    awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobsByIds(
+      s3VectorJobIdsToDelete
     );
+
+    awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs({
+      jobData: s3VectorJobsToCreate,
+      indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+    });
 
     // Prepare the response
     const bulkJobUpdateResponse: JobBulkUpdateResponseDto = {
       opensearchBulkJobUpdateMetrics: opensearchResult,
       dynamodbBulkJobUpdateMetrics: dynamodbResult,
-
-      /**
-       * @todo To make consistence response we should send `primaryIds` in response
-       * but currently it is not supported by `AwsS3VectorJobService`, we may update
-       * this response in near future
-       */
-      awsS3BulkJobUpdateMetrics: {
-        success: {
-          count: s3VectorUpdateResponse.results.successfulUpdates,
-        },
-        failure: {
-          count: s3VectorUpdateResponse.results.failedUpdates,
-        },
-      },
     };
 
     return bulkJobUpdateResponse;

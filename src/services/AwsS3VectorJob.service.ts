@@ -133,12 +133,35 @@ class AwsS3VectorJobService {
     return awsS3VectorJobDaoObj.updateBulkAwsS3VectorJobs(updateData);
   }
 
-  async deleteBulkAwsS3VectorJobOldUnappliedExternalJobs(
+  async deleteAwsS3VectorJobById(jobIdToDelete: string): Promise<boolean> {
+    global.logger.info(`Delete AwsS3VectorJob by id [SERVICE]`, {
+      methodName: this.deleteAwsS3VectorJobById.name,
+      jobId: jobIdToDelete,
+    });
+
+    const deletePayload: AwsS3VectorJobBulkDeleteDto = {
+      deleteJobIds: [jobIdToDelete],
+      indexName: this.getAwsS3VectorJobIndexName(),
+    };
+
+    const parsedDeletedResponse: AwsS3VectorJobBulkDeleteParsedResponseDto =
+      await awsS3VectorJobDaoObj.deleteBulkAwsS3VectorJobsByIds(deletePayload);
+    global.logger.info(`Delete AwsS3VectorJob by id [SERVICE]`, {
+      totalRequested: parsedDeletedResponse?.results?.totalRequested,
+      successFulDeletions: parsedDeletedResponse?.results?.successfulDeletions,
+      failedDeletions: parsedDeletedResponse?.results?.failedDeletions,
+      successResponse: parsedDeletedResponse?.results?.success,
+    });
+
+    return parsedDeletedResponse?.results?.success ?? false;
+  }
+
+  async deleteBulkAwsS3VectorJobsByIds(
     deleteJobIds: string[]
   ): Promise<boolean> {
     if (!deleteJobIds?.length) {
       global.logger.info(`No old jobs found to delete [SERVICE]`, {
-        methodName: this.deleteBulkAwsS3VectorJobOldUnappliedExternalJobs.name,
+        methodName: this.deleteBulkAwsS3VectorJobsByIds.name,
         deleteJobIdsLength: deleteJobIds.length,
       });
       return false;

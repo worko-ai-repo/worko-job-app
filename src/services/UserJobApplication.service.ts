@@ -1673,7 +1673,7 @@ class UserJobApplicationService {
                   },
                 },
                 !!countUserReferAndEarnQueryResponse.count,
-              )
+              ),
             ]);
           } else if (
             updatedJobApplication.status ===
@@ -3347,8 +3347,8 @@ class UserJobApplicationService {
           this.performCountCompanyActivitiesAfterJobApplicationUpdate(
             updatedJobApplication,
             userJobApplication.status
-          )
-        ]);     
+          )  
+       ]);  
         
         // Check if the job application is for a refer and earn id
         if (updatedJobApplication.referAndEarnId) {
@@ -3428,7 +3428,7 @@ class UserJobApplicationService {
                   },
                 },
                 !!countGlobalReferAndEarnQueryResponse.count, 
-              )
+              ),
             ]);
           }
         }

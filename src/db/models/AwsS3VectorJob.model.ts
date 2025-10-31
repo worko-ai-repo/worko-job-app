@@ -70,11 +70,9 @@ export interface DbJobAwsS3VectorDto {
   allSkills?: string[];
 
   /**
-   * status
-   *
-   * @see {JobStatusEnum}
+   * companyName
    */
-  status: JobStatusEnum;
+  companyName: string;
 
   /**
    * otherRequirements
