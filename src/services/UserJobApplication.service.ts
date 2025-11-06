@@ -1585,13 +1585,13 @@ class UserJobApplicationService {
           const countGlobalReferAndEarnData: DbCountGlobalDto =
             countGlobalReferAndEarnQueryResponse[0];
 
-          const { referAndEarnJobApplicationCounts: countUserReferAndEarnJobApplicationCounts } = countUserReferAndEarnData;
+          const { referAndEarnJobApplicationCounts: countUserReferAndEarnJobApplicationCounts } = countUserReferAndEarnData || {};
           const totalUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.total;
           const appliedUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.applied;
           const hiredUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.hired;
           const rejectedUserReferAndEarnJobApplicationCount: number | undefined = countUserReferAndEarnJobApplicationCounts?.rejected;
 
-          const { referAndEarnJobApplicationCounts: countGlobalReferAndEarnJobApplicationCounts } = countGlobalReferAndEarnData;
+          const { referAndEarnJobApplicationCounts: countGlobalReferAndEarnJobApplicationCounts } = countGlobalReferAndEarnData || {};
           const totalGlobalReferAndEarnJobApplicationCount: number | undefined = countGlobalReferAndEarnJobApplicationCounts?.total;
           const appliedGlobalReferAndEarnJobApplicationCount: number | undefined = countGlobalReferAndEarnJobApplicationCounts?.applied;
           const hiredGlobalReferAndEarnJobApplicationCount: number | undefined = countGlobalReferAndEarnJobApplicationCounts?.hired;
@@ -1826,7 +1826,7 @@ class UserJobApplicationService {
     )
     const countUserJobApplicationData: DbCountUserDto = countUserJobApplicationQueryResponse[0]
 
-    const {userJobApplicationCounts: countUserJobApplicationCounts} = countUserJobApplicationData;
+    const {userJobApplicationCounts: countUserJobApplicationCounts} = countUserJobApplicationData || {};
 
     const total: number | undefined = countUserJobApplicationCounts?.total;
     const applied: number | undefined = countUserJobApplicationCounts?.applied;
@@ -1991,7 +1991,7 @@ class UserJobApplicationService {
       CountGlobalDbEntityTypeEnum.COMPANY_JOB
     );
     const countGlobalCompanyJobData: DbCountGlobalDto = countGlobalCompanyJobQueryResponse[0];
-    const {companyJobApplicationCounts: countGlobalCompanyJobApplicationCounts} = countGlobalCompanyJobData;
+    const {companyJobApplicationCounts: countGlobalCompanyJobApplicationCounts} = countGlobalCompanyJobData || {};
 
     const totalGlobalCompanyJobApplicationCount: number | undefined = countGlobalCompanyJobApplicationCounts?.total;
     const rejectedGlobalCompanyJobApplicationCount: number | undefined = countGlobalCompanyJobApplicationCounts?.rejected;
@@ -2003,7 +2003,7 @@ class UserJobApplicationService {
       CountGlobalDbEntityTypeEnum.CANDIDATE
     );
     const countGlobalCandidateData: DbCountGlobalDto = countGlobalCandidateQueryResponse[0]
-    const {candidateJobApplicationCounts: countGlobalCandidateJobApplicationCounts} = countGlobalCandidateData;
+    const {candidateJobApplicationCounts: countGlobalCandidateJobApplicationCounts} = countGlobalCandidateData || {};
     
     const totalGlobalCandidateJobApplicationCount: number | undefined = countGlobalCandidateJobApplicationCounts?.total;
     const rejectedGlobalCandidateJobApplicationCount: number | undefined = countGlobalCandidateJobApplicationCounts?.rejected;
@@ -2202,7 +2202,7 @@ class UserJobApplicationService {
     const countCompanyJobData: DbCountCompanyJobDto = countCompanyJobQueryResponse[0];
     const {
       allJobApplicationCounts: countCompanyJobAllJobApplicationCounts
-    } = countCompanyJobData;
+    } = countCompanyJobData || {};
     
     const total: number | undefined = countCompanyJobAllJobApplicationCounts?.total;
     const rejected: number | undefined = countCompanyJobAllJobApplicationCounts?.rejected;
@@ -2321,7 +2321,7 @@ class UserJobApplicationService {
     const countCompanyData: DbCountCompanyDto = countCompanyQueryResponse[0]
     const {
       allJobApplicationCounts: countCompanyAllJobApplicationCounts
-    } = countCompanyData;
+    } = countCompanyData || {};
     const total: number | undefined = countCompanyAllJobApplicationCounts?.total;
     const rejected: number | undefined = countCompanyAllJobApplicationCounts?.rejected;
     const applied: number | undefined = countCompanyAllJobApplicationCounts?.applied;
