@@ -394,6 +394,12 @@ var isEvaluatorUrl = function (url, httpMethod) {
 
     // Evaluator detail routers
     { path: "/evaluator-detail*", method: HttpMethodsConstants.GET },
+
+    // User Interview Routers
+    {
+      path: "/user/interview/request",
+      method: HttpMethodsConstants.POST,
+    },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -483,6 +489,12 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
       path: "/counts/:companyId/:entityType/company",
       method: HttpMethodsConstants.GET,
     },
+
+    // User Interview Routers
+    {
+      path: "/user/interview/request",
+      method: HttpMethodsConstants.POST,
+    },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -570,6 +582,12 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     {
       path: "/counts/:companyId/:entityType/company",
       method: HttpMethodsConstants.GET,
+    },
+
+    // User Interview Routers
+    {
+      path: "/user/interview/request",
+      method: HttpMethodsConstants.POST,
     },
   ];
 
@@ -706,6 +724,12 @@ var isAdminUrl = function (url, httpMethod) {
     {
       path: "/counts/:companyId/:jobId/:entityType/company-job",
       method: HttpMethodsConstants.GET,
+    },
+
+    // User Interview Routers
+    {
+      path: "/user/interview/request",
+      method: HttpMethodsConstants.POST,
     },
   ];
 
