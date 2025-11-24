@@ -64,6 +64,13 @@ export interface UserJobApplicationListingFilterOptions extends RecordListingFil
   userEmail?: string,
   userType?: JobApplicationUserType,
   referAndEarnId?: string;
+  /**
+   * includeInterviewDetails
+   * 
+   * Flag to include interview details along with user details in job application response.
+   * Default: false - Existing entities are not affected
+   */
+  includeInterviewDetails?: boolean;
 }
 
 /**
@@ -78,6 +85,13 @@ export interface UserJobApplicationListingFilterRequestDTO extends RecordListing
   userEmail?: string,
   userType?: JobApplicationUserType,
   referAndEarnId?: string;
+  /**
+   * includeInterviewDetails
+   * 
+   * Flag to include interview details along with user details in job application response.
+   * Default: false - Existing entities are not affected
+   */
+  includeInterviewDetails?: boolean;
 }
 
 /**

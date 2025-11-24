@@ -7,6 +7,7 @@ import { AdminRoleEnum } from "../enums/Common.enum";
 // Import models
 import { DbUserDetailDto } from "../db/models/UserDetail.model";
 import { DbUserJobApplicationDto } from "../db/models/UserJobApplication.model";
+import { DbInterviewDto } from "../db/models/UserInterview.model";
 
 /**
  * JobApplicationUserType
@@ -81,6 +82,13 @@ export type JobApplicationWithUserDetailsType = Partial<DbUserJobApplicationDto>
     | (Partial<DbUserDetailDto> & {
         profileImageAwsS3SignedUrl: string | null;
         cvAwsS3SignedUrl: string | null;
+        /**
+         * interviewDetails
+         * 
+         * Interview details associated with the applicant.
+         * Only included when includeInterviewDetails flag is set to true.
+         */
+        interviewDetails?: DbInterviewDto[];
       })
     | undefined;
 };

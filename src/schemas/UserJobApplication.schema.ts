@@ -104,6 +104,13 @@ export const userJobApplicationFilterDtoValidation = commonSchema.concat(
         "any.required": "User type is required",
         "string.empty": "User type should not be empty",
       }),
+
+    includeInterviewDetails: Joi.boolean()
+      .optional()
+      .default(false)
+      .messages({
+        "any.type": "includeInterviewDetails must be a boolean.",
+      }),
   })
 ); 
 

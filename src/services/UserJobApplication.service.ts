@@ -70,11 +70,13 @@ import { countUserServiceObj } from "./CountUser.service";
 import { countGlobalServiceObj } from "./CountGlobal.service";
 import { countCompanyJobServiceObj } from "./CountCompanyJob.service";
 import { countCompanyServiceObj } from "./CountCompany.service";
+import { interviewServiceObj } from "./UserInterview.service";
 
 // import types
 import { UserDetailProfileInfoType } from "../types/UserDetail.type";
 import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationUserType, JobApplicationUserTypeWithAdmin, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
 import { EmailPlaceholderDetailsToJobPosterType } from "../types/EmailTemplatePlaceholder.type";
+import { DbInterviewDto } from "../db/models/UserInterview.model";
 
 // import utils
 import { BaseError } from "../utils/errors.util";
@@ -921,7 +923,11 @@ class UserJobApplicationService {
    * user details to a map for easy access and finally attaches the user details to each
    * job application.
    *
+   * Optionally, if `includeInterviewDetails` is set to true, it will also fetch and attach
+   * interview details for each applicant.
+   *
    * @param {DbUserJobApplicationDto & { jobUrl: string | undefined; jobTitle: string | undefined; jdExtracted: string | undefined; }[]} jobApplicationsArray - An array of job applications.
+   * @param {boolean} includeInterviewDetails - Flag to include interview details. Default: false.
    * @returns {Promise<JobApplicationWithUserDetailsType[]>} A promise that resolves to an array of job applications with user details.
    */
   async prepareJobApplicationsWithUserDetails(
@@ -929,12 +935,14 @@ class UserJobApplicationService {
       jobUrl: string | undefined;
       jobTitle: string | undefined;
       jdExtracted: string | undefined;
-    })[]
+    })[],
+    includeInterviewDetails: boolean = false
   ): Promise<JobApplicationWithUserDetailsType[]> {
     // logger
     global.logger.info("Prepare job applications with user details [Service]", {
       filePath: __filename,
       methodName: this.prepareJobApplicationsWithUserDetails.name,
+      includeInterviewDetails,
     });
 
     // get unique user email ids
@@ -964,6 +972,14 @@ class UserJobApplicationService {
       ])
     );
 
+    // Fetch interview details if flag is enabled
+    let interviewMap: Map<string, DbInterviewDto[]> = new Map();
+    if (includeInterviewDetails) {
+      interviewMap = await interviewServiceObj.getUserInterviewsByEmailIds(
+        uniqueUserEmailIds
+      );
+    }
+
     // attach user details to job applications
     const jobApplicationsWithUserDetails: JobApplicationWithUserDetailsType[] =
       await Promise.all(
@@ -976,8 +992,9 @@ class UserJobApplicationService {
             }
           ) => {
             // get user details for each job application
+            const userEmail: string = eachJobApplication.PK.split("#")[2];
             const userDetails: UserDetailProfileInfoType | undefined =
-              userDetailsMap.get(eachJobApplication.PK.split("#")[2]);
+              userDetailsMap.get(userEmail);
 
             // if user details not found, return job application without applicant details
             if (!userDetails) {
@@ -987,6 +1004,10 @@ class UserJobApplicationService {
               };
             }
 
+            // Get interview details if flag is enabled
+            const interviewDetails: DbInterviewDto[] | undefined =
+              includeInterviewDetails ? interviewMap.get(userEmail) : undefined;
+
             const jobAppliactionDetailWithUserDetail: JobApplicationWithUserDetailsType =
               {
                 ...eachJobApplication,
@@ -995,6 +1016,9 @@ class UserJobApplicationService {
                   profileImageAwsS3SignedUrl:
                     userDetails.profileImageAwsS3SignedUrl,
                   cvAwsS3SignedUrl: userDetails.cvAwsS3SignedUrl,
+                  ...(includeInterviewDetails && {
+                    interviewDetails: interviewDetails || [],
+                  }),
                 },
               };
 
@@ -1100,10 +1124,11 @@ class UserJobApplicationService {
       return jobApplicationsWithoutUserDetails;
     }
 
-    // Prepare job applications
+    // Prepare job applications with optional interview details
     const jobApplicationsWithUserDetails: JobApplicationWithUserDetailsType[] =
       await this.prepareJobApplicationsWithUserDetails(
-        userJobApplicationArrayWithCompanyJobDetails
+        userJobApplicationArrayWithCompanyJobDetails,
+        jobApplicationRequestBody.includeInterviewDetails || false
       );
 
     const paginatedJobApplicationsWithUserDetails: PaginatedResultsWithMatchingConditionsInternalResponse<
