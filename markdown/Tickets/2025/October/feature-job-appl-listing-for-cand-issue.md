@@ -31,12 +31,3 @@
    }
    ```
 
-
-2. while corporate requesting a document:
-```json
-{
-   "errorCode": 500,
-   "errorMsg": "Cannot destructure property 'allJobApplicationCounts' of 'countCompanyJobData' as it is undefined.",
-   "timeStamp": "2025-11-06T12:03:13.283Z"
-}
-```

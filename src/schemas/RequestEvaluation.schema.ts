@@ -36,10 +36,12 @@ export const requestEvaluationCreateValidation = Joi.object({
     "string.base": "Company ID must be a string",
   }),
 
-  applicantUserId: Joi.string().required().messages({
-    "any.required": "Applicant User ID is required",
-    "string.empty": "Applicant User ID should not be empty",
+  applicantUserId: Joi.string().optional().messages({
     "string.base": "Applicant User ID must be a string",
+  }),
+
+  candidateParsedCvId: Joi.string().optional().messages({
+    "string.base": "Candidate parsed CV ID must be a string",
   }),
 
   applicantName: Joi.string().required().lowercase().messages({

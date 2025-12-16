@@ -49,10 +49,12 @@ export async function injectCompanyJobDetails<
 
   // Create a map of companyJob IDs to companyJob details
   const companyJobDetailsMap: Map<string, DbCompanyJobDto> = new Map(
-    companyJobDetails.map((eachCompanyJobDetail: DbCompanyJobDto) => [
-      eachCompanyJobDetail.id,
-      eachCompanyJobDetail,
-    ])
+    companyJobDetails
+      .filter((eachCompanyJobDetail: DbCompanyJobDto) => eachCompanyJobDetail?.id)
+      .map((eachCompanyJobDetail: DbCompanyJobDto) => [
+        eachCompanyJobDetail.id,
+        eachCompanyJobDetail,
+      ])
   );
 
   // Add companyJob details to each entity

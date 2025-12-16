@@ -53,6 +53,24 @@ const serverlessConfiguration: AWS = {
   ],
 
   custom: {
+    webpack: {
+      webpackConfig: './webpack.config.js',
+      packager: 'npm',
+      includeModules: {
+        forceExclude: [
+          "@aws-sdk/client-bedrock",
+          "@aws-sdk/client-cognito-identity-provider",
+          "@aws-sdk/client-scheduler",
+          "@aws-sdk/client-secrets-manager",
+          "@aws-sdk/credential-provider-node",
+          "@aws-sdk/client-ses",
+          "@aws-sdk/client-s3",
+          "@aws-sdk/client-scheduler",
+          "@aws-sdk/s3-request-presigner",
+          "@aws-sdk/lib-storage"
+        ]
+      }
+    },
     app: {
       STAGE: "${env:APP_SLS_STAGE}",
     },
@@ -74,6 +92,8 @@ const serverlessConfiguration: AWS = {
         "${env:APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME}",
       APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME:
         "${env:APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME}",
+      APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET: "${env:APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET}",
+      APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET: "${env:APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET}",
     },
   },
 
@@ -259,6 +279,16 @@ const serverlessConfiguration: AWS = {
           "arn:aws:iam::${self:custom.aws.APP_AWS_ACCOUNT_ID}:role/service-role/${self:custom.aws.APP_AWS_BEDROCK_SERVICE_ROLE}",
         ],
       },
+      {
+        "Effect": "Allow",
+        "Action": [
+            "secretsmanager:GetSecretValue",
+        ],
+        "Resource":[
+          "arn:aws:secretsmanager:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:secret:${self:custom.aws.APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET}",
+          "arn:aws:secretsmanager:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:secret:${self:custom.aws.APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET}"
+        ] 
+      }
     ],
   },
 

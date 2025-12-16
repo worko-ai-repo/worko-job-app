@@ -27,6 +27,7 @@ export const UserCreateJobApplicationDTOValidation = Joi.object({
   companyName: Joi
    .string()
    .required()
+   .uppercase()
    .messages({ 
     "any.required": "The companyName field is required.",
     "any.type": "The companyName field must be a string.",
@@ -190,6 +191,14 @@ export const userJobApplicationUpdateValidation = Joi.object({
       "any.required": "User type is required",
       "string.empty": "User type should not be empty",
     }),
+
+  agencyUserSubmissionId: Joi.string().optional().messages({
+    "any.type": "agencyUserSubmissionId must be a string.",
+  }),
+
+  candidateParsedCvId: Joi.string().optional().messages({
+    "any.type": "candidateParsedCvId must be a string.",
+  }),
 
   applicantName: Joi.string().required().messages({
     "any.required": "The Applicant name is required.",

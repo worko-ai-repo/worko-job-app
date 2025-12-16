@@ -8,7 +8,7 @@ import { UserJobApplicationAuthorNoteCognitoUserGroupEnum } from "../enums/UserJ
  */
 export interface UserJobApplicationAuthorDbNoteDetail {
   title: string;
-  detailedDescription: string;
+  detailedDescription?: string;
   createdAt?: string; // ISO date string
   updatedAt?: string; // ISO date string
 }

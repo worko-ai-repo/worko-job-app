@@ -71,8 +71,10 @@ class DbResponseEvaluationDto extends BaseDbDto {
 
   /**
    * @reference `id` attribute of `UserDetail.model.ts` in `worko` table of `dynamodb`
+   * @description 
+   *  1. This will not be stored if applicant is unregistered
    */
-  applicantUserId!: string;
+  applicantUserId?: string;
 
   /**
    * @reference `email` attribute of `UserDetail.model.ts`
@@ -147,7 +149,7 @@ const ResponseEvaluationSchema: Schema = new dynamoose.Schema(
     },
     applicantUserId: {
       type: String,
-      required: true,
+      required: false,
     },
     applicantUserEmail: {
       type: String,

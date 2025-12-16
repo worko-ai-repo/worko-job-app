@@ -487,8 +487,8 @@ class ScriptService {
     return unprocessedItems;
   }
 
-  async scriptGetAwsScheduleById(id: string): Promise<PromiseResult<Scheduler.GetScheduleOutput, AWSError>> {
-    const getResponse: PromiseResult<Scheduler.GetScheduleOutput, AWSError> = await awsSchedulerClientLibrary.getScheduleById({ Name: id });
+  async scriptGetAwsScheduleById(id: string) {
+    const getResponse = await awsSchedulerClientLibrary.getScheduleById({ Name: id });
     global.logger.info(
       `Get Schedule Job [Script Service]`,
       {
@@ -501,8 +501,8 @@ class ScriptService {
   };
 
 
-  async scriptDeleteAwsScheduleById(id: string): Promise<PromiseResult<Scheduler.DeleteScheduleOutput, AWSError>> {
-    const deleteResponse: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
+  async scriptDeleteAwsScheduleById(id: string) {
+    const deleteResponse = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
     global.logger.info(
       `Delete Schedule Job [Script Service]`,
       {

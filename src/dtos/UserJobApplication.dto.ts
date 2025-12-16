@@ -1,6 +1,6 @@
 
 // import dtos
-import { RecordListingFilterOptions, RecordListingFilterRequestDTO } from "./Common.dto";
+import { CommonMatchingScoreDetailDto, RecordListingFilterOptions, RecordListingFilterRequestDTO } from "./Common.dto";
 
 // import enums
 import { JobApplicationStatus, UserJobApplicationDocumentStatusEnum } from "../enums/UserJobApplication.enum";
@@ -152,6 +152,11 @@ export interface UserJobApplicationInternalUpdateDto {
   responseDocumentDetails?: UserJobApplicationDbResponseDocumentDetailDto[];
   offerLetterDetails?: UserJobApplicationDbOfferLetterDetailDto[];
   joiningDateDetails?: UserJobApplicationDbJoinedDateDetailDto[];
+  /**
+   * @reference `id` attribute of `AgencyUserSubmission.model.ts`
+   */
+  agencyUserSubmissionId?: string;
+  candidateParsedCvId?: string;
 }
 
 /**

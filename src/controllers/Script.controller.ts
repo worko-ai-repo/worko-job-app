@@ -232,7 +232,7 @@ class ScriptController {
       );
 
       // Script get aws schedule by id 
-      const scheduleDetails: PromiseResult<Scheduler.GetScheduleOutput, AWSError> = await scriptServiceObj.scriptGetAwsScheduleById(
+      const scheduleDetails = await scriptServiceObj.scriptGetAwsScheduleById(
         req.params.id
       );
 
@@ -275,7 +275,7 @@ class ScriptController {
       );
 
       // Script delete aws schedule by id 
-      const scheduleDetails: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await scriptServiceObj.scriptDeleteAwsScheduleById(
+      const scheduleDetails = await scriptServiceObj.scriptDeleteAwsScheduleById(
         req.params.id
       );
 

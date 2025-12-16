@@ -109,6 +109,15 @@ class DbUserDetailDto extends BaseDbDto {
   multipleCandidateExperiencedDate?: string;
   responsibilities?: UserDetailDbResponsibilitiesDto[];
   isWhatsappNotificationEnabled?: boolean;
+
+  /**
+   * @description
+   *  1. whenever the agency submits a unregistered candidate for a job and if a corporate move it to applicants page
+   *     then in backend we are creating the candidate account in cognito and aws dynamodb as unverified email without sending any
+   *     otp, and we will specify this as "true", and as of now this attribute is used while listing job applications and attaching applicant details
+   *     to them.
+   */
+  isUserCreatedInternally?: boolean;
 }
 
 // Define the schema for the User Details model using DynamoDB
@@ -362,6 +371,10 @@ const UserDetailSchema = new dynamoose.Schema(
     isWhatsappNotificationEnabled: {
       type: Boolean,
       default: true,
+      required: false,
+    },
+    isUserCreatedInternally: {
+      type: Boolean,
       required: false,
     },
   },

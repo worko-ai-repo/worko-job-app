@@ -868,3 +868,14 @@ ERROR	CognitoJwtInvalidGroupError: Missing Cognito group. Expected one of: admin
 ```sh
 Duration: 900000.00 ms	Billed Duration: 900000 ms	Memory Size: 1024 MB	Max Memory Used: 392 MB	Status: timeout
 ```
+
+43. 
+```ts
+/**
+ * 1. Whenever I add "APP_GCP_PRIVATE_KEY" environment variable for `worko-job-app-dev-workoJobApp` lambda function Im getting below error
+ * 2. But in `worko-corp-dev-workoCorp` lambda I didn't recieved this error when i add same "APP_GCP_PRIVATE_KEY"
+ */
+```
+```sh
+Request must be smaller than 5120 bytes for the UpdateFunctionConfiguration operation
+```

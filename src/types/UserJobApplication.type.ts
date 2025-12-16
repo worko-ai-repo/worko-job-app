@@ -3,6 +3,7 @@ import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 import { UserType } from "../enums/User.enum";
 import { JobApplicationStatus } from "../enums/UserJobApplication.enum";
 import { AdminRoleEnum } from "../enums/Common.enum";
+import { CandidateParsedCvAwsS3ResourceTypeEnum } from "../enums/CandidateParsedCv.enum";
 
 // Import models
 import { DbUserDetailDto } from "../db/models/UserDetail.model";
@@ -70,9 +71,6 @@ export type JobApplicationFollowUpRequestType = Array<{
   actionDate?: string;
 }>;
 
-/**
- * JobApplicationWithUserDetailsType
- */
 export type JobApplicationWithUserDetailsType = Partial<DbUserJobApplicationDto> & {
   jobUrl: string | undefined;
   jobTitle: string | undefined;
@@ -80,8 +78,7 @@ export type JobApplicationWithUserDetailsType = Partial<DbUserJobApplicationDto>
 } & {
   applicantDetails:
     | (Partial<DbUserDetailDto> & {
-        profileImageAwsS3SignedUrl: string | null;
-        cvAwsS3SignedUrl: string | null;
+        cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
         /**
          * interviewDetails
          * 

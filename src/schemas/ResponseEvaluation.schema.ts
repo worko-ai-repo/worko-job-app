@@ -48,9 +48,8 @@ export const responseEvaluationCreateValidation = Joi.object({
     "string.empty": "Company ID should not be empty",
   }),
 
-  applicantUserId: Joi.string().required().messages({
-    "any.required": "Applicant User ID is required",
-    "string.empty": "Applicant User ID should not be empty",
+  applicantUserId: Joi.string().optional().messages({
+    "string.base": "Applicant User ID must be a string",
   }),
 
   applicantUserEmail: Joi.string().email().required().lowercase().messages({

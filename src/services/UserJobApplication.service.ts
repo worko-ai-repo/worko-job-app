@@ -1,7 +1,9 @@
 
 // Import aws sdk
-import { AWSError, Scheduler } from "aws-sdk";
-import { PromiseResult } from "aws-sdk/lib/request";
+import { DeleteScheduleCommandOutput } from "@aws-sdk/client-scheduler";
+
+// import google cloud firestore
+import { DocumentData, QuerySnapshot } from "@google-cloud/firestore";
 
 // import dynamoose types
 import { QueryResponse } from "dynamoose/dist/ItemRetriever";
@@ -36,10 +38,14 @@ import { CountUserDbEntityTypeEnum } from "../enums/CountUser.enum";
 import { CountGlobalDbEntityTypeEnum } from "../enums/CountGlobal.enum";
 import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
 import { CountCompanyDbEntityTypeEnum } from "../enums/CountCompany.enum";
+import { CorporateCandidateProfileDbRefereeTypeEnum } from "../enums/CorporateCandidateProfile.enum";
+import { CentralCandidateProfileDbRefereeTypeEnum } from "../enums/CentralCandidateProfile.enum";
+import { CandidateParsedCvAwsS3ResourceTypeEnum } from "../enums/CandidateParsedCv.enum";
+import { AgencyUserSubmissionDbJobApplicationStatusEnum } from "../enums/AgencyUserSubmission.enum";
 
 // import helpers
 import { injectCompanyJobDetails } from "../helpers/injectCompanyJobDetails.helper";
-import { getActionByUserId, getEmailFromPK } from "../helpers/user.helper";
+import { getActionByUserId, getEmailFromPK, getPhoneCountryCodeAndNumber } from "../helpers/user.helper";
 import { dateHelperObj } from "../helpers/date.helper";
 
 // import libraries
@@ -56,6 +62,13 @@ import { DbCountUserDto } from "../db/models/CountUser.model";
 import { DbCountGlobalDto } from "../db/models/CountGlobal.model";
 import { DbCountCompanyJobDto } from "../db/models/CountCompanyJob.model";
 import { DbCountCompanyDto } from "../db/models/CountCompany.model";
+import { DbCorporateCandidateProfileDto } from "../db/gcp-firestore-models/CorporateCandidateProfile.model";
+import { DbCentralCandidateProfileDto } from "../db/gcp-firestore-models/CentralCandidateProfile.model";
+import { DbCandidateParsedCvDto } from "../db/gcp-firestore-models/CandidateParsedCv.model";
+import { DbAgencyUserSubmissionDto } from "../db/gcp-firestore-models/AgencyUserSubmission.model";
+import { DbInterviewDto } from "../db/models/UserInterview.model";
+import { DbUserSkillDto } from "../db/models/UserSkill.model";
+import { DbUserPreferenceDto } from "../db/models/UserPreference.model";
 
 // import services
 import scheduleJobService from "../services/ScheduleJob.service";
@@ -70,13 +83,18 @@ import { countUserServiceObj } from "./CountUser.service";
 import { countGlobalServiceObj } from "./CountGlobal.service";
 import { countCompanyJobServiceObj } from "./CountCompanyJob.service";
 import { countCompanyServiceObj } from "./CountCompany.service";
+import { corporateCandidateProfileServiceObj } from "./CorporateCandidateProfile.service";
+import { centralCandidateProfileServiceObj } from "./CentralCandidateProfile.service";
+import { candidateParsedCvServiceObj } from "./CandidateParsedCv.service";
+import UlidService from "./Ulid.service";
 import { interviewServiceObj } from "./UserInterview.service";
+import { agencyUserSubmissionServiceObj } from "./AgencyUserSubmission.service";
+import { userSkillServiceObj } from "./UserSkill.service";
+import { userPreferenceServiceObj } from "./UserPreference.service";
 
 // import types
-import { UserDetailProfileInfoType } from "../types/UserDetail.type";
 import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationUserType, JobApplicationUserTypeWithAdmin, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
 import { EmailPlaceholderDetailsToJobPosterType } from "../types/EmailTemplatePlaceholder.type";
-import { DbInterviewDto } from "../db/models/UserInterview.model";
 
 // import utils
 import { BaseError } from "../utils/errors.util";
@@ -268,6 +286,306 @@ class UserJobApplicationService {
     return true;
   }
 
+  private async performCandProfileDatabaseActivitiesAfterJobApply(
+    newJobApplication: DbUserJobApplicationDto,
+    candidateDetails: DbUserDetailDto,
+  ) {
+    const {PK, companyId, jobId, companyName} = newJobApplication;
+    const {
+      number: candidateNumber, 
+      id: candidateCognitoUserId,
+      name: candidateName,
+      noticePeriod: candidateNoticePeriod,
+      isNoticePeriodNegotiable: isCandidateNoticePeriodNegotiable,
+      CV: candidateCvAwsS3FileName,
+      YOE: candidateYoe,
+      CTC: candidateCtc,
+      ECTC: candidateEctc,
+      location: candidateLocation
+    } = candidateDetails;
+    const {phoneCountryCode, phoneNumber} = getPhoneCountryCodeAndNumber(candidateNumber);
+    const applicantEmail: string = (getEmailFromPK(PK)).toLowerCase();
+    const existingCorporateCandidateProfile: QuerySnapshot<DocumentData, DocumentData> = await corporateCandidateProfileServiceObj.getDuplicateCorporateCandidateProfile(
+      companyId,
+      applicantEmail,
+      {
+        number: phoneNumber,
+        countryCode: phoneCountryCode
+      }
+    );
+
+    const userSkillDetails: QueryResponse<DbUserSkillDto> = await userSkillServiceObj.getUserSkillsByEmail(
+      applicantEmail
+    );
+    const userSkillDetailsData: DbUserSkillDto = userSkillDetails[0];
+    const applicantCoreSkills: {
+      skillName: string;
+      years: number;
+      timestamps?: {
+          createdAt: string;
+          updatedAt: string;
+      } | undefined;
+    }[] = userSkillDetailsData.coreSkills ?? [];
+    const applicantTechnicalSkills: {
+      skillName: string;
+      years: number;
+      timestamps?: {
+          createdAt: string;
+          updatedAt: string;
+      } | undefined;
+    }[] = userSkillDetailsData.technicalSkills ?? [];
+
+    const userPreferenceDetails: QueryResponse<DbUserPreferenceDto> = await userPreferenceServiceObj.getUserPreferenceByEmail(
+      applicantEmail
+    );
+    const userPreferenceDetailsData: DbUserPreferenceDto = userPreferenceDetails[0];
+    const applicantPreferredLocations: string[] = userPreferenceDetailsData.userPreferredlocations || [];
+    const applicantPreferredDepartments: string[] = userPreferenceDetailsData.userPreferredDepartments || [];
+    const applicantPreferredIndustries: string[] = userPreferenceDetailsData.userPreferredIndustries || [];
+    const applicantPreferredRoles: string[] = userPreferenceDetailsData.userPreferredRoles || [];
+
+    const currentDate: string = dateHelperObj.getISODate();
+    if(!existingCorporateCandidateProfile.empty) {
+      const existingCorporateCandidateProfileData = existingCorporateCandidateProfile.docs[0].data() as DbCorporateCandidateProfileDto;
+      if(existingCorporateCandidateProfileData.candidateEmail === applicantEmail) {
+        let updateCorporateCandidateProfileData: Partial<DbCorporateCandidateProfileDto> = {
+          updatedAt: currentDate
+        };
+        let updateCentralCandidateProfileData: Partial<DbCentralCandidateProfileDto> = {
+          updatedAt: currentDate
+        };
+        let updateCandidateParsedCvData: Partial<DbCandidateParsedCvDto> = {
+          updatedAt: currentDate
+        };
+        if(!existingCorporateCandidateProfileData.userDetailId) {
+          updateCorporateCandidateProfileData.userDetailId = candidateCognitoUserId;
+          updateCentralCandidateProfileData.userDetailId = candidateCognitoUserId;
+          updateCandidateParsedCvData.userDetailId = candidateCognitoUserId;
+        }
+        if(existingCorporateCandidateProfileData.phoneNumberDetails.number !== phoneNumber || existingCorporateCandidateProfileData.phoneNumberDetails.countryCode !== phoneCountryCode) {
+          const updatedPhoneNumberDetails = {
+            number: phoneNumber,
+            countryCode: phoneCountryCode
+          };
+          updateCorporateCandidateProfileData.phoneNumberDetails = updatedPhoneNumberDetails;
+          updateCentralCandidateProfileData.phoneNumberDetails = updatedPhoneNumberDetails;
+          updateCandidateParsedCvData.phoneNumberDetails = updatedPhoneNumberDetails;
+        }
+
+        /**
+         * @todo: 
+         *  1. Need to discuss about `refereeType` update after 6 months with "CTO" and "Product Manager"
+         *  2. Need to discuss about comparing and updating candidate details in `CandidateParsedCv` collection with "CTO" and "Product Manager"
+         */
+
+        const updateEntityCandidateProfilePromises = [];
+
+        if(Object.keys(updateCentralCandidateProfileData).length>1) {
+          updateEntityCandidateProfilePromises.push(
+            centralCandidateProfileServiceObj.updateCentralCandidateProfileById(applicantEmail, updateCentralCandidateProfileData)
+          )
+        }
+
+        if(Object.keys(updateCandidateParsedCvData).length>1) {
+          updateEntityCandidateProfilePromises.push(
+            candidateParsedCvServiceObj.updateCandidateParsedCvWithEmbedding(existingCorporateCandidateProfileData.candidateParsedCvId, updateCandidateParsedCvData)
+          )
+        }
+        
+        if(Object.keys(updateCorporateCandidateProfileData).length>1) {
+          updateEntityCandidateProfilePromises.push(
+            corporateCandidateProfileServiceObj.updateCorporateCandidateProfileById(existingCorporateCandidateProfileData.id, updateCorporateCandidateProfileData)
+          )
+        }
+
+        if(updateEntityCandidateProfilePromises.length) {
+          await Promise.all(updateEntityCandidateProfilePromises);
+        }
+      } else if(existingCorporateCandidateProfileData.phoneNumberDetails.number === phoneNumber && existingCorporateCandidateProfileData.phoneNumberDetails.countryCode === phoneCountryCode) {
+        global.logger.debug(`Candidate already exists with same phone number and country code [SERVICE]`, {
+          existingCorporateCandidateProfileData,
+          applicantEmail,
+          candidateNumber,
+          candidateCognitoUserId,
+        });
+      }
+    } else {
+      // Prepare Create corporate candidate profile
+      const corporateCandidateProfileCreateData: DbCorporateCandidateProfileDto = {
+        id: UlidService.getUlidId(),
+        createdAt: currentDate,
+        updatedAt: currentDate,
+        companyId: companyId,
+        jobId: jobId,
+        candidateEmail: applicantEmail,
+        refereeType: CorporateCandidateProfileDbRefereeTypeEnum.WORKO,
+        phoneNumberDetails: {
+          number: phoneNumber,
+          countryCode: phoneCountryCode
+        },
+        userDetailId: candidateCognitoUserId,
+
+        /**
+         * @note We given it empty to avoid typescript error, this will be updated in below lines of code
+         */
+        candidateParsedCvId: "", 
+      };
+
+      // Get existing candidate data from `CentralCandidateProfile` model
+      const existingCentralCandidateProfile: DbCentralCandidateProfileDto | undefined =
+        await centralCandidateProfileServiceObj.getCentralCandidateProfileById(
+          applicantEmail
+        );
+
+      let createOrUpdateCentralCandidateProfile: Promise<DbCentralCandidateProfileDto | undefined>;
+      let createOrUpdateCandidateProfile: Promise<DbCandidateParsedCvDto | undefined> | Promise<boolean>;
+
+      if(existingCentralCandidateProfile) {
+        createOrUpdateCandidateProfile = candidateParsedCvServiceObj.updateCandidateParsedCvWithEmbedding(existingCentralCandidateProfile.latestCandidateParsedCvId, {
+          updatedAt: currentDate,
+          // currentCompany: ,
+          // currentDesignation: ,
+          totalYOE: candidateYoe,
+          relevantYOE: candidateYoe,
+          currentCTC: candidateCtc,
+          expectedCTC: candidateEctc,
+          noticePeriod: candidateNoticePeriod,
+          location: candidateLocation ? candidateLocation.toLowerCase() : undefined,
+          // readyToRelocate: ,
+          userPreferredDepartments: applicantPreferredDepartments,
+          userPreferredIndustries: applicantPreferredIndustries,
+          userPreferredlocations: applicantPreferredLocations,
+          userPreferredRoles: applicantPreferredRoles,
+          coreSkills: applicantCoreSkills,
+          technicalSkills: applicantTechnicalSkills,
+          cvAwsS3ResourceType: CandidateParsedCvAwsS3ResourceTypeEnum.USER_RESUME,
+          cvAwsS3BucketName: process.env.APP_AWS_S3_BUCKET_WORKO_APP as string,
+          cvAwsS3FilePath: APP_CONSTANTS.AWS_S3_DIR_PATHS.USER_RESUME.strtr({
+            "{userId}": candidateCognitoUserId,
+          }),
+          cvAwsS3FileName: candidateCvAwsS3FileName,
+          cvAwsS3FileTracker: [
+            {
+              actionDate: currentDate,
+              resourceType: CandidateParsedCvAwsS3ResourceTypeEnum.USER_RESUME,
+              bucketName: process.env.APP_AWS_S3_BUCKET_WORKO_APP as string,
+              filePath: APP_CONSTANTS.AWS_S3_DIR_PATHS.USER_RESUME.strtr({
+                "{userId}": candidateCognitoUserId,
+              }),
+              fileName: candidateCvAwsS3FileName
+            }
+          ],
+          isNoticePeriodNegotiable: isCandidateNoticePeriodNegotiable,
+          companyId: companyId,
+          jobId: jobId,
+          corporateCandidateProfileId: corporateCandidateProfileCreateData.id,
+          userDetailId: candidateCognitoUserId,
+        });
+
+        corporateCandidateProfileCreateData.candidateParsedCvId = existingCentralCandidateProfile.latestCandidateParsedCvId;
+        
+        createOrUpdateCentralCandidateProfile = centralCandidateProfileServiceObj.updateCentralCandidateProfileById(
+          applicantEmail,
+          {
+            updatedAt: currentDate,
+            candidateProfileInCompanies: [
+              ...(existingCentralCandidateProfile?.candidateProfileInCompanies ?? []),
+              {
+                companyId: companyId,
+                companyName: companyName,
+                jobIds: [jobId],
+              }
+            ],
+            corporateCandidateProfileIds: [
+              ...(existingCentralCandidateProfile?.corporateCandidateProfileIds ?? []),
+              corporateCandidateProfileCreateData.id
+            ],
+            userDetailId: candidateCognitoUserId
+          }
+        )
+      } else {
+        // Prepare Create candidate parsed CV
+        const candidateParsedCvCreateData: DbCandidateParsedCvDto = {
+          id: UlidService.getUlidId(),
+          createdAt: currentDate,
+          updatedAt: currentDate,
+          name: candidateName.toLowerCase(),
+          email: applicantEmail,
+          phoneNumberDetails: {
+            number: phoneNumber,
+            countryCode: phoneCountryCode
+          },
+          // currentCompany: ,
+          // currentDesignation: ,
+          totalYOE: candidateYoe,
+          relevantYOE: candidateYoe,
+          currentCTC: candidateCtc,
+          expectedCTC: candidateEctc,
+          noticePeriod: candidateNoticePeriod,
+          location: candidateLocation ? candidateLocation.toLowerCase() : undefined,
+          // readyToRelocate: ,
+          cvAwsS3ResourceType: CandidateParsedCvAwsS3ResourceTypeEnum.USER_RESUME,
+          cvAwsS3BucketName: process.env.APP_AWS_S3_BUCKET_WORKO_APP as string,
+          cvAwsS3FilePath: APP_CONSTANTS.AWS_S3_DIR_PATHS.USER_RESUME.strtr({
+            "{userId}": candidateCognitoUserId,
+          }),
+          cvAwsS3FileName: candidateCvAwsS3FileName,
+          cvAwsS3FileTracker: [
+            {
+              actionDate: currentDate,
+              resourceType: CandidateParsedCvAwsS3ResourceTypeEnum.USER_RESUME,
+              bucketName: process.env.APP_AWS_S3_BUCKET_WORKO_APP as string,
+              filePath: APP_CONSTANTS.AWS_S3_DIR_PATHS.USER_RESUME.strtr({
+                "{userId}": candidateCognitoUserId,
+              }),
+              fileName: candidateCvAwsS3FileName
+            }
+          ],
+          isNoticePeriodNegotiable: isCandidateNoticePeriodNegotiable,
+          companyId: companyId,
+          jobId: jobId,
+          userDetailId: candidateCognitoUserId,
+          corporateCandidateProfileId: corporateCandidateProfileCreateData.id
+        };
+        corporateCandidateProfileCreateData.candidateParsedCvId = candidateParsedCvCreateData.id;
+        createOrUpdateCandidateProfile = candidateParsedCvServiceObj.createCandidateParsedCvWithEmbedding(candidateParsedCvCreateData);
+
+        let createCentralCandidateProfileData: DbCentralCandidateProfileDto = {
+          id: applicantEmail,
+          createdAt: currentDate,
+          updatedAt: currentDate,
+          candidateEmail: applicantEmail,
+          phoneNumberDetails: candidateParsedCvCreateData.phoneNumberDetails,
+          refereeType: CentralCandidateProfileDbRefereeTypeEnum.WORKO,
+          userDetailId: candidateDetails.id,
+          candidateProfileInCompanies: [
+            {
+              companyId: companyId,
+              companyName: companyName,
+              jobIds: [jobId],
+            },
+          ],
+          corporateCandidateProfileIds: [corporateCandidateProfileCreateData.id],
+          candidateParsedCvIds: [candidateParsedCvCreateData.id],
+          latestCandidateParsedCvId: candidateParsedCvCreateData.id,
+        };
+        createOrUpdateCentralCandidateProfile = centralCandidateProfileServiceObj.createCentralCandidateProfile(createCentralCandidateProfileData);
+      }
+
+      const candidateProfileResult: [
+        boolean | DbCandidateParsedCvDto | undefined, 
+        DbCorporateCandidateProfileDto | undefined, 
+        DbCentralCandidateProfileDto | undefined
+      ] = await Promise.all([
+        createOrUpdateCandidateProfile,
+        corporateCandidateProfileServiceObj.createCorporateCandidateProfile(corporateCandidateProfileCreateData),
+        createOrUpdateCentralCandidateProfile
+      ]);
+
+      return candidateProfileResult;
+    }
+  }
+
   /**
    * createJobApplication
    *
@@ -330,7 +648,7 @@ class UserJobApplicationService {
       // Throw error if user has already applied for the job.
       throw new BaseError(
         `You have already applied for this job. Check your dashboard for reference.`,
-        HttpStatusCode.FORBIDDEN_403
+        HttpStatusCode.CONFLICT_409
       );
     }
 
@@ -576,15 +894,17 @@ class UserJobApplicationService {
           }
         },
         !!countCompanyQueryResponse.count,
-      )
-    ]);
+      ),
 
-    // Invoke a lambda function to calculate matching scores for this job application
-    InvokeLambdaService.triggerMatchingScoreCalculation(
-      emailId,
-      MatchingScoreEntityEnum.JOB_APP,
-      jobApplicationSK
-    );
+      // Invoke a lambda function to calculate matching scores for this job application
+      InvokeLambdaService.triggerMatchingScoreCalculation(
+        emailId,
+        MatchingScoreEntityEnum.JOB_APP,
+        jobApplicationSK
+      ),
+
+      this.performCandProfileDatabaseActivitiesAfterJobApply(jobApplicationDetails, candidateDetails)
+    ]);
 
     /**
      * 1. In matching score calculation lambda(python language) code `sqs` will be triggerred
@@ -912,6 +1232,212 @@ class UserJobApplicationService {
     );
   }
 
+  private async getApplicantDetailsForJobApplicationListing(
+    applicantEmails: string[],
+  ): Promise<(Partial<DbUserDetailDto> & {
+    email: string;
+    cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+  })[]>
+  {
+    const applicantDetailsArray: Promise<Partial<DbUserDetailDto> & {
+      email: string;
+      cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+    }>[] = applicantEmails.map(async (eachApplicantEmail: string) => {
+      const registeredApplicantDetails: QueryResponse<DbUserDetailDto> = await userDetailServiceObj.get(
+        eachApplicantEmail
+      );
+      if(registeredApplicantDetails.count) {
+        const userDetail: DbUserDetailDto = registeredApplicantDetails[0];
+        if(userDetail.isEmailVerified && userDetail.CV) {
+          const registeredUser: Partial<DbUserDetailDto> & {email: string, cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum} = {
+            ...userDetail,
+            email: eachApplicantEmail,
+            cvAwsS3ResourceType: CandidateParsedCvAwsS3ResourceTypeEnum.USER_RESUME,
+          }
+          return registeredUser;
+        } else if((!userDetail.isEmailVerified || !userDetail.CV) && userDetail.isUserCreatedInternally) {
+          const centralCandidateProfileDetails: DbCentralCandidateProfileDto | undefined = await centralCandidateProfileServiceObj.getCentralCandidateProfileById(eachApplicantEmail);
+          if(!centralCandidateProfileDetails) {
+            const internallyCreatedUser: Partial<DbUserDetailDto> & {email: string, cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum} = {
+              ...userDetail,
+              email: eachApplicantEmail
+            };
+            return internallyCreatedUser;
+          } else {
+            const candidateParsedCv: DbCandidateParsedCvDto | undefined = await candidateParsedCvServiceObj.getCandidateParsedCvById(
+              centralCandidateProfileDetails.latestCandidateParsedCvId
+            );
+            if(!candidateParsedCv) {
+              const internallyCreatedUser: Partial<DbUserDetailDto> & {email: string, cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum} = {
+                ...userDetail,
+                email: eachApplicantEmail
+              };
+              return internallyCreatedUser;
+            } else {
+              const {
+                name: candidateName,
+                currentCTC,
+                expectedCTC,
+                location: candidateLocation,
+                noticePeriod: candidateNoticePeriod,
+                totalYOE: totalYearsOfExperience,
+                cvAwsS3ResourceType,
+                cvAwsS3FileName,
+                currentCompany,
+                currentDesignation
+              } = candidateParsedCv;
+              const internallyCreatedUser: Partial<DbUserDetailDto> & {cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum, email: string} = {
+                id: userDetail.id,
+                name: candidateName,
+                email: eachApplicantEmail,
+                CTC: currentCTC,
+                ECTC: expectedCTC,
+                YOE: totalYearsOfExperience,
+                location: candidateLocation,
+                noticePeriod: candidateNoticePeriod,
+                cvAwsS3ResourceType,
+                CV: cvAwsS3FileName,
+                multipleCandidateExperience: [
+                  {
+                    designation: currentDesignation ?? "",
+                    department: "",
+                    endDate: "",
+                    companyName: currentCompany ?? "",
+                  }
+                ]
+              };
+              return internallyCreatedUser;
+            }
+          }
+        } else {
+          const internallyCreatedUser: Partial<DbUserDetailDto> & {email: string, cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum} = {
+            ...userDetail,
+            email: eachApplicantEmail
+          };
+          return internallyCreatedUser;
+        }
+      } else {
+        const notFoundUser: Partial<DbUserDetailDto> & {email: string, cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum} = {
+          email: eachApplicantEmail
+        };
+        return notFoundUser;
+      }
+    });
+
+    // Return the user details
+    return Promise.all(applicantDetailsArray);
+  }
+
+  async prepareJobApplicationsWithUserDetails(
+    jobApplicationsArray: (DbUserJobApplicationDto & {
+      jobUrl: string | undefined;
+      jobTitle: string | undefined;
+      jdExtracted: string | undefined;
+    })[],
+    includeInterviewDetails: boolean = false
+  ): Promise<JobApplicationWithUserDetailsType[]> {
+    // logger
+    global.logger.info("Prepare job applications with user details [Service]", {
+      filePath: __filename,
+      methodName: this.prepareJobApplicationsWithUserDetails.name,
+      includeInterviewDetails,
+    });
+
+    // get unique user email ids
+    const uniqueUserEmailIds: string[] = Array.from(
+      new Set(
+        jobApplicationsArray.map(
+          (
+            item: DbUserJobApplicationDto & {
+              jobUrl: string | undefined;
+              jobTitle: string | undefined;
+              jdExtracted: string | undefined;
+            }
+          ) => item.PK.split("#")[2]
+        )
+      )
+    );
+
+    // get user details by unique user email ids
+    const userDetailsArray: (Partial<DbUserDetailDto> & {
+      email: string;
+      cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+    })[] = await this.getApplicantDetailsForJobApplicationListing(
+      uniqueUserEmailIds
+    );
+
+    // Covert user details to map for easy access
+    const userDetailsMap: Map<string, Partial<DbUserDetailDto> & {
+      email: string;
+      cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+    }> = new Map<string, Partial<DbUserDetailDto> & {email: string, cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum} >(
+      userDetailsArray.map(
+        (
+          eachUserDetail: Partial<DbUserDetailDto> & {
+            email: string;
+            cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+          }
+        ) => [eachUserDetail.email, eachUserDetail]
+      )
+    );
+
+    // Fetch interview details if flag is enabled
+    let interviewMap: Map<string, DbInterviewDto[]> = new Map();
+    if (includeInterviewDetails) {
+      interviewMap = await interviewServiceObj.getUserInterviewsByEmailIds(
+        uniqueUserEmailIds
+      );
+    }
+
+    // attach user details to job applications
+    const jobApplicationsWithUserDetails: JobApplicationWithUserDetailsType[] =
+      await Promise.all(
+        jobApplicationsArray.map(
+          async (
+            eachJobApplication: DbUserJobApplicationDto & {
+              jobUrl: string | undefined;
+              jobTitle: string | undefined;
+              jdExtracted: string | undefined;
+            }
+          ) => {
+            // get user details for each job application
+            const userEmail: string = eachJobApplication.PK.split("#")[2];
+            const userDetails: (Partial<DbUserDetailDto> & {
+              email: string;
+              cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+            }) | undefined = userDetailsMap.get(userEmail);
+
+            // if user details not found, return job application without applicant details
+            if (!userDetails) {
+              return {
+                ...eachJobApplication,
+                applicantDetails: undefined,
+              };
+            }
+
+            // Get interview details if flag is enabled
+            const interviewDetails: DbInterviewDto[] | undefined =
+              includeInterviewDetails ? interviewMap.get(userEmail) : undefined;
+            
+            const jobAppliactionDetailWithUserDetail: JobApplicationWithUserDetailsType =
+              {
+                ...eachJobApplication,
+                applicantDetails: {
+                  ...userDetails,
+                  ...(includeInterviewDetails && {
+                    interviewDetails: interviewDetails || [],
+                  }),
+                },
+              };
+
+            return jobAppliactionDetailWithUserDetail;
+          }
+        )
+      );
+
+    return jobApplicationsWithUserDetails;
+  }
+
   /**
    * prepareJobApplicationsWithUserDetails
    *
@@ -930,6 +1456,127 @@ class UserJobApplicationService {
    * @param {boolean} includeInterviewDetails - Flag to include interview details. Default: false.
    * @returns {Promise<JobApplicationWithUserDetailsType[]>} A promise that resolves to an array of job applications with user details.
    */
+  /*
+  async prepareJobApplicationsWithUserDetails(
+    jobApplicationsArray: (DbUserJobApplicationDto & {
+      jobUrl: string | undefined;
+      jobTitle: string | undefined;
+      jdExtracted: string | undefined;
+    })[],
+    includeInterviewDetails: boolean = false
+  ): Promise<JobApplicationWithUserDetailsType[]> {
+    // logger
+    global.logger.info("Prepare job applications with user details [Service]", {
+      filePath: __filename,
+      methodName: this.prepareJobApplicationsWithUserDetails.name,
+      includeInterviewDetails,
+    });
+
+    // get unique user email ids
+    const uniqueUserEmailIds: string[] = Array.from(
+      new Set(
+        jobApplicationsArray.map(
+          (
+            item: DbUserJobApplicationDto & {
+              jobUrl: string | undefined;
+              jobTitle: string | undefined;
+              jdExtracted: string | undefined;
+            }
+          ) => item.PK.split("#")[2]
+        )
+      )
+    );
+
+    // get user details by unique user email ids
+    const userDetailsArray: (DbUserDetailDto | DbCandidateParsedCvDto | {
+      onlyApplicantEmail: string;
+    })[] = await this.getApplicantDetailsForJobApplicationListing(
+      uniqueUserEmailIds
+    );
+
+    // Covert user details to map for easy access
+    const userDetailsMap = new Map<string, DbUserDetailDto | DbCandidateParsedCvDto | { onlyApplicantEmail: string }>(
+      userDetailsArray.map(
+        (
+          eachUserDetail: DbUserDetailDto | DbCandidateParsedCvDto | { onlyApplicantEmail: string }
+        ) => {
+          if ("PK" in eachUserDetail) {
+            return [eachUserDetail.PK.split("#")[2], eachUserDetail];
+          } else if ("email" in eachUserDetail) {
+            return [eachUserDetail.email, eachUserDetail];
+          } else {
+            return [eachUserDetail.onlyApplicantEmail, eachUserDetail];
+          }
+        }
+      )
+    );
+
+    // Fetch interview details if flag is enabled
+    let interviewMap: Map<string, DbInterviewDto[]> = new Map();
+    if (includeInterviewDetails) {
+      interviewMap = await interviewServiceObj.getUserInterviewsByEmailIds(
+        uniqueUserEmailIds
+      );
+    }
+
+    // attach user details to job applications
+    const jobApplicationsWithUserDetails: JobApplicationWithUserDetailsType[] =
+      await Promise.all(
+        jobApplicationsArray.map(
+          async (
+            eachJobApplication: DbUserJobApplicationDto & {
+              jobUrl: string | undefined;
+              jobTitle: string | undefined;
+              jdExtracted: string | undefined;
+            }
+          ) => {
+            // get user details for each job application
+            const userEmail: string = eachJobApplication.PK.split("#")[2];
+            const userDetails: DbUserDetailDto | DbCandidateParsedCvDto | { onlyApplicantEmail: string;} | undefined =
+              userDetailsMap.get(userEmail);
+
+            // if user details not found, return job application without applicant details
+            if (!userDetails) {
+              return {
+                ...eachJobApplication,
+                applicantDetails: undefined,
+              };
+            }
+
+            // Get interview details if flag is enabled
+            const interviewDetails: DbInterviewDto[] | undefined =
+              includeInterviewDetails ? interviewMap.get(userEmail) : undefined;
+            
+            let registered: Partial<DbUserDetailDto> | undefined;
+            let unregistered: DbCandidateParsedCvDto | { onlyApplicantEmail: string } = { onlyApplicantEmail: userEmail };
+            if("PK" in userDetails) {
+              registered = userDetails;
+            } else {
+              unregistered = userDetails;
+            }
+
+            const jobAppliactionDetailWithUserDetail: JobApplicationWithUserDetailsType =
+              {
+                ...eachJobApplication,
+                applicantDetails: {
+                  registered,
+                  unregistered,
+                  ...(includeInterviewDetails && {
+                    interviewDetails: interviewDetails || [],
+                  }),
+                },
+              };
+
+            return jobAppliactionDetailWithUserDetail;
+          }
+        )
+      );
+
+    return jobApplicationsWithUserDetails;
+  }
+  */
+
+  /*
   async prepareJobApplicationsWithUserDetails(
     jobApplicationsArray: (DbUserJobApplicationDto & {
       jobUrl: string | undefined;
@@ -1029,6 +1676,7 @@ class UserJobApplicationService {
 
     return jobApplicationsWithUserDetails;
   }
+  */
 
   /**
    * getJobApplicationsByFilterOptions
@@ -1838,6 +2486,38 @@ class UserJobApplicationService {
     }
   }
 
+  private async performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    currentActionDateTime: string
+  ) {
+    if (
+      [
+        JobApplicationStatus.REJECTED,
+        JobApplicationStatus.UNDER_EVALUATION,
+        JobApplicationStatus.PROCESSING_INTERVIEW,
+        JobApplicationStatus.HIRED,
+        JobApplicationStatus.JOINED,
+      ].includes(updatedJobApplication.status)
+    ) {
+      if (updatedJobApplication.agencyUserSubmissionId) {
+        const agencyUserSubmissionDetails: DbAgencyUserSubmissionDto | undefined = await agencyUserSubmissionServiceObj.getAgencyUserSubmissionById(
+          updatedJobApplication.agencyUserSubmissionId
+        );
+        if(agencyUserSubmissionDetails) {
+          if(agencyUserSubmissionDetails.userJobApplicationId === updatedJobApplication.id) {
+            await agencyUserSubmissionServiceObj.updateAgencyUserSubmissionById(
+              agencyUserSubmissionDetails.id,
+              {
+                updatedAt: currentActionDateTime,
+                jobApplicationStatus: updatedJobApplication.status as unknown as AgencyUserSubmissionDbJobApplicationStatusEnum
+              }
+            );
+          }
+        }
+      }
+    }
+  }
+
   private async performCountUserActivitiesAfterJobApplicationUpdate(
     updatedJobApplication: DbUserJobApplicationDto,
     jobApplicationStatusBeforeUpdate: JobApplicationStatus
@@ -2472,6 +3152,11 @@ class UserJobApplicationService {
         currentActionDateTime
       ),
 
+      this.performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        currentActionDateTime,
+      ),
+
       this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
         updatedJobApplication,
         jobApplicationStatusBeforeUpdate,
@@ -2569,7 +3254,10 @@ class UserJobApplicationService {
     const parsedJobApplication: DbUserJobApplicationDto =
       await this.getJobApplicationById(jobApplicationId);
 
-    if(![JobApplicationStatus.CV_DOWNLOADED, JobApplicationStatus.ON_HOLD, JobApplicationStatus.UNDER_EVALUATION].includes(newJobApplicationStatus)) {
+    // Other than CV_DOWNLOADED status, if the status is already updated, throw an error
+    if(![
+      JobApplicationStatus.CV_DOWNLOADED, 
+    ].includes(newJobApplicationStatus)) {
       this.throwErrorForAlreadyUpdatedJobApplicationStatus(
         newJobApplicationStatus,
         parsedJobApplication.status
@@ -2640,7 +3328,7 @@ class UserJobApplicationService {
           };
         }
         break;
-
+    
       case JobApplicationStatus.DOCUMENT_REQUESTED:
         const {requestedDocumentNames} = jobApplicationRequestBody;
 
@@ -3792,7 +4480,7 @@ class UserJobApplicationService {
         );
       }
 
-      const deleteResponse: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await awsSchedulerClientLibrary.deleteSchedule({ Name: rejectionAwsScheduleId });
+      const deleteResponse: DeleteScheduleCommandOutput = await awsSchedulerClientLibrary.deleteSchedule({ Name: rejectionAwsScheduleId });
       global.logger.info(
         `Delete Schedule Job [Service]`,
         {

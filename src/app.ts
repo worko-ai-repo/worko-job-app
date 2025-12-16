@@ -13,6 +13,7 @@ import "./libraries/logger.library";
 
 // Import configs
 import DBConfig from "./db/DB.config";
+import "./configs/gcp-sdk.config";
 import APP_CONSTANTS from "./configs/constants.config";
 
 // Import middlewares
@@ -84,7 +85,11 @@ class App {
    * This method registers the application routes exposed outside by the application, to allow the users/clients to access the routes/resources.
    */
   registerAppRoutes() {
-    this.app.use("/", getAuthorizerContext(), routes);
+    this.app.use(
+      "/", 
+      getAuthorizerContext(), 
+      routes
+    );
   }
 
   /**

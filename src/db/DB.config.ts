@@ -33,6 +33,8 @@ import { CountGlobalModel } from "./models/CountGlobal.model";
 import { CountCompanyJobModel } from "./models/CountCompanyJob.model";
 import { CountCompanyModel } from "./models/CountCompany.model";
 import { InterviewModel } from "./models/UserInterview.model";
+import { UserSkillModel } from "./models/UserSkill.model";
+import { UserPreferenceModel } from "./models/UserPreference.model";
 
 /**
  * DBConfig
@@ -150,6 +152,8 @@ class DBConfig {
         UserDetailModel,
         ScheduleJobModel,
         InterviewModel,
+        UserSkillModel,
+        UserPreferenceModel
       ]
     );
   }

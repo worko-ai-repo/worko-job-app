@@ -41,8 +41,17 @@ class DbRequestEvaluationDto extends BaseDbDto {
 
   /**
    * @reference `id` attribute of `UserDetail.model.ts` in `worko` table of `dynamodb`
+   * @description 
+   *  1. This will not be stored if applicant is unregistered
    */
-  applicantUserId!: string;
+  applicantUserId?: string;
+
+  /**
+   * @description
+   *  1. Whenever `corporate` or `worko-admin` clicks `Accept & Send for evaluation` from `agency user submission` listing
+   * @reference "id" attribute of "CandidateParsedCv.model.ts" in gcp firestore
+   */
+  candidateParsedCvId?: string;
 
   /**
    * @reference `PK` attribute of `UserDetail.model.ts` in `worko` table of `dynamodb`
@@ -157,7 +166,11 @@ const RequestEvaluationSchema: Schema = new dynamoose.Schema(
     },
     applicantUserId: {
       type: String,
-      required: true,
+      required: false,
+    },
+    candidateParsedCvId: {
+      type: String,
+      required: false,
     },
     applicantName: {
       type: String,

@@ -15,7 +15,14 @@ export interface RequestEvaluationCreateApiDTO {
   jobId: string;
   jobTitle: string;
   companyId: string;
-  applicantUserId: string;
+  applicantUserId?: string;
+
+  /**
+   * @description
+   *  1. Whenever `corporate` or `worko-admin` clicks `Accept & Send for evaluation` from `agency user submission` listing
+   * @reference "id" attribute of "CandidateParsedCv.model.ts" in gcp firestore
+   */
+  candidateParsedCvId?: string;
   applicantUserEmail: string;
   applicantName: string;
   evaluatorDetails: RequestEvaluationDbEvaluatorDetailsDto;

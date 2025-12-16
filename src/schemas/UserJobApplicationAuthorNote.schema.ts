@@ -15,9 +15,7 @@ const noteDetailValidation = Joi.object({
     "string.empty": "Title should not be empty",
     "string.base": "Title must be a string",
   }),
-  detailedDescription: Joi.string().required().messages({
-    "any.required": "Detailed Description is required",
-    "string.empty": "Detailed Description should not be empty",
+  detailedDescription: Joi.string().optional().messages({
     "string.base": "Detailed Description must be a string",
   }),
 });

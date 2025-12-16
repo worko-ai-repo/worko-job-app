@@ -1,5 +1,17 @@
 // NPM packages
-import AWS from "aws-sdk";
+import {
+  S3Client,
+  CreateBucketCommand,
+  ListBucketsCommand,
+  HeadObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  type Bucket,
+  type S3ClientConfig,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Upload } from "@aws-sdk/lib-storage";
 
 // Import configs
 import APP_CONSTANTS from "../configs/constants.config";
@@ -19,15 +31,15 @@ class AwsS3ClientLibrary {
    *
    * AWS S3 object to perform s3 related operations.
    */
-  private s3: AWS.S3;
+  private s3: S3Client;
 
   /**
    * constructor
    *
-   * @param {AWS.S3.ClientConfiguration} config
+   * @param {S3ClientConfig} config
    */
-  constructor(private config: AWS.S3.ClientConfiguration) {
-    this.s3 = new AWS.S3(this.config);
+  constructor(private config: S3ClientConfig) {
+    this.s3 = new S3Client(this.config);
 
     // Log message
     console.log(`The '${AwsS3ClientLibrary.name}' is initialised."`, {
@@ -40,12 +52,12 @@ class AwsS3ClientLibrary {
    *
    * Update the AWS S3 configuration
    *
-   * @param {AWS.S3.ClientConfiguration} config
+   * @param {S3ClientConfig} config
    * @returns {void}
    */
-  updateConfig(config: AWS.S3.ClientConfiguration): void {
+  updateConfig(config: S3ClientConfig): void {
     this.config = config;
-    this.s3 = new AWS.S3(config);
+    this.s3 = new S3Client(config);
   }
 
   /**
@@ -58,11 +70,11 @@ class AwsS3ClientLibrary {
    */
   async createBucket(bucketName: string): Promise<void> {
     try {
-      await this.s3
-        .createBucket({
+      await this.s3.send(
+        new CreateBucketCommand({
           Bucket: bucketName,
         })
-        .promise();
+      );
     } catch (error: any) {
       console.log("Failed to create S3 bucket.", {
         filePath: __filename,
@@ -81,9 +93,9 @@ class AwsS3ClientLibrary {
    *
    * @returns {Promise<S3.Bucket[]>}
    */
-  async listBuckets(): Promise<AWS.S3.Bucket[]> {
+  async listBuckets(): Promise<Bucket[]> {
     try {
-      const response = await this.s3.listBuckets().promise();
+      const response = await this.s3.send(new ListBucketsCommand({}));
       return response.Buckets || [];
     } catch (error: any) {
       console.log("Failed to list S3 buckets.", {
@@ -105,28 +117,30 @@ class AwsS3ClientLibrary {
    * @returns {Promise<boolean>}
    */
   async doesObjectExists(bucketName: string, key: string): Promise<boolean> {
-    return this.s3
-      .headObject({
-        Bucket: bucketName,
-        Key: key,
-      })
-      .promise()
-      .then(() => {
-        return true;
-      })
-      .catch((error: any) => {
-        if (error.code === "NotFound") {
-          return false;
-        }
-        console.log("Error checking object existence in S3.", {
-          filePath: __filename,
-          methodName: this.doesObjectExists.name,
-          bucket: bucketName,
-          key: key,
-          awsS3Exception: error.message,
-        });
-        throw new BaseError(APP_CONSTANTS.ERROR_MESSAGE_UNKNOWN_EXCEPTION);
+    try {
+      await this.s3.send(
+        new HeadObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        })
+      );
+      return true;
+    } catch (error: any) {
+      if (
+        error.name === "NotFound" ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
+        return false;
+      }
+      console.log("Error checking object existence in S3.", {
+        filePath: __filename,
+        methodName: this.doesObjectExists.name,
+        bucket: bucketName,
+        key: key,
+        awsS3Exception: error.message,
       });
+      throw new BaseError(APP_CONSTANTS.ERROR_MESSAGE_UNKNOWN_EXCEPTION);
+    }
   }
 
   /**
@@ -134,30 +148,29 @@ class AwsS3ClientLibrary {
    *
    * Upload an object to an S3 bucket
    *
-   * @NOTE: This "uploadObject" method uses aws v2 SDK. If you want to use
-   * aws v3 SDK discuss with `CTO` and refer: @see https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html
-   *
    * @param {string} bucketName
    * @param {string} key Complete file path along with filename/key
-   * @param {Buffer<ArrayBufferLike>} data
+   * @param {Buffer} data
    * @param {any} params [OPTIONAL] Any additional parameter if you want to pass
    * @returns {Promise<void>}
    */
   async uploadObject(
     bucketName: string,
     key: string,
-    data: Buffer<ArrayBufferLike>,
+    data: Buffer,
     params: any = {}
   ): Promise<void> {
     try {
-      await this.s3
-        .upload({
-          ...params,
+      const upload = new Upload({
+        client: this.s3,
+        params: {
           Bucket: bucketName,
           Key: key,
           Body: data,
-        })
-        .promise();
+          ...params,
+        },
+      });
+      await upload.done();
     } catch (error: any) {
       console.log("Failed to upload object to S3.", {
         filePath: __filename,
@@ -181,12 +194,12 @@ class AwsS3ClientLibrary {
    */
   async deleteObject(bucketName: string, key: string): Promise<void> {
     try {
-      await this.s3
-        .deleteObject({
+      await this.s3.send(
+        new DeleteObjectCommand({
           Bucket: bucketName,
           Key: key,
         })
-        .promise();
+      );
     } catch (error: any) {
       console.log("Failed to delete object from S3.", {
         filePath: __filename,
@@ -214,11 +227,14 @@ class AwsS3ClientLibrary {
     key: string,
     expiresInSecs: number = APP_CONSTANTS.AWS_S3_SIGNED_URL_TO_VIEW_FILE_EXPIRY_IN_SECONDS
   ): Promise<string> {
-    return this.s3.getSignedUrlPromise("getObject", {
-      Bucket: bucketName,
-      Key: key,
-      Expires: expiresInSecs,
-    });
+    return getSignedUrl(
+      this.s3,
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      }),
+      { expiresIn: expiresInSecs }
+    );
   }
 
   /**
@@ -238,12 +254,15 @@ class AwsS3ClientLibrary {
     expiresInSecs: number = APP_CONSTANTS.AWS_S3_SIGNED_URL_TO_UPLOAD_FILE_EXPIRY_IN_SECONDS,
     params: any = {}
   ): Promise<string> {
-    return this.s3.getSignedUrlPromise("putObject", {
-      ...params,
-      Bucket: bucketName,
-      Key: key,
-      Expires: expiresInSecs,
-    });
+    return getSignedUrl(
+      this.s3,
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        ...params,
+      }),
+      { expiresIn: expiresInSecs }
+    );
   }
 }
 

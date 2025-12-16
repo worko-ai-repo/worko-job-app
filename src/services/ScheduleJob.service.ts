@@ -1,7 +1,6 @@
 
 // Import AWS SDK
-import { AWSError, Scheduler } from "aws-sdk";
-import { PromiseResult } from "aws-sdk/lib/request";
+import { CreateScheduleCommandOutput, DeleteScheduleCommandOutput } from "@aws-sdk/client-scheduler";
 
 // Import constants
 import APP_CONSTANTS from "../configs/constants.config";
@@ -66,7 +65,7 @@ class ScheduleJobService {
       global.logger.info("Created job in database:", createdJob);
 
       // Create the schedule in AWS Scheduler
-     let response: PromiseResult<Scheduler.CreateScheduleOutput, AWSError> = await awsSchedulerClientLibrary.createSchedule({
+     let response: CreateScheduleCommandOutput = await awsSchedulerClientLibrary.createSchedule({
         Name: createdJob.id,
         ScheduleExpression: `at(${scheduleBody.scheduleTime})`,
         FlexibleTimeWindow: {
@@ -108,7 +107,7 @@ class ScheduleJobService {
     global.logger.info("Marked scheduler job as completed in database:", id);
 
     // Delete the schedule from AWS Scheduler
-    const deleteResponse: PromiseResult<Scheduler.DeleteScheduleOutput, AWSError> = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
+    const deleteResponse: DeleteScheduleCommandOutput = await awsSchedulerClientLibrary.deleteSchedule({ Name: id });
     global.logger.info("Deleted scheduler job from AWS:", {
       response: JSON.stringify(deleteResponse),
       deleteResponse: deleteResponse,

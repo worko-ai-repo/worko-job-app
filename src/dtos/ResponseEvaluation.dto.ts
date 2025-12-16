@@ -38,7 +38,7 @@ export interface ResponseEvaluationCreateApiDTO {
   jobApplicationId: string;
   jobId: string;
   companyId: string;
-  applicantUserId: string;
+  applicantUserId?: string;
   applicantUserEmail: string;
   scheduledInterviewDetails?: ResponseEvaluationScheduledInterviewDetailsDto[];
   status: ResponseEvaluationStatusEnum;
@@ -88,7 +88,7 @@ export interface ResponseEvaluationCreateDTO {
   jobApplicationId: string;
   jobId: string;
   companyId: string;
-  applicantUserId: string;
+  applicantUserId?: string;
   scheduledInterviewDetails?: ResponseEvaluationScheduledInterviewDetailsDto[];
   status: ResponseEvaluationStatusEnum;
   statusTracker: ResponseEvaluationStatusTrackerDto[];

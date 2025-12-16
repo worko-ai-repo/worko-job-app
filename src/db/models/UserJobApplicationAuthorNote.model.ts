@@ -57,7 +57,7 @@ const UserJobApplicationAuthorNoteSchema = new Schema(
           required: true,
           schema: {
             title: { type: String, required: true },
-            detailedDescription: { type: String, required: true },
+            detailedDescription: { type: String, required: false },
             createdAt: { type: String, required: false },
             updatedAt: { type: String, required: false },
           },

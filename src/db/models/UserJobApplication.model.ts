@@ -8,10 +8,21 @@ import { DB_CONSTANTS } from "../DB.constants";
 import { BaseDbDto } from "./Base.model";
 
 // Import dtos
-import { UserJobApplicationDbJoinedDateDetailDto, UserJobApplicationDbOfferLetterDetailDto, UserJobApplicationDbOfferLetterIssueRaisedDetailDto, UserJobApplicationDbRejectedForJobClose, UserJobApplicationDbRequestedDocumentDetailDto, UserJobApplicationDbResponseDocumentDetailDto, UserJobApplicationHiredFromOtherPortal } from "../../dtos/UserJobApplication.dto";
+import {
+  UserJobApplicationDbJoinedDateDetailDto,
+  UserJobApplicationDbOfferLetterDetailDto,
+  UserJobApplicationDbOfferLetterIssueRaisedDetailDto,
+  UserJobApplicationDbRejectedForJobClose,
+  UserJobApplicationDbRequestedDocumentDetailDto,
+  UserJobApplicationDbResponseDocumentDetailDto,
+  UserJobApplicationHiredFromOtherPortal,
+} from "../../dtos/UserJobApplication.dto";
 
 // import Enums
-import { JobApplicationStatus, UserJobApplicationDocumentStatusEnum } from "../../enums/UserJobApplication.enum";
+import {
+  JobApplicationStatus,
+  UserJobApplicationDocumentStatusEnum,
+} from "../../enums/UserJobApplication.enum";
 
 // import types
 import {
@@ -39,6 +50,13 @@ class DbUserJobApplicationDto extends BaseDbDto {
    * @reference `id` attribute of `ReferAndEarn.model.ts`
    */
   referAndEarnId?: string;
+
+  /**
+   * @reference `id` attribute of `AgencyUserSubmission.model.ts`
+   */
+  agencyUserSubmissionId?: string;
+  agencyUserId?: string;
+  candidateParsedCvId?: string;
 
   status!: JobApplicationStatus;
   statusTracker!: JobApplicationStatusTrackerType;
@@ -263,6 +281,18 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
       type: String,
       required: true,
     },
+    agencyUserSubmissionId: {
+      type: String,
+      required: false,
+    },
+    agencyUserId: {
+      type: String,
+      required: false,
+    },
+    candidateParsedCvId: {
+      type: String,
+      required: false,
+    },
     referAndEarnId: {
       type: String,
       required: false,
@@ -332,7 +362,7 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
             },
             documentStatus: {
               type: String,
-              required: true, 
+              required: true,
             },
             documentMapping: {
               type: Array,
@@ -483,7 +513,7 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
           type: String,
           required: false,
         },
-      }
+      },
     },
     joiningDateDetails: {
       type: Array,

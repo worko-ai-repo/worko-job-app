@@ -1,79 +1,67 @@
+/**
+ * @see https://webpack.js.org/guides/typescript/
+ * @see https://programoholic.medium.com/build-and-deploy-serverless-application-with-webpack-584163367390
+ * @description
+ *  1. Reduce the build size of the application from more than `250MB` to 2–3 MB per lambda using webpack
+ */
+
 const path = require("path");
 const slsw = require("serverless-webpack");
+const webpack = require("webpack");
+const nodeExternals = require("webpack-node-externals");
+const TerserPlugin = require("terser-webpack-plugin");
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 module.exports = {
-  /**
-   * Entry point for the Webpack bundling process.
-   * Automatically detected by Serverless Webpack (`slsw.lib.entries`) based on your `serverless.ts` function definitions.
-   */
   entry: slsw.lib.entries,
-
-  /**
-   * Defines the environment for which Webpack is bundling the code.
-   * Setting it to 'node' targets Node.js, which is the runtime environment for AWS Lambda.
-   */
   target: "node",
-
-  /**
-   * Specifies the build mode:
-   * - 'development' for local builds to include source maps and easier debugging.
-   * - 'production' for optimized and minified code ready for deployment to AWS.
-   */
   mode: slsw.lib.webpack.isLocal ? "development" : "production", // Use "production" for deployment
 
-  /**
-   * Output settings for the bundled files.
-   *
-   * @property {string} libraryTarget - Specifies the module format for output, set to 'commonjs' as required by AWS Lambda.
-   * @property {string} path - The directory where Webpack will output the bundled files, in this case '.webpack'.
-   * @property {string} filename - The output filename pattern for the bundled functions.
-   */
   output: {
     libraryTarget: "commonjs",
     path: path.join(__dirname, ".webpack"),
     filename: "[name].js",
   },
-
-  /**
-   * Resolves extensions for module imports.
-   * Allows importing files without needing to specify their extensions for TypeScript (`.ts`) and JavaScript (`.js`).
-   * Automatically resolve '.ts' and '.js' files when importing.
-   */
   resolve: {
     extensions: [".ts", ".js"],
   },
 
+  plugins: [new ForkTsCheckerWebpackPlugin()],
+
   /**
-   * Memory optimization for containerized builds
+   * Optimization for Lambda deployment
    */
   optimization: {
-    splitChunks: false,
-    minimize: false
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          keep_classnames: true,
+          keep_fnames: true,
+        },
+      }),
+    ],
   },
 
   /**
    * Reduce build output to prevent memory issues
    */
-  stats: 'errors-only',
+  stats: "errors-only",
 
-  /**
-   * Defines how different file types should be processed (rules).
-   *
-   * @property {RegExp} test - Specifies which file types should be processed. In this case, `.ts` files.
-   * @property {string} use - Specifies the loader to handle TypeScript files, which is `ts-loader`.
-   * @property {string[]} include - Restricts the compilation to the 'src' directory where your TypeScript source files are located.
-   * @property {RegExp} exclude - Excludes the 'node_modules' directory from TypeScript compilation, as external libraries don't need to be recompiled.
-   */
   module: {
     rules: [
       {
         test: /\.ts$/,
-        use: "ts-loader",
+        loader: "ts-loader",
+        options: {
+          // disable type checker - we will use it in fork plugin
+          transpileOnly: true,
+        },
         include: [path.resolve(__dirname, "src")],
         exclude: /node_modules/,
       },
     ],
   },
+  node: false,
+  externals: [nodeExternals()],
 };
-
-
