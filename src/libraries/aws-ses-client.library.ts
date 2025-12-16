@@ -71,9 +71,6 @@ class AwsSesClientLibrary {
    * createEmailTemplate
    *
    * Create a new email template in AWS SES based on the data provided
-   *
-   * @param {AWS.SES.Types.CreateTemplateRequest} emailTemplate
-   * @returns {Promise<AWS.SES.Types.CreateTemplateResponse>}
    */
   async createEmailTemplate(
     emailTemplate: CreateTemplateCommandInput

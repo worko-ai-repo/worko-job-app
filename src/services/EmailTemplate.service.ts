@@ -30,7 +30,7 @@ class EmailTemplateService {
   ): Promise<DbEmailTemplateDto | null> {
     // == Create email template in AWS SES.
     // Email template data required for AWS SES create
-    let createEmailTempSesData: AWS.SES.Types.CreateTemplateRequest = {
+    let createEmailTempSesData = {
       Template: {
         TemplateName: emailTemplate.templateName,
         SubjectPart: emailTemplate.subject,
