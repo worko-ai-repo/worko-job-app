@@ -54,10 +54,19 @@ export enum EmailTemplateEnum {
    */
   CAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE = "CAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE",
 
+  CAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE = "CAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE",
+
+  CAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE = "CAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE",
+
   /**
    * Whenever `corporate` or `worko-admin` clicks on `hire now` button and send offer letter to `candidate` then send email to candidate
    */
   CAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE = "CAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE",
+
+  /**
+   * Whenever `corporate` or `worko-admin` send revised offer letter to `candidate` then send email to candidate
+   */
+  CAND_JOB_APPLICATION_REVISED_OFFER_SENT = "CAND_JOB_APPLICATION_REVISED_OFFER_SENT",
 
   /**
    * Whenever `corporate` or `worko-admin` clicks on `joined` button then send email to candidate

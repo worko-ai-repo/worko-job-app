@@ -224,6 +224,20 @@ export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED
   companyName: string;
   uploadDocumentsUrl: string;
 }
+ 
+export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  uploadDocumentsUrl: string;
+}
+
+export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  uploadDocumentsUrl: string;
+}
 
 export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   candidateName: string;
@@ -233,6 +247,13 @@ export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDA
 }
 
 export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  viewOfferUrl: string;
+}
+
+export interface EmailTemplatePlaceholderCAND_JOB_APPLICATION_REVISED_OFFER_SENT extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
   candidateName: string;
   jobTitle: string;
   companyName: string;

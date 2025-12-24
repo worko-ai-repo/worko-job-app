@@ -22,7 +22,7 @@ import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 // import dtos
 import { UserJobApplicationApplicantUpdateApiDTO, UserJobApplicationBulkUpdateApiDTO, UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationDocumentMappingDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
 import { EntityBulkUpdateMetricDto, PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
-import { EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
+import { EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_REVISED_OFFER_SENT, EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
 import { ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
 import { ReferAndEarnStatusTrackerDto, UpdateReferAndEarnInternalDto } from "../dtos/ReferAndEarn.dto";
 
@@ -1904,6 +1904,9 @@ class UserJobApplicationService {
       }
 
       case JobApplicationStatus.DOCUMENT_REQUESTED: {
+        global.logger.debug(`Sending Document requested email to candidate`, { 
+          updateStatus: updatedJobApplication.status,
+        });
         // Construct the email placeholders object
         const documentRequestedEmailPlaceholders: EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE =
           {
@@ -1919,6 +1922,42 @@ class UserJobApplicationService {
           EmailTemplateEnum.CAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE,
           toAddress,
           documentRequestedEmailPlaceholders
+        );
+        break;
+      }
+
+      case JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUESTED: {
+        const documentAdditionalRequestedEmailPlaceholders: EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE = {
+          ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+          candidateName: applicantNameToTitleCase,
+          jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+          companyName: updatedJobApplication.companyName.toTitleCase(),
+          uploadDocumentsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CANDIDATE_JOB_APPLICATION_URL,
+        };
+
+        // Send email to the candidate 
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE,
+          toAddress,
+          documentAdditionalRequestedEmailPlaceholders
+        );
+        break;
+      }
+
+      case JobApplicationStatus.DOCUMENT_REVISION_REQUESTED: {
+        const documentRevisionRequestedEmailPlaceholders: EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE = {
+          ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+          candidateName: applicantNameToTitleCase,
+          jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+          companyName: updatedJobApplication.companyName.toTitleCase(),
+          uploadDocumentsUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CANDIDATE_JOB_APPLICATION_URL,
+        };
+        
+        // Send email to the candidate
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE,
+          toAddress,
+          documentRevisionRequestedEmailPlaceholders
         );
         break;
       }
@@ -1940,6 +1979,24 @@ class UserJobApplicationService {
           EmailTemplateEnum.CAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE,
           toAddress,
           offerSentEmailPlaceholders
+        );
+        break;
+      }
+
+      case JobApplicationStatus.REVISED_OFFER_SENT: {
+        const revisedOfferSentEmailPlaceholders: EmailTemplatePlaceholderCAND_JOB_APPLICATION_REVISED_OFFER_SENT = {
+          ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
+          candidateName: applicantNameToTitleCase,
+          jobTitle: companyJobDetails.jobTitle.toTitleCase(),
+          companyName: updatedJobApplication.companyName.toTitleCase(),
+          viewOfferUrl: APP_CONSTANTS.FRONTEND_URLS.WORKO_CANDIDATE_JOB_APPLICATION_URL,
+        };
+        
+        // Send email to the candidate 
+        await emailLibrary.sendEmail(
+          EmailTemplateEnum.CAND_JOB_APPLICATION_REVISED_OFFER_SENT,
+          toAddress,
+          revisedOfferSentEmailPlaceholders
         );
         break;
       }
@@ -3254,9 +3311,11 @@ class UserJobApplicationService {
     const parsedJobApplication: DbUserJobApplicationDto =
       await this.getJobApplicationById(jobApplicationId);
 
-    // Other than CV_DOWNLOADED status, if the status is already updated, throw an error
+    // Other than CV_DOWNLOADED, DOCUMENT_ADDITIONAL_REQUESTED status, if the status is already updated, throw an error
     if(![
       JobApplicationStatus.CV_DOWNLOADED, 
+      JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUESTED,
+      JobApplicationStatus.DOCUMENT_REVISION_REQUESTED
     ].includes(newJobApplicationStatus)) {
       this.throwErrorForAlreadyUpdatedJobApplicationStatus(
         newJobApplicationStatus,
