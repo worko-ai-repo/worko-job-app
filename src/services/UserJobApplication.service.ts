@@ -1237,6 +1237,8 @@ class UserJobApplicationService {
   ): Promise<(Partial<DbUserDetailDto> & {
     email: string;
     cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+    cvAwsS3BucketName?: string;
+    cvAwsS3FilePath?: string;
   })[]>
   {
     const applicantDetailsArray: Promise<Partial<DbUserDetailDto> & {
@@ -1281,12 +1283,19 @@ class UserJobApplicationService {
                 location: candidateLocation,
                 noticePeriod: candidateNoticePeriod,
                 totalYOE: totalYearsOfExperience,
+                cvAwsS3BucketName,
+                cvAwsS3FilePath,
                 cvAwsS3ResourceType,
                 cvAwsS3FileName,
                 currentCompany,
                 currentDesignation
               } = candidateParsedCv;
-              const internallyCreatedUser: Partial<DbUserDetailDto> & {cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum, email: string} = {
+              const internallyCreatedUser: Partial<DbUserDetailDto> & {
+                cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum, 
+                cvAwsS3BucketName?: string,
+                cvAwsS3FilePath?: string,
+                email: string,
+              } = {
                 id: userDetail.id,
                 name: candidateName,
                 email: eachApplicantEmail,
@@ -1296,6 +1305,8 @@ class UserJobApplicationService {
                 location: candidateLocation,
                 noticePeriod: candidateNoticePeriod,
                 cvAwsS3ResourceType,
+                cvAwsS3BucketName,
+                cvAwsS3FilePath,
                 CV: cvAwsS3FileName,
                 multipleCandidateExperience: [
                   {
@@ -1362,6 +1373,8 @@ class UserJobApplicationService {
     const userDetailsArray: (Partial<DbUserDetailDto> & {
       email: string;
       cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum;
+      cvAwsS3BucketName?: string;
+      cvAwsS3FilePath?: string;
     })[] = await this.getApplicantDetailsForJobApplicationListing(
       uniqueUserEmailIds
     );

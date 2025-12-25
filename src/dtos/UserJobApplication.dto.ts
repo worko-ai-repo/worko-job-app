@@ -1,6 +1,6 @@
 
 // import dtos
-import { CommonMatchingScoreDetailDto, RecordListingFilterOptions, RecordListingFilterRequestDTO } from "./Common.dto";
+import { RecordListingFilterOptions, RecordListingFilterRequestDTO } from "./Common.dto";
 
 // import enums
 import { JobApplicationStatus, UserJobApplicationDocumentStatusEnum } from "../enums/UserJobApplication.enum";
