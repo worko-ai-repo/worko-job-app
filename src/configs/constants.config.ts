@@ -93,14 +93,6 @@ const APP_CONSTANTS = {
 
   LAMBDA_FUNCTION_NAMES: {
     /**
-     * RESUME_EXTRACTION_LAMBDA_NAME
-     *
-     * Lambda function name for "Resume Extraction"
-     * AWS Lambada Configurations related to triggering "Resume Extraction"
-     */
-    RESUME_EXTRACTION_LAMBDA_NAME: "resume-parser",
-
-    /**
      * MATCHING_SCORE_LAMBDA_NAME
      *
      * Lambda function name for "Matching Score"

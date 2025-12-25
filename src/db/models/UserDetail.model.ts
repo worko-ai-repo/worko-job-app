@@ -91,7 +91,7 @@ class DbUserDetailDto extends BaseDbDto {
 
   /**
    * Whenever candidate uploads `CV` then nodejs api
-   * will trigger the `resume-parser` lambda function
+   * will trigger the `worko-resume-parser-dev` lambda function
    * to extract and store the details from the uploaded CV
    * and once the data is extracted then this field will be set to true
    */

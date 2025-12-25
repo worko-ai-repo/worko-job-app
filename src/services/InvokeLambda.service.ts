@@ -11,7 +11,7 @@ import userDetailDao from "../daos/UserDetail.dao";
 
 // import dtos
 import { InvokeLambdaParsedJobDescriptionDto, InvokeLambdaRejectJobApplicationDto, InvokeLambdaToMatchUserResumeWithJobAndJdDto, InvokeLambdMatchingScoreCalcualtionDto } from "../dtos/InvokeLambda.dto";
-import { JobListingFilterOptions, ParsedJobDescriptionApiDto } from "../dtos/Job.dto";
+import { ParsedJobDescriptionApiDto } from "../dtos/Job.dto";
 
 // import enums
 import { MatchingScoreEntityEnum } from "../enums/Common.enum";
