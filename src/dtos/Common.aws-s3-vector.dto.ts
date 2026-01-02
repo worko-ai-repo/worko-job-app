@@ -1,4 +1,7 @@
 
+// Import enums
+import { GcpFirestoreSortOrderTypeEnum } from "../enums/Common.gcp-firestore.enum";
+
 
 export interface AwsS3VectorRecordListingFilterOptions {
   /**
@@ -9,14 +12,18 @@ export interface AwsS3VectorRecordListingFilterOptions {
   pageSize: number;
 
   /**
-   * lastKey (offset)
-   *
-   * Sample Value of "lastKey": [ 1740396641431, '1430704032' ]
+   * lastKey
    */
-  lastKey?: Array<any>;
+  lastKey?: {
+    /**
+     * @reference The "id" field of the firestore document
+     * @example "01K8TPT1PT2W5DTRSFPWTB92GH"
+     */
+    gcpFirestoreDocumentId: string;
+  };
 
   // sortOrder means the order in which the records should be sorted.
-  sortOrder?: string;
+  sortOrder?: GcpFirestoreSortOrderTypeEnum;
 
   // search text
   searchText?: string;

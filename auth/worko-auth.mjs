@@ -95,7 +95,9 @@ export const handler = async function (event, context, callback) {
         process.env.WORKO_AGENCY_USER_POOL
       );
 
-      const isWorkoPoolUser = payload.iss.includes(process.env.WORKO_USER_POOL);
+      const isWorkoPoolUser = payload.iss.includes(
+        process.env.WORKO_USER_POOL
+      );
 
       if (isWorkoAgencyPoolUser) {
         console.log("Worko Agency user pool detected");
@@ -116,7 +118,7 @@ export const handler = async function (event, context, callback) {
         }
 
         console.log("Agency user verified successfully");
-      } else if (isWorkoPoolUser) {
+      } else if(isWorkoPoolUser) {
         console.log("Worko user pool detected");
 
         // check if admin url
@@ -375,14 +377,8 @@ var checkWhitelistedUrl = function (url, httpMethod) {
     { path: "/user/register/candidate", method: HttpMethodsConstants.ANY },
     { path: "/user/register/employee", method: HttpMethodsConstants.ANY },
     { path: "/user/:email(*)/cv", method: HttpMethodsConstants.ANY },
-    {
-      path: "/user/request-otp/force-change-password",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/user/verify-otp/force-change-password",
-      method: HttpMethodsConstants.POST,
-    },
+    { path: "/user/request-otp/force-change-password", method: HttpMethodsConstants.POST },
+    { path: "/user/verify-otp/force-change-password", method: HttpMethodsConstants.POST },
 
     // file routes
     { path: "/file/gsu2u/USER_RESUME", method: HttpMethodsConstants.ANY },
@@ -565,10 +561,7 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
 
     // Agency Job Assignment Routers
     { path: "/agency-job-assignment/bulk", method: HttpMethodsConstants.POST },
-    {
-      path: "/agency-job-assignment/bulk/remove-jobs",
-      method: HttpMethodsConstants.PATCH,
-    },
+    { path: "/agency-job-assignment/bulk/remove-jobs", method: HttpMethodsConstants.PATCH },
     { path: "/agency-job-assignment*", method: HttpMethodsConstants.GET },
 
     // File routers
@@ -588,22 +581,10 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
     // Agency User Submission Routers
     { path: "/agency-user-submission*", method: HttpMethodsConstants.GET },
     { path: "/agency-user-submission/:id", method: HttpMethodsConstants.GET },
-    {
-      path: "/agency-user-submission/find-matching-score",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/move-to-applicant",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/send-for-evaluation",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/reject-applicant",
-      method: HttpMethodsConstants.PATCH,
-    },
+    { path: "/agency-user-submission/find-matching-score", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/move-to-applicant", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/send-for-evaluation", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/reject-applicant", method: HttpMethodsConstants.PATCH },
 
     // User Interview Routers
     {
@@ -615,10 +596,12 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
     { path: "/corporate-candidate-profile*", method: HttpMethodsConstants.GET },
 
     // Candidate Parsed Cv Routers
-    {
-      path: "/candidate-parsed-cv/corp-action*",
-      method: HttpMethodsConstants.GET,
-    },
+    { path: "/candidate-parsed-cv/search-in-db/corp-action*", method: HttpMethodsConstants.GET },
+    { path: "/candidate-parsed-cv/move-to-applicant", method: HttpMethodsConstants.POST },
+    { path: "/candidate-parsed-cv/find-matching-score", method: HttpMethodsConstants.POST },
+
+    // Candidate Job Matching Routers
+    { path: "/candidate-job-matching/:id", method: HttpMethodsConstants.GET },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -715,10 +698,7 @@ var isCorporateAdminUrl = function (url, httpMethod) {
 
     // Agency Job Assignment Routers
     { path: "/agency-job-assignment/bulk", method: HttpMethodsConstants.POST },
-    {
-      path: "/agency-job-assignment/bulk/remove-jobs",
-      method: HttpMethodsConstants.PATCH,
-    },
+    { path: "/agency-job-assignment/bulk/remove-jobs", method: HttpMethodsConstants.PATCH },
     { path: "/agency-job-assignment*", method: HttpMethodsConstants.GET },
 
     // File routers
@@ -744,31 +724,21 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     // Agency User Submission Routers
     { path: "/agency-user-submission*", method: HttpMethodsConstants.GET },
     { path: "/agency-user-submission/:id", method: HttpMethodsConstants.GET },
-    {
-      path: "/agency-user-submission/find-matching-score",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/move-to-applicant",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/send-for-evaluation",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/reject-applicant",
-      method: HttpMethodsConstants.PATCH,
-    },
+    { path: "/agency-user-submission/find-matching-score", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/move-to-applicant", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/send-for-evaluation", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/reject-applicant", method: HttpMethodsConstants.PATCH },
 
     // Corporate Candidate Profile Routers
     { path: "/corporate-candidate-profile*", method: HttpMethodsConstants.GET },
 
     // Candidate Parsed Cv Routers
-    {
-      path: "/candidate-parsed-cv/corp-action*",
-      method: HttpMethodsConstants.GET,
-    },
+    { path: "/candidate-parsed-cv/search-in-db/corp-action*", method: HttpMethodsConstants.GET },
+    { path: "/candidate-parsed-cv/move-to-applicant", method: HttpMethodsConstants.POST },
+    { path: "/candidate-parsed-cv/find-matching-score", method: HttpMethodsConstants.POST },
+
+    // Candidate Job Matching Routers
+    { path: "/candidate-job-matching/:id", method: HttpMethodsConstants.GET },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -790,10 +760,7 @@ var isAgencyUrl = function (url, httpMethod) {
   const urlList = [
     // Agency User Invite Routers
     { path: "/agency-invite*", method: HttpMethodsConstants.GET },
-    {
-      path: "/agency-invite/agency-action",
-      method: HttpMethodsConstants.PATCH,
-    },
+    { path: "/agency-invite/agency-action", method: HttpMethodsConstants.PATCH },
 
     // Agency User Routers
     { path: "/agency-user/", method: HttpMethodsConstants.POST },
@@ -812,12 +779,13 @@ var isAgencyUrl = function (url, httpMethod) {
       path: "/file/gsu2v/AGENCY_SUBMIT_USER_CV",
       method: HttpMethodsConstants.POST,
     },
-
-    // Agency User Submission Routers
     {
-      path: "/agency-user-submission/candidate-parse-cv",
+      path: "/file/gsu2v/AGENCY_BULK_CVS",
       method: HttpMethodsConstants.POST,
     },
+
+    // Agency User Submission Routers
+    { path: "/agency-user-submission/candidate-parse-cv", method: HttpMethodsConstants.POST },
     { path: "/agency-user-submission/", method: HttpMethodsConstants.POST },
     { path: "/agency-user-submission*", method: HttpMethodsConstants.GET },
 
@@ -825,10 +793,13 @@ var isAgencyUrl = function (url, httpMethod) {
     { path: "/job/parsejd", method: HttpMethodsConstants.POST },
 
     // Corporate Candidate Profile Routers
-    {
-      path: "/corporate-candidate-profile/duplicate",
-      method: HttpMethodsConstants.GET,
-    },
+    { path: "/corporate-candidate-profile/duplicate", method: HttpMethodsConstants.GET },
+
+    // Agency Bulk Jd Routers
+    { path: "/agency-bulk-jd*", method: HttpMethodsConstants.ANY },
+
+    // Agency Bulk Jd Resume Routers
+    { path: "/agency-bulk-jd-resume*", method: HttpMethodsConstants.ANY },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -982,18 +953,9 @@ var isAdminUrl = function (url, httpMethod) {
       path: "/agency-user-submission/find-matching-score",
       method: HttpMethodsConstants.POST,
     },
-    {
-      path: "/agency-user-submission/move-to-applicant",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/send-for-evaluation",
-      method: HttpMethodsConstants.POST,
-    },
-    {
-      path: "/agency-user-submission/reject-applicant",
-      method: HttpMethodsConstants.PATCH,
-    },
+    { path: "/agency-user-submission/move-to-applicant", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/send-for-evaluation", method: HttpMethodsConstants.POST },
+    { path: "/agency-user-submission/reject-applicant", method: HttpMethodsConstants.PATCH },
 
     // User Interview Routers
     {

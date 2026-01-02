@@ -198,6 +198,7 @@ const serverlessConfiguration: AWS = {
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:${self:custom.aws.APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME}",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:${self:custom.aws.APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME}",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-opensearch-operations",
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-migrate-jobs",
         ],
       },
 
@@ -408,7 +409,7 @@ const serverlessConfiguration: AWS = {
                   enabled: true,
                   input: {
                     scheduleJob: {
-                      type: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+                      type: ScheduleJobType.BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS,
                     },
                   },
                 },
@@ -478,6 +479,22 @@ const serverlessConfiguration: AWS = {
           "${self:custom.aws.APP_AWS_SUBNET2}",
         ],
       },
+    },
+
+    /**
+     * app-migrate-jobs
+     *
+     * Using to migrate jobs from `AWS OpenSearch` to `Google Cloud Firestore`
+     *
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
+     * Ex:
+     *  1. `worko-job-app-local-app-migrate-jobs`
+     *  2. `worko-job-app-dev-app-migrate-jobs`
+     *  3. `worko-job-app-prod-app-migrate-jobs`
+     */
+    "app-migrate-jobs": {
+      handler: "dist/src/app-migrate-jobs.handler",
+      timeout: 900, // Set timeout to 900 seconds (15 minutes)
     },
   },
 };

@@ -17,7 +17,7 @@ import { userMatchingScoreJobFilterDtoValidation, userMatchingScoreJobUpdateApiD
 
 // Import models
 import { DbUserDetailDto } from "../db/models/UserDetail.model";
-import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchUserMatchingScoreJob.model";
+import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchUserMatchingScoreJob.model";
 
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";

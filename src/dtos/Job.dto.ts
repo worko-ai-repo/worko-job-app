@@ -1,7 +1,7 @@
 
 // Import dtos
 import { EntityBulkUpdateMetricDto, JobLocationDto, MinMaxRange } from "./Common.dto";
-import { AwsOpensearchRecordListingFilterOptions, AwsOpensearchRecordListingFilterRequestDTO } from "./Common.aws-opensearch.dto";
+import { GcpFirestoreRecordListingFilterOptions, GcpFirestoreRecordListingFilterRequestDTO } from "./Common.gcp-firestore.dto";
 
 // Import enums
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
@@ -47,12 +47,7 @@ export interface JobCreateDto extends JobCreateApiDto {
   createdByCorporateUserId?: string;
 }
 
-/**
- * JobListingFilterOptions
- * 
- * This is the DTO used by Backend to get the Query Params for the Job Listing.Listing.
- */
-export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilterOptions {
+export interface JobListingFilterOptions extends GcpFirestoreRecordListingFilterOptions {
   /**
    * If this is true then it means that we will retrieve the jobs from s3 vector.
    */
@@ -93,20 +88,12 @@ export interface JobListingFilterOptions extends AwsOpensearchRecordListingFilte
 
   /**
    * @description: While listing jobs in `corporate` or `worko-admin` dashboard
-   * we will show the counts of user job applications for each job, If we want to show this count we will set this field to `true`.
+   * we will show the counts of job applications for each job, If we want to show this count we will set this field to `true`.
    */
   includeCountCompanyJobEntityJobApplication?: boolean;
 }
 
-/**
- * JobListingFilterRequestDTO
- * 
- * This is the Dto for Receving the Query Params for the Job Listing which extends the AwsOpensearchRecordListingFilterRequestDTO 
- * 
- * AwsOpensearchRecordListingFilterOptions is the DTO that contains the common fields for the Query Params i.e Sort, Limit, Page, Search etc.
- * and JobListingFilterOptions contains the fields that are specific to the Job 
- */
-export interface JobListingFilterRequestDTO extends AwsOpensearchRecordListingFilterRequestDTO {
+export interface JobListingFilterRequestDTO extends GcpFirestoreRecordListingFilterRequestDTO {
   fromS3Vector?: boolean;
   s3VectorPageNumber?: string; // "1" which can be convertable to a number at `Joi` schema.
   dashboard?: JobDashboardEnum;
@@ -319,7 +306,7 @@ export interface JobBulkUpdateApiDto {
  * JobBulkUpdateResponseDto
  */
 export interface JobBulkUpdateResponseDto {
-  opensearchBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
+  gcpFirestoreBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
   dynamodbBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
 }
 

@@ -9,6 +9,7 @@ import {
   DocumentReference,
   QuerySnapshot,
   QueryDocumentSnapshot,
+  Query,
 } from "@google-cloud/firestore";
 
 // Import sdk configs
@@ -174,7 +175,7 @@ class GcpFirestoreLibrary {
 
     // Execute all queries in parallel
     const queryPromises: Promise<QuerySnapshot<DocumentData, DocumentData>>[] =
-      chunks.map((chunk) =>
+      chunks.map((chunk: string[]) =>
         db
           .collection(commonDbDetails.collectionName)
           .where("id", "in", chunk)
@@ -264,6 +265,70 @@ class GcpFirestoreLibrary {
       return false;
     }
 
+    return true;
+  }
+
+  async getAllDocumentsWithoutPagination<DbEntityDto>(
+    commonDbDetails: GcpFirestoreInteractionDto,
+    query: Query<DocumentData, DocumentData>
+  ): Promise<QuerySnapshot<DocumentData, DocumentData>> {
+    const db: Firestore = await this.getFirestoreDatabase(
+      commonDbDetails.databaseName
+    );
+
+    /**
+     * @note 
+     *  1. We are returnig snapshot because it can be feasible for use differently for different use cases.
+     *  2. If you want to parse the data use below piece of code:
+     *     const docs: DbEntityDto[] = snapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData, DocumentData>) => doc.data() as DbEntityDto);
+     *  3. If you want to use only list of document ids use below piece of code:
+     *     const ids: string[] = snapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData, DocumentData>) => doc.id);
+     */
+    return query.get();
+  }
+
+  async bulkDeleteDocumentByIds(
+    commonDbDetails: GcpFirestoreInteractionDto,
+    ids: string[]
+  ) {
+    const db: Firestore = await this.getFirestoreDatabase(
+      commonDbDetails.databaseName
+    );
+    
+    const BATCH_SIZE: number = 500; // Firestore's max batch size
+    let totalDeleted: number = 0;
+    
+    // Process in chunks
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const chunk: string[] = ids.slice(i, i + BATCH_SIZE);
+      const batch: WriteBatch = db.batch();
+      
+      chunk.forEach((id: string) => {
+        const docRef: DocumentReference<DocumentData, DocumentData> = db
+          .collection(commonDbDetails.collectionName)
+          .doc(id);
+        batch.delete(docRef);
+      });
+      
+      const response: WriteResult[] = await batch.commit();
+      totalDeleted += response.length;
+      
+      global.logger.info(`Bulk Delete Document Chunk Response`, {
+        chunkSize: chunk.length,
+        responseLength: response.length,
+        totalProcessed: totalDeleted,
+        totalIds: ids.length,
+      });
+    }
+    
+    if (totalDeleted !== ids.length) {
+      global.logger.error("Bulk Delete Document Response", {
+        totalDeleted,
+        expectedDeleted: ids.length,
+      });
+      return false;
+    }
+    
     return true;
   }
 }

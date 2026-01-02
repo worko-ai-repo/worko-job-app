@@ -64,26 +64,28 @@ class DBConfig {
     );
 
     // Configuration to connect to the DynamodDB database
-    let config = {};
+    let config = {
+      region: process.env.APP_SLS_REGION,
+    };
 
-    // If the stage is local then use then connect to the local DynamoDB
-    if (process.env.APP_STAGE == APP_CONSTANTS.STAGES.LOCAL) {
-      config = {
-        credentials: {
-          accessKeyId: process.env.APP_AWS_DYNAMODB_ACCESS_KEY_ID as string,
-          secretAccessKey: process.env
-            .APP_AWS_DYNAMODB_SECRET_ACCESS_KEY as string,
-        },
-        region: process.env.APP_SLS_REGION,
-        endpoint: "http://localhost:8000",
-      };
-    }
-    // For other stages, the required permissions would be added in the "serverless.ts" file
-    else {
-      config = {
-        region: process.env.APP_SLS_REGION,
-      };
-    }
+    // // If the stage is local then use then connect to the local DynamoDB
+    // if (process.env.APP_STAGE == APP_CONSTANTS.STAGES.LOCAL) {
+    //   config = {
+    //     credentials: {
+    //       accessKeyId: process.env.APP_AWS_DYNAMODB_ACCESS_KEY_ID as string,
+    //       secretAccessKey: process.env
+    //         .APP_AWS_DYNAMODB_SECRET_ACCESS_KEY as string,
+    //     },
+    //     region: process.env.APP_SLS_REGION,
+    //     endpoint: "http://localhost:8000",
+    //   };
+    // }
+    // // For other stages, the required permissions would be added in the "serverless.ts" file
+    // else {
+    //   config = {
+    //     region: process.env.APP_SLS_REGION,
+    //   };
+    // }
 
     const ddb = new dynamoose.aws.ddb.DynamoDB(config);
     dynamoose.aws.ddb.set(ddb);

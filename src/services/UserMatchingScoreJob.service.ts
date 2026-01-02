@@ -17,7 +17,7 @@ import {
 import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 
 // Import models
-import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchUserMatchingScoreJob.model";
+import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchUserMatchingScoreJob.model";
 
 // Import services
 import InvokeLambdaService from "../services/InvokeLambda.service";

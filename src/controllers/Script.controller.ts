@@ -1,15 +1,12 @@
 // Import npm packages
 import { Request, Response, NextFunction } from "express";
 
-// Import aws related libraries
-import { PromiseResult } from "aws-sdk/lib/request";
-import { AWSError, Scheduler } from "aws-sdk";
-
 // Import dynamoose types
 import { ObjectType } from "dynamoose/dist/General";
 
 // Import Services
 import { scriptServiceObj } from "../services/Script.service";
+import InvokeLambdaService from "../services/InvokeLambda.service";
 
 // Import local utils
 import HttpStatusCode from "../utils/http-codes.util";
@@ -410,6 +407,34 @@ class ScriptController {
     } catch (error) {
       global.logger.error(
         `Error at catch block in while add gsi3 to job applications. [Script Controller]`,
+        {
+          error,
+        }
+      );
+      next(error);
+    }
+  };
+
+  scriptMigrateJobsAwsOpensearchToGcpFirestore = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Script to migrate jobs aws opensearch to gcp firestore [Script Controller]`,
+        {
+          methodName: this.scriptMigrateJobsAwsOpensearchToGcpFirestore.name,
+        }
+      );
+      const result = await InvokeLambdaService.triggerLambdaToMigrateJobsAwsOpensearchToGcpFirestore(
+        req.body.reqPageSize,
+        req.body?.lastKey
+      );
+      res.status(HttpStatusCode.ACCEPTED_202).json(result);
+    } catch (error) {
+      global.logger.error(
+        `Error at catch block in while migrate jobs aws opensearch to gcp firestore. [Script Controller]`,
         {
           error,
         }

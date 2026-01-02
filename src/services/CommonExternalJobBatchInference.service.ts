@@ -95,7 +95,6 @@ class CommonExternalJobBatchInferenceService {
     const filePath: string = fileUtilObj.createPath(directoryPath, fileName);
 
     global.logger.info("filePath", {
-      filePath,
       methodName: this.initCommonExternalJobBatchInferenceJsonlFileStream.name,
     });
 

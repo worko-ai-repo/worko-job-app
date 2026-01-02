@@ -13,14 +13,14 @@ import { FantasticJobLogCommonUpdateDto } from "../dtos/FantasticJobLog.dto";
 import { FantasticJobLogJobsDbStoredStatusEnum } from "../enums/FantasticJobLog.enum";
 
 // Import models
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchJob.model";
 import { DbFantasticJobLogDto } from "../db/models/FantasticJobLog.model";
 
 // Import services
 import { commonExternalJobBatchInferenceServiceObj } from "./CommonExternalJobBatchInference.service";
-import { jobServiceObj } from "./Job.service";
 import UlidService from "./Ulid.service";
 import { fantasticJobLogServiceObj } from "./FantasticJobLog.service";
+import { awsOpenSearchJobServiceObj } from "./AwsOpenSearchJob.service";
 
 // Import utils
 import { BaseError } from "../utils/errors.util";
@@ -293,17 +293,22 @@ class FantasticJobBatchInferenceService {
         // Generate a unique ULID ID
         const fantasticJobId: string = UlidService.getUlidId();
 
-        const transformFantasticJob: DbJobAwsOpensearchDto =
-          jobServiceObj.transformFantasticJobToAwsOpensearchJobDto(
-            fantasticJobId,
-            eachFantasticJob
-          );
+        /**
+         * @note
+         *  1. We are not using this `fantastic` jobs
+         *  2. so we are not updated gcp firestore integration here
+         */
+        const transformFantasticJob = {} as DbJobAwsOpensearchDto;
+          // jobServiceObj.transformFantasticJobToAwsOpensearchJobDto(
+          //   fantasticJobId,
+          //   eachFantasticJob
+          // );
 
         // Push the job data to the bulk data array
         bulkJobData.push(
           {
             index: {
-              _index: jobServiceObj.getIndexName(),
+              _index: awsOpenSearchJobServiceObj.getIndexName(),
               _id: fantasticJobId,
             },
           },
@@ -321,7 +326,12 @@ class FantasticJobBatchInferenceService {
       }
 
       // Bulk index the current batch of jobs
-      const success: boolean = await jobServiceObj.createBulkJobs(bulkJobData);
+      /**
+       * @note 
+       *  1. We are not using this `fantastic` jobs 
+       *  2. so we are not updated gcp firestore integration here
+       */
+      const success: boolean = false; // await jobServiceObj.createBulkJobs(bulkJobData);
       global.logger.debug(
         `Bulk index jobs in aws opensearch success status [SERVICE]`,
         { success }

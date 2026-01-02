@@ -77,6 +77,13 @@ const APP_CONSTANTS = {
   AWS_OPENSEARCH_AND_S3_VECTOR_BULK_CREATE_COUNT: 300,
 
   /**
+   * GCP_FIRESTORE_BULK_CREATE_COUNT
+   * 
+   * This is the maximum number of documents that can be created in a single bulk request to the GCP Firestore collection.
+   */
+  GCP_FIRESTORE_BULK_CREATE_COUNT: 300,
+
+  /**
    * AWS_DYNAMODB_BATCH_ACTION_LIMIT
    *
    * This is the maximum number of actions that can be performed in a single batch request to the DynamoDB table.
@@ -147,6 +154,8 @@ const APP_CONSTANTS = {
      *  1. We are using this lambda to invoke for managing CRUD operations on jobs from s3 vector 
      */
     WORKO_S3_VECTOR_JOB_INGESTION: process.env.APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME,
+
+    MIGRATE_JOBS_LAMBDA_NAME: `worko-job-app-${process.env.APP_SLS_STAGE}-app-migrate-jobs`
   },
 
   MATCHING_SCORE_PROMPT:

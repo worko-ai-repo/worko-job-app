@@ -184,6 +184,22 @@ class InvokeLambdaService {
       payload
     );
   }
+
+  async triggerLambdaToMigrateJobsAwsOpensearchToGcpFirestore(
+    reqPageSize: number,
+    lastKey?: string
+  ) {
+    global.logger.info("Trigger Lambda to Migrate Jobs Aws Opensearch To Gcp Firestore [service]", {
+      methodName: this.triggerLambdaToMigrateJobsAwsOpensearchToGcpFirestore.name,
+    });
+    return awsClientLambdaLibrary.triggerLambdaEventInvocationType(
+      APP_CONSTANTS.LAMBDA_FUNCTION_NAMES.MIGRATE_JOBS_LAMBDA_NAME,
+      {
+        reqPageSize: reqPageSize,
+        lastKey: lastKey
+      }
+    );
+  }
 }
 
 // Export an instance of the InvokeLambda class

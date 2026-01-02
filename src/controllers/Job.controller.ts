@@ -2,23 +2,29 @@
 import { Request, Response, NextFunction } from 'express';
 
 // Import dtos
-import { AwsOpensearchRecordListingResponseDTO } from '../dtos/Common.aws-opensearch.dto';
 import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateApiDto, JobCreateDto, JobListingFilterOptions, JobListingFilterRequestDTO, JobSoftDeleteApiDto, JobUpdateApiDto, JobUpdateDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from '../dtos/Job.dto';
 import { AwsS3VectorJobMatchingScoreDto } from "../dtos/AwsS3VectorJob.dto";
+import { CompanyJobListingFilterOptions, CompanyJobListingFilterRequestDTO } from '../dtos/CompanyJob.dto';
+import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
+import { GcpFirestoreRecordListingResponseDTO } from "../dtos/Common.gcp-firestore.dto";
+
+// Import daos
+import { companyJobDaoObj } from "../daos/CompanyJob.dao";
 
 // Import helpers
 import { getActionByUserId } from "../helpers/user.helper";
-import { AwsOpensearchRequestHelper } from '../helpers/request.aws-opensearch.helper';
+import { RequestHelper } from '../helpers/request.helper';
+import { GcpFirestoreRequestHelper } from '../helpers/request.gcp-firestore.helper';
 
 // Import models
 import { DbCompanyJobDto } from '../db/models/CompanyJob.model';
-import { DbJobAwsOpensearchDto } from '../db/OpenSearch-models/OpenSearchJob.model';
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // Import services
 import { jobServiceObj } from '../services/Job.service';
 
 // Import schemas
-import { jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
+import { companyJobListingFilterDtoValidation, jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
 
 // Import types
 import { JobsWithOrWithoutEntityDetails } from '../types/Job.type';
@@ -130,15 +136,6 @@ class JobController {
     }
   };
 
-  /**
-   * getAllJobsByFilterOptions
-   *
-   * This method is used to get all jobs by filter options from aws opensearch
-   *
-   * @param {Request} req - The request object
-   * @param {Response} res - The response object
-   * @param {NextFunction} next - The next function in the middleware chain
-   */
   getAllJobsByFilterOptions = async (
     req: Request,
     res: Response,
@@ -146,12 +143,11 @@ class JobController {
   ) => {
     try {
       global.logger.info(`Get All Jobs By Filter Options [Controller]`, {
-        filePath: __filename,
         methodName: this.getAllJobsByFilterOptions.name,
       });
       
       const jobListingFilterRequest: JobListingFilterOptions =
-        AwsOpensearchRequestHelper.parseFilterOptions<
+        GcpFirestoreRequestHelper.parseFilterOptions<
           JobListingFilterRequestDTO,
           JobListingFilterOptions
         >(req.query as unknown as JobListingFilterRequestDTO);
@@ -166,15 +162,75 @@ class JobController {
       }
 
       // Get all jobs by filter options
-      const jobDetails: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> =
-        await jobServiceObj.getAllJobsByDashboardFilterOptions(jobFilterOptions);
+      const jobDetails: GcpFirestoreRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> =
+        await jobServiceObj.getAllJobsByDashboardFilterOptions(
+          jobFilterOptions
+        );
 
       // Respond with job details
       res.status(HttpStatusCode.OK_200).json(jobDetails);
     } catch (error) {
+      global.logger.error(`Error in getAllJobsByFilterOptions [Controller]`, { error });
       next(error);
     }
   };
+
+  getAllJobsByFilterOptionsFromDdb = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      // Parse filter options from the request query parameters
+      const jobRecordListingFilterRequest: CompanyJobListingFilterOptions =
+        RequestHelper.parseFilterOptions<
+          CompanyJobListingFilterRequestDTO,
+          CompanyJobListingFilterOptions
+        >(req.query as unknown as CompanyJobListingFilterRequestDTO);
+
+      // Validate the request body using the Joi schema and throw a validation error if not valid
+      const { error: reqBodyError, value: validatedJobRequestBody } =
+        companyJobListingFilterDtoValidation.validate(
+          jobRecordListingFilterRequest,
+          {
+            abortEarly: false,
+          }
+        );
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+
+      const jobDetails: PaginatedResultsWithMatchingConditionsResponse<DbCompanyJobDto> = await companyJobDaoObj.getCompanyJobsByFilterOptions(
+        validatedJobRequestBody
+      );
+
+      const {
+        lastKey,
+        count,
+        timesQueried,
+        queriedCount,
+        ...jobsData
+      } = jobDetails;
+
+      // Convert to array
+      const jobsArray: DbCompanyJobDto[] = Object.values(
+        jobsData 
+      );
+
+      res.status(HttpStatusCode.OK_200).json({
+        data: jobsArray,
+        pagination: {
+          lastKey,
+          count,
+          timesQueried,
+          queriedCount,
+        }
+      });
+    } catch (error) {
+      global.logger.error(`Error in getAllJobsByFilterOptionsFromDdb [Controller]`, { error });
+      next(error);
+    }
+  }
 
   /**
    * updateInternalOrExternalJobById
@@ -192,7 +248,6 @@ class JobController {
   ) => {
     try {
       global.logger.info(`Update job by id [Controller]`, {
-        filePath: __filename,
         methodName: this.updateInternalOrExternalJobById.name,
         requestBody: req.body,
       });
@@ -221,12 +276,12 @@ class JobController {
           updatedByCorporateUserId: actionByCorporateUserId,
         };
 
-      const jobDetails: DbJobAwsOpensearchDto | undefined = await jobServiceObj.updateInternalOrExternalJobById(
+      const jobDetails: DbGcpFirestoreJobDto = await jobServiceObj.updateInternalOrExternalJobById(
         jobId,
         jobUpdateDto
       );
 
-      res.status(HttpStatusCode.OK_200).json(jobDetails ?? {});
+      res.status(HttpStatusCode.OK_200).json(jobDetails);
     } catch (error) {
       next(error);
     }
@@ -303,8 +358,8 @@ class JobController {
         id: id,
       });
 
-      const jobDetails: DbJobAwsOpensearchDto | undefined =
-        await jobServiceObj.getJobByIdFromAwsOpensearch(id);
+      const jobDetails: DbGcpFirestoreJobDto | undefined =
+        await jobServiceObj.getJobByIdFromGcpFireStore(id);
 
       res.status(HttpStatusCode.OK_200).json(jobDetails ?? {});
     } catch (error) {
@@ -324,11 +379,11 @@ class JobController {
           id: id,
           userId: cognitoUserId
         });
-        throw new BaseError("Please log in to access this resource", HttpStatusCode.UNAUTHORIZED_401);
+        throw new BaseError("Please log in to access view this job.", HttpStatusCode.UNAUTHORIZED_401);
       }
 
       const jobListingFilterRequest: JobListingFilterOptions =
-        AwsOpensearchRequestHelper.parseFilterOptions<
+        GcpFirestoreRequestHelper.parseFilterOptions<
           JobListingFilterRequestDTO,
           JobListingFilterOptions
         >(req.query as unknown as JobListingFilterRequestDTO);
@@ -342,11 +397,11 @@ class JobController {
         throw new RequestValidationError(error);
       }
 
-      const jobDetails: DbJobAwsOpensearchDto & {
+      const jobDetails: DbGcpFirestoreJobDto & {
         initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
       } = await jobServiceObj.getJobByIdFromS3Vector(id, jobFilterOptions);
 
-      res.status(HttpStatusCode.OK_200).json(jobDetails ?? {});
+      res.status(HttpStatusCode.OK_200).json(jobDetails);
     } catch (error) {
       global.logger.error(`Error in catch block of getJobByIdFromS3Vector [Controller]`, {
         methodName: this.getJobByIdFromS3Vector.name,

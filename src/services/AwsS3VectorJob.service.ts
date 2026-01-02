@@ -17,7 +17,7 @@ import {
 } from "../dtos/AwsS3VectorJob.dto";
 
 // Import models
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // Import utils
 import { BaseError } from "../utils/errors.util";
@@ -36,13 +36,13 @@ class AwsS3VectorJobService {
 
   prepareAwsS3VectorJobsDataCreateOrUpdateDto(
     indexName: string,
-    opensearchJobDataToStoreInAwsS3Vector: DbJobAwsOpensearchDto
+    jobDataToStoreInAwsS3Vector: DbGcpFirestoreJobDto
   ): AwsS3VectorJobCreateOrUpdateJobDataDto {
     const awsS3VectorJobCreateJobDataDto: AwsS3VectorJobCreateOrUpdateJobDataDto =
       {
         _index: indexName,
-        _id: opensearchJobDataToStoreInAwsS3Vector.id,
-        _source: opensearchJobDataToStoreInAwsS3Vector,
+        _id: jobDataToStoreInAwsS3Vector.id,
+        _source: jobDataToStoreInAwsS3Vector,
       };
 
     return awsS3VectorJobCreateJobDataDto;
@@ -50,12 +50,12 @@ class AwsS3VectorJobService {
 
   prepareAwsS3VectorJobCreateDto(
     indexName: string,
-    opensearchJobDataToStoreInAwsS3Vector: DbJobAwsOpensearchDto
+    jobDataToStoreInAwsS3Vector: DbGcpFirestoreJobDto
   ): AwsS3VectorJobCreateDto {
     const awsS3VectorJobCreateDto: AwsS3VectorJobCreateDto = {
       jobData: this.prepareAwsS3VectorJobsDataCreateOrUpdateDto(
         indexName,
-        opensearchJobDataToStoreInAwsS3Vector
+        jobDataToStoreInAwsS3Vector
       ),
       indexName: indexName,
     };
@@ -65,13 +65,13 @@ class AwsS3VectorJobService {
 
   prepareAwsS3VectorJobUpdateDto(
     indexName: string,
-    opensearchJobDataToStoreInAwsS3Vector: DbJobAwsOpensearchDto
+    jobDataToStoreInAwsS3Vector: DbGcpFirestoreJobDto
   ): AwsS3VectorJobUpdateDto {
     const awsS3VectorJobUpdateDto: AwsS3VectorJobUpdateDto = {
-      updateJobId: opensearchJobDataToStoreInAwsS3Vector.id,
+      updateJobId: jobDataToStoreInAwsS3Vector.id,
       jobData: this.prepareAwsS3VectorJobsDataCreateOrUpdateDto(
         indexName,
-        opensearchJobDataToStoreInAwsS3Vector
+        jobDataToStoreInAwsS3Vector
       ),
       indexName: indexName,
     };

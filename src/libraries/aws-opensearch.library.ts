@@ -264,7 +264,7 @@ class AwsOpensearchLibrary {
     
     const initialResponse: Search_Response = await this.opensearchClient.search({
       index: indexName,
-      scroll: '1m', // 1 minute
+      scroll: '1m', 
       body: {
         ...searchRequestBody,
         size: 1000
@@ -278,7 +278,7 @@ class AwsOpensearchLibrary {
     while (scrollId && initialResponse.body.hits.hits.length > 0) {
       const scrollResponse: Scroll_Response = await this.opensearchClient.scroll({
         scroll_id: scrollId,
-        scroll: '1m' // 1 minute
+        scroll: '1m' 
       });
       
       if (scrollResponse.body.hits.hits.length === 0) break;

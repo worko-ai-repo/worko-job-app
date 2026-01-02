@@ -1,6 +1,7 @@
 
 // Load QueryResponse from dynamoose
-import { QueryResponse } from "dynamoose/dist/ItemRetriever";
+import { Query, QueryResponse } from "dynamoose/dist/ItemRetriever";
+import { Condition } from "dynamoose/dist/Condition";
 
 // Load dynamoose types
 import { ObjectType } from "dynamoose/dist/General";
@@ -17,7 +18,17 @@ import {
   CompanyJobCreateDto,
   CompanyJobUpdateDto,
   CompanyJobCommonUpdateDto,
+  CompanyJobListingFilterOptions,
 } from "../dtos/CompanyJob.dto";
+import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
+
+// Load enums
+import { SortOrderTypeEnum } from "../enums/Common.enum";
+import { JobDashboardEnum } from "../enums/Job.enum";
+import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
+
+// Load helpers
+import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.helper";
 
 // Load Model
 import {
@@ -137,6 +148,105 @@ class CompanyJobDao implements BaseDao {
       .where("GSI1SK")
       .eq(this.GSI1SK.replace("{id}", jobId))
       .exec();
+  }
+
+  async getCompanyJobsByFilterOptions(
+    jobReqBody: CompanyJobListingFilterOptions
+  ): Promise<
+    PaginatedResultsWithMatchingConditionsResponse<DbCompanyJobDto>
+  > {
+    global.logger.info(
+      `Get All jobs By filter options [DAO]`,
+      {
+        methodName: this.getCompanyJobsByFilterOptions.name,
+        jobReqBody,
+      }
+    );
+
+    let query: Query<DbCompanyJobDto>;
+
+    if (jobReqBody.companyId) {
+      query = CompanyJobModel.query("PK")
+        .eq(this.partitianKey.strtr({ "{companyId}": jobReqBody.companyId }))
+        .where("SK")
+        .beginsWith(this.sortKeys.SK_INIT.strtr({ "{id}": "" }));
+    } else {
+      query = CompanyJobModel.query("GSI1PK")
+        .eq(this.GSI1PK)
+        .where("GSI1SK")
+        .beginsWith(this.GSI1SK.strtr({ "{id}": "" }));
+    }
+
+    // Sort the results based on the provided sort order
+    query = query.sort(
+      jobReqBody.sortOrder as SortOrderTypeEnum
+    );
+
+    /**
+     * @description
+     *     1. For `corporate-admin`:
+     *        1. Only jobs from their `Company`:
+     *           1. Include `corporate-admin` created jobs
+     *           2. Include `corporate-recruiter` created jobs
+     *     2. For `corporate-recruiter`:
+     *        1. Only jobs from their `Company`:
+     *           1. Include `corporate-recruiter` created jobs
+     */
+    if (
+      jobReqBody?.dashboard &&
+      jobReqBody.dashboard === JobDashboardEnum.CORPORATE &&
+      jobReqBody?.userRole
+    ) {
+      if (
+        jobReqBody.userRole ===
+          CorporateUserTypeEnum.CORPORATE_RECRUITER &&
+        jobReqBody?.corporateRecruiterUserId
+      ) {
+        query = query.where("createdByCorporateUserId").eq(
+          jobReqBody.corporateRecruiterUserId
+        );
+      } else if (
+        jobReqBody.userRole === CorporateUserTypeEnum.CORPORATE_ADMIN
+      ) {
+        query = query.where("createdByCorporateUserId").exists();
+      }
+    }
+
+    if (jobReqBody.status) {
+      query = query.where("status").eq(jobReqBody.status);
+    }
+
+    if (
+      jobReqBody.fromDate ||
+      jobReqBody.toDate
+    ) {
+      query = query.and().parenthesis((condition) => {
+        if (jobReqBody.fromDate) {
+          condition.where("createdAt").ge(jobReqBody.fromDate);
+        }
+        if (jobReqBody.toDate) {
+          condition.where("createdAt").le(jobReqBody.toDate);
+        }
+        return condition;
+      });
+    }
+
+    if (jobReqBody.searchText) {
+      let searchTextValue: string = jobReqBody.searchText;
+
+      query = query.and().parenthesis((condition: Condition) => {
+        let searchCondition: Condition = condition
+          .where("jobTitle")
+          .contains(searchTextValue.toLowerCase())
+
+        return searchCondition;
+      });
+    }
+
+    return getPaginatedResultsWithMatchingConditions<
+      DbCompanyJobDto,
+      CompanyJobListingFilterOptions
+    >(query, jobReqBody);
   }
 
   /**

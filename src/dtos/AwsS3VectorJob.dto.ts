@@ -7,7 +7,7 @@ import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import models
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 export interface AwsS3VectorJobListingFilterOptions extends AwsS3VectorRecordListingFilterOptions {
   jobId?: string;
@@ -49,6 +49,12 @@ export interface AwsS3VectorJobListingFilterOptions extends AwsS3VectorRecordLis
    * for this use case. We are using this field.
    */
   includeCompanyDetails?: boolean;
+
+  /**
+   * @description: While listing jobs in `corporate` or `worko-admin` dashboard
+   * we will show the counts of user job applications for each job, If we want to show this count we will set this field to `true`.
+   */
+  includeCountCompanyJobEntityJobApplication?: boolean;
 }
 
 export interface AwsS3VectorJobMatchingScoreDto {
@@ -82,7 +88,7 @@ export interface AwsS3VectorJobCreateOrUpdateJobDataDto {
 
   _score?: number;
 
-  _source: Partial<DbJobAwsOpensearchDto>;
+  _source: Partial<DbGcpFirestoreJobDto>;
 }
 
 export interface AwsS3VectorJobCreateDto {

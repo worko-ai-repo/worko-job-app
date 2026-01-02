@@ -85,11 +85,18 @@ class App {
    * This method registers the application routes exposed outside by the application, to allow the users/clients to access the routes/resources.
    */
   registerAppRoutes() {
-    this.app.use(
-      "/", 
-      getAuthorizerContext(), 
-      routes
-    );
+    if(process.env.APP_STAGE === APP_CONSTANTS.STAGES.LOCAL) {
+      this.app.use(
+        "/",
+        routes
+      );
+    } else {
+      this.app.use(
+        "/",
+        getAuthorizerContext(),
+        routes
+      );
+    }
   }
 
   /**

@@ -20,6 +20,18 @@ export interface UserExternalJobApplicationCreateApiDTO {
  */
 export interface UserExternalJobApplicationCreateDto {
   jobId: string;
+  /**
+   * @reference
+   *  1. "jobUrl" field of `GcpFirestoreJob.model.ts`
+   * @example "https://www.linkedin.com/jobs/view/test-engineer-at-bajaj-finserv-4292597143?_l=en"
+   */
+  externalJobUrl?: string;
+
+  /**
+   * @reference "externalJobId" field of `GcpFirestoreJob.model.ts`
+   * @example "1357943872"
+   */
+  externalJobId?: string;
   applicantUserId: string;
   status: UserExternalJobApplicationStatusEnum;
   statusTracker: UserExternalJobApplicationStatusTrackerType;

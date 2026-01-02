@@ -1,9 +1,6 @@
 // Import AWS Lambda types
 import { Context, ScheduledEvent } from "aws-lambda";
 
-// Import opensearch related types
-import { DeleteByQuery_Response, UpdateByQuery_Response } from "@opensearch-project/opensearch/api";
-
 // Import extensions (must be done after natural imports and before any scope-modifying imports)
 import "./extensions/string.extension";
 import "./extensions/array.extension";
@@ -22,14 +19,9 @@ import { ScheduledEventDto } from "./dtos/ScheduleJob.dto";
 import { ScheduleJobType } from "./enums/ScheduleJob.enum";
 import { JobSourcedFromEnum } from "./enums/Common.enum";
 
-// Import models
-import { DbJobAwsOpensearchDto } from "./db/OpenSearch-models/OpenSearchJob.model";
-
 // Import services
-import { jobServiceObj } from "./services/Job.service";
-import { fantasticJobServiceObj } from "./services/FantasticJob.service";
 import { brightDataJobServiceObj } from "./services/BrightDataJob.service";
-import { awsS3VectorJobServiceObj } from "./services/AwsS3VectorJob.service";
+import { jobServiceObj } from "./services/Job.service";
 
 // Import error handling utilities
 import { BaseError } from "./utils/errors.util";
@@ -69,7 +61,6 @@ export const handler = async (
     global.logger.info(
       "App scheduler handler: Received event from scheduler: ",
       {
-        filePath: __filename,
         methodName: "handler",
         event: event,
         context: context,
@@ -84,56 +75,26 @@ export const handler = async (
       global.logger.info(`"scheduleJob" property is present in "event" object`);
 
       switch (event.scheduleJob?.type) {
-        case ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS: {
+        case ScheduleJobType.BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS: {
           global.logger.info(
-            `Processing scheduled job for bright data job hard and soft delete old jobs [app scheduler handler]`,
+            `Processing scheduled job for bright data job hard delete old jobs [app scheduler handler]`,
             {
               methodName: "handler",
-              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS,
             }
           );
 
-          const getListOfExpiredJobIds: DbJobAwsOpensearchDto[] = await jobServiceObj.getAllOldUnappliedExternalJobs(
+          const deleteActivities: boolean = await jobServiceObj.validateAndDeleteExpiredBrightDataJobs(
             APP_CONSTANTS.EXTERNAL_JOB_CLEANUP_CONFIG.BRIGHT_DATA_JOB_DELETE_OLDER_THAN_DAYS,
             JobSourcedFromEnum.BRIGHT_DATA_JOB
-          )
-          global.logger.info(
-            "App scheduler handler: Old jobs fetched successfully: ",
-            {
-              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
-              getListOfExpiredJobIdsLength: getListOfExpiredJobIds.length,
-            }
           );
 
-          if(getListOfExpiredJobIds?.length) {
-            const deleteJobIds: string[] = getListOfExpiredJobIds.map((job: DbJobAwsOpensearchDto) => job.id);
-
-            /**
-             * @todo Need to think how to abort the transaction if any of the activity fails
-             */
-            const deleteActivities: [DeleteByQuery_Response, boolean] = await Promise.all([
-              // Hard Delete old jobs
-              jobServiceObj.deleteOldUnappliedExternalJobs(
-                deleteJobIds,
-              ),
-                
-              awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobsByIds(
-                deleteJobIds
-              )
-            ])
-          }
-
-          // Soft Delete old jobs
-          const softDeleteOldAppliedExternalJobsResult: UpdateByQuery_Response =
-            await jobServiceObj.softDeleteOldAppliedExternalJobs(
-              APP_CONSTANTS.EXTERNAL_JOB_CLEANUP_CONFIG.BRIGHT_DATA_JOB_DELETE_OLDER_THAN_DAYS,
-              JobSourcedFromEnum.BRIGHT_DATA_JOB
-            );
           global.logger.info(
-            "App scheduler handler: Old jobs soft deleted successfully: ",
+            `Bright data job hard delete old jobs completed successfully [app scheduler external jobs handler]`,
             {
-              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS,
-              softDeleteOldAppliedExternalJobsResult: softDeleteOldAppliedExternalJobsResult,
+              deleteActivities,
+              methodName: "handler",
+              scheduleJobType: ScheduleJobType.BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS,
             }
           );
 
@@ -175,6 +136,7 @@ export const handler = async (
           break;
         }
 
+        /*
         case ScheduleJobType.FANTASTIC_JOB_TWENTY_FOUR_HOURS: {
           global.logger.info(
             `Processing scheduled job for fantastic job twenty four hours [app scheduler handler]`,
@@ -210,6 +172,7 @@ export const handler = async (
 
           break;
         }
+        */
 
         default: {
           global.logger.error(

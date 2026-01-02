@@ -10,10 +10,6 @@ import { Hit } from "@opensearch-project/opensearch/api/_types/_core.search";
 import { ObjectType } from "dynamoose/dist/General";
 import { Query, QueryResponse } from "dynamoose/dist/ItemRetriever";
 
-// Import aws-sdk related types
-import { PromiseResult } from "aws-sdk/lib/request";
-import { AWSError, Scheduler } from "aws-sdk";
-
 // Import luxon
 import { DateTime } from "luxon";
 
@@ -22,7 +18,8 @@ import { awsOpensearchLibrary, awsSchedulerClientLibrary } from "../configs/aws-
 import APP_CONSTANTS from "../configs/constants.config";
 
 // Import daos
-import { jobDaoObj } from "../daos/Job.dao";
+import { awsOpenSearchJobDaoObj } from "../daos/AwsOpenSearchJob.dao";
+import { gcpFirestoreJobDaoObj } from "../daos/GcpFirestoreJob.dao";
 
 // Import dtos
 import {
@@ -30,6 +27,7 @@ import {
 } from "../dtos/CompanyJob.dto";
 import { UserJobApplicationBulkUploadDto } from "../dtos/UserJobApplication.dto";
 import { JobLocationDto, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
+import { AwsOpensearchRecordListingPaginationResponseDTO, AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 
 // Import daos
 import { companyJobDaoObj } from "../daos/CompanyJob.dao";
@@ -47,14 +45,15 @@ import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.
 import { attachCompanyDetails } from "../helpers/companyDetailsInjector.helper";
 
 // Import models
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchJob.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 import { CompanyJobModel, DbCompanyJobDto } from "../db/models/CompanyJob.model";
 
 // Import services
 import { companyJobServiceObj } from "./CompanyJob.service";
-import { jobServiceObj } from "./Job.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { fantasticJobServiceObj } from "./FantasticJob.service";
+import { jobServiceObj } from "./Job.service";
 import { brightDataJobServiceObj } from "./BrightDataJob.service";
 
 // Import utils
@@ -74,10 +73,15 @@ class ScriptService {
     );
 
     return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
-      "s_mg54z8il1wz7nf0hhx"
+      "sd_mjh5yu9h105e1z8gks"
     ); 
 
-    // return false;
+    // return jobServiceObj.validateAndDeleteExpiredBrightDataJobs(
+    //   30,
+    //   JobSourcedFromEnum.BRIGHT_DATA_JOB
+    // );
+
+    return false;
   }
 
   /**
@@ -235,7 +239,7 @@ class ScriptService {
         }
     )[] = jobListingArray.flatMap((eachInternalJob: any) => [
       {
-        index: { _index: jobDaoObj.IndexName, _id: eachInternalJob.id },
+        index: { _index: awsOpenSearchJobDaoObj.IndexName, _id: eachInternalJob.id },
       },
       this.transformCompanyJobDtoToOpensearchWorkoJobsDto(eachInternalJob),
     ]);
@@ -243,8 +247,8 @@ class ScriptService {
     /**
      * Use bulk opensearch method to upload the data to `worko-jobs` index in opensearch
      */
-    const bulkUploadJobsDetails: boolean =
-      await jobServiceObj.scriptBulkUploadJobs(formattedJobListingArray);
+    const bulkUploadJobsDetails: boolean = false;
+     // await jobServiceObj.scriptBulkUploadJobs(formattedJobListingArray);
 
     return bulkUploadJobsDetails;
   }
@@ -561,7 +565,7 @@ class ScriptService {
     };
     const companyJobsOnOpensearch: Search_Response =
       await awsOpensearchLibrary.opensearchClient.search({
-        index: jobDaoObj.IndexName,
+        index: awsOpenSearchJobDaoObj.IndexName,
         body: awsOpensearchQuery,
       });
 
@@ -784,6 +788,160 @@ class ScriptService {
     return {
       totalUpdatedCount,
     };
+  }
+
+  async scriptToMigrateOpenSearchToFirestore(
+    reqPageSize: number,
+    lastKey?: string // if fails i invoke this function again with lastKey
+  ): Promise<{ migrated: number; failed: number; lastKey?: string }> {
+    global.logger.info(
+      `Script to migrate OpenSearch data to Firestore [Script Service]`,
+      {
+        methodName: this.scriptToMigrateOpenSearchToFirestore.name,
+        lastKey
+      }
+    );
+
+    const pageSize: number = reqPageSize;
+    let totalMigrated: number = 0;
+    let totalFailed: number = 0;
+    let currentLastKey: string | undefined = lastKey;
+    
+    try {
+      // Continue pagination until all jobs are migrated
+      while (true) {
+        global.logger.info(`Fetching batch with pageSize: ${pageSize}`, { currentLastKey });
+        
+        // Get paginated jobs from OpenSearch
+        const jobsResponse: AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]> = 
+          await awsOpenSearchJobDaoObj.getAllJobsToMigrateFromAwsOpensearch({
+            pageSize,
+            lastKey: currentLastKey
+          });
+        
+        const jobs: DbJobAwsOpensearchDto[] = jobsResponse.data;
+        const pagination: AwsOpensearchRecordListingPaginationResponseDTO = jobsResponse.pagination;
+        
+        global.logger.info(`Retrieved ${jobs.length} jobs from OpenSearch`, {
+          batchSize: jobs.length,
+          lastKey: pagination.lastKey
+        });
+        
+        // If no jobs returned, we're done
+        if (jobs.length === 0) {
+          global.logger.info('No more jobs to migrate - migration complete');
+          break;
+        }
+        
+        // Migrate current batch to Firestore
+        const batchResult: {
+          migrated: number;
+          failed: number;
+        } = await this.migrateBatchToFirestore(jobs);
+        totalMigrated += batchResult.migrated;
+        totalFailed += batchResult.failed;
+        
+        global.logger.info(`Batch migration completed`, {
+          batchMigrated: batchResult.migrated,
+          batchFailed: batchResult.failed,
+          totalMigrated,
+          totalFailed
+        });
+        
+        // Update lastKey for next iteration
+        currentLastKey = pagination.lastKey;
+        
+        // If no more pages, we're done
+        if (!currentLastKey) {
+          global.logger.info('Reached end of data - migration complete');
+          break;
+        }
+      }
+      
+    } catch (error) {
+      global.logger.error('Migration failed with error', {
+        error,
+        totalMigrated,
+        totalFailed,
+        lastProcessedKey: currentLastKey
+      });
+      
+      // Return current progress and lastKey for potential retry
+      return {
+        migrated: totalMigrated,
+        failed: totalFailed,
+        lastKey: currentLastKey
+      };
+    }
+    
+    return {
+      migrated: totalMigrated,
+      failed: totalFailed
+    };
+  }
+
+  private async migrateBatchToFirestore(
+    jobs: DbJobAwsOpensearchDto[]
+  ): Promise<{ migrated: number; failed: number }> {
+    let migrated: number = 0;
+    let failed: number = 0;
+    
+    try {
+      const firestoreJobs = jobs as DbGcpFirestoreJobDto[];
+      const result: boolean = await this.processBatchWithRetry(firestoreJobs);
+      
+      if (result) {
+        migrated = jobs.length;
+      } else {
+        failed = jobs.length;
+      }
+      
+    } catch (error) {
+      global.logger.error('Batch migration to Firestore failed', {
+        error,
+        batchSize: jobs.length,
+      });
+      failed = jobs.length;
+    }
+    
+    return { migrated, failed };
+  }
+
+  private async processBatchWithRetry(
+    batch: DbGcpFirestoreJobDto[],
+    maxRetries: number = 3
+  ): Promise<boolean> {
+    let retryCount: number = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const result: boolean = await gcpFirestoreJobDaoObj.createBulkJobs(batch);
+        if (result) {
+          return true;
+        }
+        
+        // If result is false, retry
+        retryCount++;
+        if (retryCount < maxRetries) {
+          const delay: number = Math.pow(2, retryCount) * 1000; // Exponential backoff
+          global.logger.warn(`Batch failed, retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
+      } catch (error) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          const delay: number = Math.pow(2, retryCount) * 1000; 
+          global.logger.warn(`Batch error, retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`, { error });
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          global.logger.error(`Batch failed after ${maxRetries} retries`, { error });
+          throw error;
+        }
+      }
+    }
+    
+    return false;
   }
 }
 

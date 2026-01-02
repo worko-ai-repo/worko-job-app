@@ -17,11 +17,11 @@ import { UserExternalJobApplicationStatusEnum } from "../enums/UserExternalJobAp
 import { UserType } from "../enums/User.enum";
 
 // import models
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
 import { DbUserExternalJobApplicationDto } from "../db/models/UserExternalJobApplication.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // import services
-import { jobServiceObj } from "./Job.service";
+import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 
 // import utils
 import { BaseError } from "../utils/errors.util";
@@ -60,31 +60,21 @@ class UserExternalJobApplicationService {
     });
 
     // Get job details by document id
-    const externalJobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto | undefined =
-      await jobServiceObj.getJobByIdFromAwsOpensearch(
+    const externalJobDetails: DbGcpFirestoreJobDto | undefined =
+      await gcpFirestoreJobServiceObj.getJobById(
         userExternalJobApplicationRequestBody.jobId
       );
 
     // As the job is closed, therefore the user should not be able to apply for the job then Throw error 
     if (
-      !externalJobDetailsOnAwsOpensearch ||
-      externalJobDetailsOnAwsOpensearch?.status !== JobStatusEnum.PUBLISHED
+      !externalJobDetails ||
+      externalJobDetails?.status !== JobStatusEnum.PUBLISHED
     ) {
       throw new BaseError(
         `Applications for this job are currently closed.`,
         HttpStatusCode.FORBIDDEN_403
       );
     }
-
-    // Decode job url
-    let decodedJobUrl: string = decodeURIComponent(
-      userExternalJobApplicationRequestBody.jobUrl
-    ).trim();
-    global.logger.debug(`Decoded job url [SERVICE]`, {
-      methodName: this.createUserExternalJobApplication.name,
-      requestBodyJobUrl: userExternalJobApplicationRequestBody.jobUrl,
-      decodedJobUrl,
-    });
 
     // Check if the user has already applied for the job and throw error if already applied for the job
     let existingJobApplication: QueryResponse<DbUserExternalJobApplicationDto> =
@@ -100,13 +90,13 @@ class UserExternalJobApplicationService {
     }
 
     // If `isAppliedBySomeone` is not already set then update it.
-    if (!externalJobDetailsOnAwsOpensearch.isAppliedBySomeone) {
+    if (!externalJobDetails.isAppliedBySomeone) {
       // Prepare and update job by id
       const updatDto: Partial<JobUpdateInternalDto> = {
         isAppliedBySomeone: true,
       };
 
-      await jobServiceObj.updateJobByIdOnAwsOpensearch(
+      await gcpFirestoreJobServiceObj.updateJobById(
         userExternalJobApplicationRequestBody.jobId,
         updatDto
       );
@@ -115,6 +105,8 @@ class UserExternalJobApplicationService {
     // Prepare the data required to create a new job application
     const userExternalJobApplicationDto: UserExternalJobApplicationCreateDto = {
       jobId: userExternalJobApplicationRequestBody.jobId,
+      externalJobId: externalJobDetails.externalJobId,
+      externalJobUrl: externalJobDetails.jobUrl,
       applicantUserId: userId,
       status: UserExternalJobApplicationStatusEnum.APPLIED,
       statusTracker: [
@@ -126,7 +118,7 @@ class UserExternalJobApplicationService {
           userType: UserType.CAND,
         },
       ],
-      companyName: externalJobDetailsOnAwsOpensearch.companyName,
+      companyName: externalJobDetails.companyName,
       jobPortal: userExternalJobApplicationRequestBody.jobPortal,
     };
 

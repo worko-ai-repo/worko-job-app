@@ -5,40 +5,28 @@ import { APIGatewayProxyResult } from "aws-lambda";
 // Import dynamoose types
 import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 
-// Import opensearch types
-import { DeleteByQuery_Response, Index_Response, Update_Response, UpdateByQuery_Response } from "@opensearch-project/opensearch/api";
-
-// Import luxon
-import { DateTime } from "luxon";
-
-// Import daos
-import { jobDaoObj } from "../daos/Job.dao";
-
 // Import dtos
 import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobSoftDeleteApiDto, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
-import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
-import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
-import { EntityBulkUpdateMetricDto, MinMaxRange } from "../dtos/Common.dto";
-import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
-import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto, AwsS3VectorJobListingFilterOptions, AwsS3VectorJobMatchingScoreDto, AwsS3VectorJobGetParsedResponseDto, AwsS3VectorJobUpdateDto, AwsS3VectorJobBulkUpdateDataDto, AwsS3VectorJobBulkUpdateParsedResponseDto, AwsS3VectorJobCreateOrUpdateJobDataDto } from "../dtos/AwsS3VectorJob.dto";
+import { EntityBulkUpdateMetricDto } from "../dtos/Common.dto";
+import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto, AwsS3VectorJobListingFilterOptions, AwsS3VectorJobMatchingScoreDto, AwsS3VectorJobGetParsedResponseDto, AwsS3VectorJobUpdateDto, AwsS3VectorJobCreateOrUpdateJobDataDto } from "../dtos/AwsS3VectorJob.dto";
+import { GcpFirestoreRecordListingResponseDTO } from "../dtos/Common.gcp-firestore.dto";
 
 // Import enums
-import { JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
+import { JobStatusEnum } from "../enums/Job.enum";
 import { JobSourcedFromEnum } from "../enums/Common.enum";
 import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
 
 // Import helpers
-import { attachCompanyDetails } from "../helpers/companyDetailsInjector.helper";
-import { htmlToTextHelperObj } from "../helpers/htmlToText.helper";
 import { getActionByUserId } from "../helpers/user.helper";
 import { injectCountCompanyJobByEntityTypeDetailsHelper } from "../helpers/injectCountCompanyJobDetails.helper";
+import { dateHelperObj } from "../helpers/date.helper";
+import { injectEntityDetailsHelperObj } from "./injectEntityDetails.helper";
 
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
-import { DbCountCompanyJobDto } from "../db/models/CountCompanyJob.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // Import services
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
@@ -46,6 +34,7 @@ import { companyJobServiceObj } from "./CompanyJob.service";
 import InvokeLambdaService from "./InvokeLambda.service";
 import companyServiceObj  from "./Company.service";
 import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
+import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 
 // Import types
 import { JobsWithOrWithoutEntityDetails } from "../types/Job.type";
@@ -57,26 +46,24 @@ import { BaseError } from "../utils/errors.util";
 /**
  * JobService
  * 
- * Class responsible for managing job related operations
+ * @description 
+ *  1. As of now this `JobService` class is responsible for interacting
+ *     with `Aws dynamodb`, `Gcp firestore`, `Aws s3 vector` because jobs are stored in these three different databases.
+ *  2. `JobService` class is a bridge between `Aws dynamodb`, `Gcp firestore` and `Aws s3 vector`
+ *  3. `JobService` class should not directly call `dao` classes, it should call `service` classes of
+ *    `Aws dynamodb` or `Gcp firestore` or `Aws s3 vector` for implementations. 
+ * 
+ * @note 
+ *  1. As of now `Aws opensearch` is not being used for storing jobs, if
+ *  its being used update in `AwsOpenSearchJob.service.ts`, `AwsOpenSearchJob.dao.ts`, `AwsOpenSearchJob.model.ts`
  */
 class JobService {
-  /**
-   * getIndexName
-   *
-   * Retrieves the index name used for job data storage.
-   *
-   * @returns {string} - The name of the index.
-   */
-  getIndexName(): string {
-    return jobDaoObj.IndexName;
-  }
-
   async prepareAndCreateJobInAwsS3Vector(
-    opensearchJobDataToStoreInAwsS3Vector: DbJobAwsOpensearchDto
+    jobDataToStoreInAwsS3Vector: DbGcpFirestoreJobDto
   ): Promise<AwsS3VectorJobCreateOrUpdateParsedResponseDto> {
     const awsS3VectorJobCreateDto: AwsS3VectorJobCreateDto = awsS3VectorJobServiceObj.prepareAwsS3VectorJobCreateDto(
       awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-      opensearchJobDataToStoreInAwsS3Vector
+      jobDataToStoreInAwsS3Vector
     )
 
     // Create job in s3 vector
@@ -152,41 +139,27 @@ class JobService {
       companyLogoUrl: parsedCompanyDetails.logoUrl,
     };
 
-    // Create job on aws opensearch
-    const jobDetailsOnAwsOpensearch: Index_Response = await jobDaoObj.createJob(
-      companyJobDetailsOnAwsDynamodb.id, // job id
-      companyJobDetailsOnAwsDynamodb.jobUrl,
-      JobSourcedFromEnum.WORKO,
-      companyDetailsDto,
-      jobCreateDto
-    );
-
-    // Check if the job is created in aws opensearch or not and throw error if not
-    if (jobDetailsOnAwsOpensearch.statusCode !== HttpStatusCode.CREATED_201) {
-      // As the job is not created in aws opensearch,so to make the consistency we need to Delete the job from aws dynamodb
-      await companyJobServiceObj.deleteCompanyJob(
-        companyJobDetailsOnAwsDynamodb
-      );
-
-      // Throw an error if the Job is not created
-      throw new BaseError(
-        "Failed to create Job, please try again.",
-        HttpStatusCode.INTERNAL_SERVER_ERROR_500
-      );
-    }
-
-    const opensearchJobDataToStoreInAwsS3Vector = await jobDaoObj.getJobById(
-      companyJobDetailsOnAwsDynamodb.id
+    const jobOnGcpFirestore: DbGcpFirestoreJobDto | undefined = await gcpFirestoreJobServiceObj.createJob(
+      {
+        id: companyJobDetailsOnAwsDynamodb.id,
+        jobUrl: companyJobDetailsOnAwsDynamodb.jobUrl,
+        sourcedFrom: JobSourcedFromEnum.WORKO,
+        ...companyDetailsDto,
+        ...jobCreateDto,
+        createdAt: dateHelperObj.getISODate(),
+        updatedAt: dateHelperObj.getISODate(),
+        isDeleted: false,
+      }
     )
-
-    if(!opensearchJobDataToStoreInAwsS3Vector) {
+    if(!jobOnGcpFirestore) {
+      global.logger.error("Failed to create job on gcp firestore", {filePath: __filename, methodName: this.createJob.name,});
       throw new BaseError(
         "Failed to create Job, please try again.",
         HttpStatusCode.INTERNAL_SERVER_ERROR_500
       );
     }
 
-    await this.prepareAndCreateJobInAwsS3Vector(opensearchJobDataToStoreInAwsS3Vector)
+    await this.prepareAndCreateJobInAwsS3Vector(jobOnGcpFirestore)
 
     return companyJobDetailsOnAwsDynamodb;
   }
@@ -227,28 +200,78 @@ class JobService {
     return JSON.parse(parseJobDescriptionResponse["body"]);
   }
 
-  private async attachOpensearchJobsWithCompanyDetails(
-    jobListingResponse: AwsOpensearchRecordListingResponseDTO<
-      DbJobAwsOpensearchDto[]
-    >,
+  private async attachGcpFirestoreJobsWithCompanyDetailsAndAwsS3VectorMatchScore(
+    jobsData: DbGcpFirestoreJobDto[],
+    initialMatchScoreJobMap: Map<string, AwsS3VectorJobMatchingScoreDto>,
     jobListingFilterRequest: JobListingFilterOptions,
-  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>> {
+  ): Promise<JobsWithOrWithoutEntityDetails> {
     if (!jobListingFilterRequest.includeCompanyDetails) {
-      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>;
+      return jobsData.map((job: DbGcpFirestoreJobDto) => ({
+        ...job,
+        initialMatchingScoreDetails: initialMatchScoreJobMap.get(job.id),
+      }));
     }
 
-    // Destructure the response
-    const { pagination, data: jobsData } = jobListingResponse;
-
     if(!jobsData.length) {
-      return jobListingResponse as AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>
+      return jobsData.map((job: DbGcpFirestoreJobDto) => ({
+        ...job,
+        initialMatchingScoreDetails: initialMatchScoreJobMap.get(job.id),
+      }))
     }
 
     // Partition jobs by companyId in a single iteration
-    const jobsWithCompanyId: DbJobAwsOpensearchDto[] = [];
-    const jobsWithoutCompanyId: DbJobAwsOpensearchDto[] = [];
+    const jobsWithCompanyId: (DbGcpFirestoreJobDto & {
+      initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
+    })[] = [];
+    const jobsWithoutCompanyId: (DbGcpFirestoreJobDto & {
+      initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
+    })[] = [];
 
-    jobsData.forEach((job: DbJobAwsOpensearchDto) => {
+    jobsData.forEach((job: DbGcpFirestoreJobDto) => {
+      if (job.companyId) {
+        jobsWithCompanyId.push({
+          ...job,
+          initialMatchingScoreDetails: initialMatchScoreJobMap.get(job.id),
+        });
+      } else {
+        jobsWithoutCompanyId.push({
+          ...job,
+          initialMatchingScoreDetails: initialMatchScoreJobMap.get(job.id),
+        });
+      }
+    });
+
+    // Attach company details
+    const jobsWithCompanyDetails: JobsWithOrWithoutEntityDetails = await injectEntityDetailsHelperObj.injectEntityDetailsForGcpFirestoreAndAwsS3VectorJobs<
+      (DbGcpFirestoreJobDto & {
+        initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
+      })
+    >(
+      jobsWithCompanyId
+    );
+
+    return [
+      ...jobsWithCompanyDetails,
+      ...jobsWithoutCompanyId,
+    ];
+  }
+
+  private async attachGcpFirestoreJobsWithCompanyDetails(
+    jobsData: DbGcpFirestoreJobDto[],
+    jobListingFilterRequest: JobListingFilterOptions,
+  ): Promise<(DbGcpFirestoreJobDto & { companyDetails?: DbCompanyDetailDto })[]> {
+    if (!jobListingFilterRequest.includeCompanyDetails) {
+      return jobsData;
+    }
+
+    if(!jobsData.length) {
+      return jobsData;
+    }
+
+    const jobsWithCompanyId: DbGcpFirestoreJobDto[] = [];
+    const jobsWithoutCompanyId: DbGcpFirestoreJobDto[] = [];
+
+    jobsData.forEach((job: DbGcpFirestoreJobDto) => {
       if (job.companyId) {
         jobsWithCompanyId.push(job);
       } else {
@@ -257,43 +280,43 @@ class JobService {
     });
 
     // Attach company details
-    const jobsWithCompanyDetails: (DbJobAwsOpensearchDto & {
-      companyDetails: DbCompanyDetailDto | undefined;
-    })[] = await attachCompanyDetails<DbJobAwsOpensearchDto>(jobsWithCompanyId);
+    const jobsWithCompanyDetails: (DbGcpFirestoreJobDto & {
+      companyDetails?: DbCompanyDetailDto;
+    })[] = await injectEntityDetailsHelperObj.injectEntityDetailsForGcpFirestoreAndAwsS3VectorJobs<
+      DbGcpFirestoreJobDto
+    >(
+      jobsWithCompanyId
+    );
 
-    const finalResponseWithPagination: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> =
-      {
-        data: [...jobsWithCompanyDetails, ...jobsWithoutCompanyId],
-        pagination: pagination,
-      };
-
-    return finalResponseWithPagination;
+    return [
+      ...jobsWithCompanyDetails,
+      ...jobsWithoutCompanyId,
+    ];
   }
 
-  async getAllJobsByFilterOptions(
+  async getAllJobsByFilterOptionsFromGcpFirestore(
     jobListingFilterRequest: JobListingFilterOptions
-  ): Promise<
-    AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>
-  > {
-    global.logger.info("Get All Jobs by Filter Options [Service]", {
-      methodName: this.getAllJobsByFilterOptions.name,
+  ): Promise<GcpFirestoreRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>> {
+    global.logger.info("Get All Jobs by Filter Options From Gcp Firestore [Service]", {
+      methodName: this.getAllJobsByFilterOptionsFromGcpFirestore.name,
     });
 
-    const jobListingResponse: AwsOpensearchRecordListingResponseDTO<
-      DbJobAwsOpensearchDto[]
-    > = await jobDaoObj.getAllJobsByFilterOptions(
+    const jobListingResponse: GcpFirestoreRecordListingResponseDTO<DbGcpFirestoreJobDto[]> = await gcpFirestoreJobServiceObj.getAllJobsByFilterOptions(
         jobListingFilterRequest
       );
 
-    const jobListingResponseWithCompanyDetails: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> = await this.attachOpensearchJobsWithCompanyDetails(
-      jobListingResponse,
+    const jobsWithCompanyDetails: (DbGcpFirestoreJobDto & {
+      companyDetails?: DbCompanyDetailDto;
+    })[] = await this.attachGcpFirestoreJobsWithCompanyDetails(
+      jobListingResponse.data,
       jobListingFilterRequest
     );
 
     if(jobListingFilterRequest.includeCountCompanyJobEntityJobApplication) {
-      const jobsWithCompanyDetails = jobListingResponseWithCompanyDetails.data;
-      const jobsWithCountCompanyJobDetails = await injectCountCompanyJobByEntityTypeDetailsHelper<(
-        DbJobAwsOpensearchDto
+      const jobsWithCountCompanyJobDetails: JobsWithOrWithoutEntityDetails = await injectCountCompanyJobByEntityTypeDetailsHelper<(
+        (DbGcpFirestoreJobDto & {
+          companyDetails?: DbCompanyDetailDto
+        })
       )>(
         CountCompanyJobDbEntityTypeEnum.JOB_APPLICATION,
         jobsWithCompanyDetails
@@ -301,18 +324,21 @@ class JobService {
 
       return {
         data: jobsWithCountCompanyJobDetails,
-        pagination: jobListingResponseWithCompanyDetails.pagination,
+        pagination: jobListingResponse.pagination,
       }
     }
 
-    return jobListingResponseWithCompanyDetails;
+    return {
+      data: jobsWithCompanyDetails,
+      pagination: jobListingResponse.pagination,
+    };
   }
 
-  async getAllJobsFromS3VectorAndOpensearchByFilterOptions(
+  async getAllJobsFromAwsS3VectorAndGcpFirestoreByFilterOptions(
     jobListingFilterRequest: JobListingFilterOptions
-  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>> {
+  ): Promise<GcpFirestoreRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>> {
     global.logger.info("Get All Jobs from S3 Vector and Opensearch [Service]", {
-      methodName: this.getAllJobsFromS3VectorAndOpensearchByFilterOptions.name,
+      methodName: this.getAllJobsFromAwsS3VectorAndGcpFirestoreByFilterOptions.name,
     });
 
     const s3VectorFilterOptions: AwsS3VectorJobListingFilterOptions = {
@@ -324,13 +350,8 @@ class JobService {
     if (!s3VectorMatchingJobs?.jobs?.length) {
       global.logger.warn("No Jobs found in S3 Vector", {
         methodName:
-          this.getAllJobsFromS3VectorAndOpensearchByFilterOptions.name,
+          this.getAllJobsFromAwsS3VectorAndGcpFirestoreByFilterOptions.name,
       });
-
-      /**
-       * @todo: if no jobs found in s3 vector We had a plan to search in opensearch
-       * but it will conflict pagination and "ai team" also wants to list whatever results they get from s3 vector
-       */
 
       return {
         data: [],
@@ -339,47 +360,47 @@ class JobService {
           pageSize: jobListingFilterRequest.pageSize,
           lastKey: undefined,
           sortOrder: jobListingFilterRequest.sortOrder,
-          timesQueried: 0,
-          queriedCount: 0,
         },
       };
     }
 
+    const initialMatchScoreJobMap: Map<string, AwsS3VectorJobMatchingScoreDto> = new Map<string, AwsS3VectorJobMatchingScoreDto>();
     const s3VectorJobIds: string[] = s3VectorMatchingJobs.jobs.map(
       (
         job: AwsS3VectorJobMatchingScoreDto
-      ) => job.jobId
+      ) => {
+        initialMatchScoreJobMap.set(job.jobId, job);
+        return job.jobId
+      }
     );
 
-    const jobListingResponse: AwsOpensearchRecordListingResponseDTO<
-      DbJobAwsOpensearchDto[]
-    > = await jobDaoObj.getAllJobsByListOfS3VectorJobIds(
-      s3VectorJobIds,
-      jobListingFilterRequest,
+    const jobListingResponse: DbGcpFirestoreJobDto[] = await gcpFirestoreJobServiceObj.getJobsByIds(
+      s3VectorJobIds
     );
 
-    const finalResponse: AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> = await this.attachOpensearchJobsWithCompanyDetails(
+    const attachDetails: JobsWithOrWithoutEntityDetails = await this.attachGcpFirestoreJobsWithCompanyDetailsAndAwsS3VectorMatchScore(
       jobListingResponse,
+      initialMatchScoreJobMap,
       jobListingFilterRequest,
-    )
+    );
 
-    // attach matching score details to jobs
-    finalResponse.data = finalResponse.data.map((job: DbJobAwsOpensearchDto) => {
-      return {
-        ...job,
-        initialMatchingScoreDetails: s3VectorMatchingJobs.jobs.find(
-          (s3VectorJob: AwsS3VectorJobMatchingScoreDto) => s3VectorJob.jobId === job.id
-        ),
-      };
-    });
+    const finalResponse: GcpFirestoreRecordListingResponseDTO<JobsWithOrWithoutEntityDetails> = {
+      data: attachDetails,
+      pagination: {
+        count: attachDetails.length,
+        pageSize: jobListingFilterRequest.pageSize,
+        lastKey: undefined,
+        s3VectorLastKey: s3VectorMatchingJobs.s3VectorLastKey,
+        sortOrder: jobListingFilterRequest.sortOrder,
+      }
+    }
 
-    finalResponse.pagination.s3VectorLastKey = s3VectorMatchingJobs.s3VectorLastKey;
     return finalResponse;
   }
   
   async getAllJobsByDashboardFilterOptions(
     jobListingFilterRequest: JobListingFilterOptions
-  ): Promise<AwsOpensearchRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>>
+  ): Promise<GcpFirestoreRecordListingResponseDTO<JobsWithOrWithoutEntityDetails>>
  {
     global.logger.info("Get All Jobs by Dashboard [Service]", {
       methodName: this.getAllJobsByDashboardFilterOptions.name,
@@ -387,247 +408,14 @@ class JobService {
     });
 
     if(jobListingFilterRequest.fromS3Vector) {
-      return this.getAllJobsFromS3VectorAndOpensearchByFilterOptions(jobListingFilterRequest);
+      return this.getAllJobsFromAwsS3VectorAndGcpFirestoreByFilterOptions(jobListingFilterRequest);
     } else {
-      return this.getAllJobsByFilterOptions(jobListingFilterRequest);
+      return this.getAllJobsByFilterOptionsFromGcpFirestore(jobListingFilterRequest);
     }
-  }
-
-  /**
-   * createBulkJobs
-   *
-   * This method sends a bulk request to create multiple job documents in the OpenSearch index.
-   * It returns a promise that resolves to `true` if all operations in the bulk request
-   * succeed, or `false` if any operation fails.
-   *
-   * @param {(DbJobAwsOpensearchDto | {index: {_index: string; _id: string;}})[]} bulkJobData - An array
-   * of job data and index actions to be processed in the bulk request.
-   *
-   * @returns {Promise<boolean>} - A promise that resolves to `true` if all operations
-   * in the bulk request succeed, or `false` if any operation fails.
-   */
-  async createBulkJobs(
-    bulkJobData: (
-      DbJobAwsOpensearchDto
-      | {
-          index: {
-            _index: string;
-            _id: string;
-          };
-        }
-    )[]
-  ): Promise<boolean> {
-    // global logger
-    global.logger.debug(`Create bulk jobs [SERVICE]`, {
-      filePath: __filename,
-      methodName: this.createBulkJobs.name,
-    });
-
-    return jobDaoObj.createBulkJobs(bulkJobData);
-  }
-
-  /**
-   * transformFantasticJobToAwsOpensearchJobDto
-   *
-   * Transforms the fantastic job response to the DbJobAwsOpensearchDto.
-   *
-   * This function is used to transform the external job response from the external job API to the DbJobAwsOpensearchDto.
-   *
-   * @param {FantasticJobApiResponse} externalJob - The external job response from the external job API.
-   * @returns {DbJobAwsOpensearchDto} - The transformed DbJobAwsOpensearchDto.
-   */
-  transformFantasticJobToAwsOpensearchJobDto(
-    ulidId: string,
-    externalJob: FantasticJobApiResponse
-  ): DbJobAwsOpensearchDto {
-    const dbJobDto: DbJobAwsOpensearchDto = {
-      id: ulidId,
-      externalJobId: externalJob.id,
-      sourcedFrom: JobSourcedFromEnum.FANTASTIC_JOB,
-      createdAt: DateTime.now().toISO(),
-      updatedAt: DateTime.now().toISO(),
-      jobTitle: externalJob.title.toLowerCase(),
-      typeofEmployment: (Array.isArray(externalJob.employment_type) && externalJob.employment_type.length)
-        ? externalJob.employment_type.join(", ").toUpperCase()
-        : undefined,
-      location: {
-        city: externalJob?.cities_derived?.toLowerCaseArray() ?? [],
-        state: externalJob?.regions_derived?.toLowerCaseArray() ?? [],
-        country: externalJob?.countries_derived?.toLowerCaseArray() ?? [],
-        fullLocation: externalJob?.locations_derived?.toLowerCaseArray() ?? [],
-      },
-      jobDescription: externalJob.description_html
-        ? htmlToTextHelperObj.htmlToText(externalJob.description_html)
-        : externalJob.description_text,
-      htmlJobDescription: externalJob.description_html,
-      jobPostedDate: externalJob.date_posted,
-      jobCreatedDate: externalJob.date_created,
-      jobUrl: externalJob.url,
-      status: JobStatusEnum.PUBLISHED,
-      workMode: externalJob.remote_derived
-        ? JobWorkModeEnum.WFH
-        : JobWorkModeEnum.WFO,
-      companyName: externalJob.organization.toUpperCase() ?? undefined,
-      companyUrl: externalJob.organization_url ?? undefined,
-      companyLogoUrl: externalJob.organization_logo ?? undefined,
-      isDeleted: false,
-    };
-
-    return dbJobDto;
-  }
-
-  /**
-   * transformBrightDataJobToAwsOpensearchJobDto
-   * 
-   * Transforms a BrightData job response to the DbJobAwsOpensearchDto format.
-   *
-   * This function takes the external job response from BrightData and maps it to
-   * the internal DbJobAwsOpensearchDto structure, which is used for indexing in
-   * AWS OpenSearch.
-   *
-   * @param {string} ulidId - A unique ULID identifier for the job.
-   * @param {BrightDataJobApiResponse} externalJob - The BrightData job response object.
-   * @returns {DbJobAwsOpensearchDto} - The transformed job data in the internal DTO format.
-   */
-  transformBrightDataJobToAwsOpensearchJobDto(
-    ulidId: string,
-    externalJob: BrightDataJobApiResponse
-  ): DbJobAwsOpensearchDto {
-    const {
-      job_posting_id,
-      job_posted_date,
-      job_description_formatted,
-      job_title,
-      job_employment_type,
-      job_location,
-      job_summary,
-      url,
-      company_name,
-      company_url,
-      company_logo,
-      job_function,
-      base_salary,
-      job_poster,
-      job_industries,
-      job_seniority_level,
-    } = externalJob;
-
-    const jobLocation: string[] = job_location ? [job_location.toLowerCase()] : [];
-
-    let salaryRange: MinMaxRange | undefined;
-    if(base_salary?.min_amount && base_salary?.max_amount) {
-      salaryRange = {
-        min: base_salary.min_amount,
-        max: base_salary.max_amount,
-      };
-    } else if (base_salary?.min_amount) {
-      salaryRange = {
-        min: base_salary.min_amount,
-      };
-    } else if (base_salary?.max_amount) {
-      salaryRange = {
-        max: base_salary.max_amount,
-      };
-    } else {
-      salaryRange = undefined;
-    }
-
-    const dbJobDto: DbJobAwsOpensearchDto = {
-      id: ulidId,
-      externalJobId: job_posting_id ?? ulidId,
-      sourcedFrom: JobSourcedFromEnum.BRIGHT_DATA_JOB,
-      createdAt: DateTime.now().toISO(),
-      updatedAt: DateTime.now().toISO(),
-      jobTitle: job_title ? job_title.toLowerCase() : "",
-      typeofEmployment: job_employment_type ?? undefined,
-      location: {
-        city: jobLocation,
-        state: jobLocation,
-        country: jobLocation,
-        fullLocation: jobLocation,
-      },
-      jobDescription: job_summary ?? undefined,
-      htmlJobDescription: job_description_formatted ?? undefined,
-      jobPostedDate: job_posted_date ?? undefined,
-      jobUrl: url ?? undefined,
-      status: JobStatusEnum.PUBLISHED,
-      companyName: company_name ? company_name.toUpperCase() : undefined,
-      companyUrl: company_url ?? undefined,
-      companyLogoUrl: company_logo ?? undefined,
-      isDeleted: false,
-      department: job_function ?? undefined,
-      salaryRange: salaryRange,
-      brightDataJobPoster: job_poster ?? undefined,
-      industry: job_industries ?? undefined,
-      brightDataJobSeniorityLevel: job_seniority_level ?? undefined,
-    };
-
-    return dbJobDto;
-  }
-
-  /**
-   * scriptBulkUploadJobs
-   * 
-   * Bulk uploads jobs in aws opensearch.
-   *
-   * This method takes an array of formatted job data and index actions to be processed in the bulk request.
-   * It sends a bulk request to the OpenSearch client to perform index actions, which create a document if it doesn’t exist
-   * and replace it if it does.
-   *
-   * The method returns a promise that resolves to `true` if all operations in the bulk request succeed, or `false` if any operation fails.
-   *
-   * @param {(DbJobAwsOpensearchDto | {index: {_index: string; _id: string;}})[]} formattedJobListingArray - An array of job data and index actions to be processed in the bulk request.
-   *
-   * @returns {Promise<boolean>} - A promise that resolves to `true` if all operations in the bulk request succeed, or `false` if any operation fails.
-   */
-  async scriptBulkUploadJobs(
-    formattedJobListingArray: (
-      | DbJobAwsOpensearchDto
-      | {
-          index: {
-            _index: string;
-            _id: string;
-          };
-        }
-    )[]
-  ) {
-    global.logger.info("Bulk upload jobs [Service]", {
-      methodName: this.scriptBulkUploadJobs.name,
-    });
-
-    return jobDaoObj.createBulkJobs(formattedJobListingArray);
-  }
-
-  async deleteOldUnappliedExternalJobs(
-    jobIds: string[]
-  ): Promise<DeleteByQuery_Response> {
-    global.logger.info("Delete old unapplied external jobs [Service]", {
-      methodName: this.deleteOldUnappliedExternalJobs.name,
-    });
-
-    return jobDaoObj.deleteOldUnappliedExternalJobByIds(jobIds);
-  }
-
-  
-  async softDeleteOldAppliedExternalJobs(    
-    deleteOlderThanDays: number,
-    sourcedFrom: JobSourcedFromEnum
-  ): Promise<UpdateByQuery_Response> {
-    global.logger.info("Soft delete old applied external jobs [Service]", {
-      methodName: this.softDeleteOldAppliedExternalJobs.name,
-    });
-
-    // Prepare Update Object
-    const updateObject: Partial<JobUpdateInternalDto> = {
-      isDeleted: true,
-      status: JobStatusEnum.CLOSED,
-    };
-
-    return jobDaoObj.softDeleteOldAppliedExternalJobs(updateObject, deleteOlderThanDays, sourcedFrom);
   }
 
   private async updateJobByIdInAwsS3Vector(
-    retrievedUpdatedJobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto
+    updatedJobDetailsOnGcpFirestore: DbGcpFirestoreJobDto
   ): Promise<AwsS3VectorJobCreateOrUpdateParsedResponseDto> {
     global.logger.info("Update job by id in aws s3 vector [Service]", {
       methodName: this.updateJobByIdInAwsS3Vector.name,
@@ -637,7 +425,7 @@ class JobService {
       awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
       // We should must send entire opensearch job details 
       // because in aws s3 vector its performing delete and create operation in order to update job details
-      retrievedUpdatedJobDetailsOnAwsOpensearch 
+      updatedJobDetailsOnGcpFirestore 
     )
 
     const updatedAwsS3VectorJobDetails: AwsS3VectorJobCreateOrUpdateParsedResponseDto = await awsS3VectorJobServiceObj.updateAwsS3VectorJobById(updateData);
@@ -657,32 +445,31 @@ class JobService {
   async updateInternalOrExternalJobById(
     jobId: string,
     jobUpdateDto: JobUpdateDto
-  ): Promise<DbJobAwsOpensearchDto | undefined> {
+  ): Promise<DbGcpFirestoreJobDto> {
     // Logger
     global.logger.debug(`Update job by id [service]`, {
       methodName: this.updateInternalOrExternalJobById.name,
       jobId: jobId,
     });
 
-    // Retrieve the job details from `worko-jobs` index on `AWS Opensearch` and throw an error if the job is not found.
-    const jobDetailsOnAwsOpensearchBeforeUpdate: DbJobAwsOpensearchDto | undefined =
-      await jobDaoObj.getJobById(jobId);
-    if (!jobDetailsOnAwsOpensearchBeforeUpdate) {
+    const jobDetailsOnGcpFirestoreBeforeUpdate: DbGcpFirestoreJobDto | undefined =
+      await gcpFirestoreJobServiceObj.getJobById(jobId);
+    if (!jobDetailsOnGcpFirestoreBeforeUpdate) {
       throw new BaseError(
         "The Job Details not found.",
         HttpStatusCode.NOT_FOUND_404
       );
     }
 
-    // Update `job` details in `worko-jobs` index on `AWS Opensearch`.
-    const updatedJobDetailsOnAwsOpensearch: Update_Response =
-      await jobDaoObj.updateInternalOrExternalJobById(jobId, jobUpdateDto);
-    if (updatedJobDetailsOnAwsOpensearch.statusCode !== HttpStatusCode.OK_200) {
+    const updatedJobDetailsOnGcpFirestore: DbGcpFirestoreJobDto | undefined =
+      await gcpFirestoreJobServiceObj.updateJobById(jobId, jobUpdateDto);
+    if (!updatedJobDetailsOnGcpFirestore) {
       global.logger.error(
-        `Update job by id in aws opensearch failed [SERVICE]`,
+        `Update job by id in gcp firestore failed [SERVICE]`,
         {
           jobId: jobId,
-          updatedJobDetailsOnAwsOpensearch,
+          jobUpdateDto,
+          updatedJobDetailsOnGcpFirestore,
         }
       );
 
@@ -693,17 +480,8 @@ class JobService {
       );
     }
 
-    const retrievedUpdatedJobDetailsOnAwsOpensearch: DbJobAwsOpensearchDto | undefined =
-      await jobDaoObj.getJobById(jobId);
-    if (!retrievedUpdatedJobDetailsOnAwsOpensearch) {
-      throw new BaseError(
-        "The Updated Job Details not found.",
-        HttpStatusCode.NOT_FOUND_404
-      );
-    }
-
     // If the job is internal then update the `companyJob` details in dynamodb.
-    if(retrievedUpdatedJobDetailsOnAwsOpensearch.companyId) {
+    if(updatedJobDetailsOnGcpFirestore.companyId) {
       /**
        * Removes the `updatedAt` property from `jobUpdateDto` before updating the item in DynamoDB.
        *
@@ -721,11 +499,15 @@ class JobService {
       // Return updated `companyJob` details
       const updatedCompanyJobDetails: DbCompanyJobDto = await companyJobServiceObj.updateCompanyJobById(
         jobId,
-        retrievedUpdatedJobDetailsOnAwsOpensearch.companyId,
+        updatedJobDetailsOnGcpFirestore.companyId,
         companyJobUpdateDto
       );
 
       if(!updatedCompanyJobDetails || !updatedCompanyJobDetails.id) {
+        global.logger.error("Unable to update company job details in aws dynamodb. [service]", {
+          methodName: this.updateInternalOrExternalJobById.name,
+          jobId: jobId,
+        })
         throw new BaseError(
           "Unable to update company job details.",
           HttpStatusCode.INTERNAL_SERVER_ERROR_500
@@ -735,21 +517,21 @@ class JobService {
 
     // if job status before update is published and job status after update is not published then delete job from aws s3 vector
     if(
-      jobDetailsOnAwsOpensearchBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
-      retrievedUpdatedJobDetailsOnAwsOpensearch.status !== JobStatusEnum.PUBLISHED
+      jobDetailsOnGcpFirestoreBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
+      updatedJobDetailsOnGcpFirestore.status !== JobStatusEnum.PUBLISHED
     ) {
       global.logger.info("Job status before update is published and job status after update is not published, so delete job from aws s3 vector. [service]", {
         methodName: this.updateInternalOrExternalJobById.name,
-        jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+        jobId: updatedJobDetailsOnGcpFirestore.id,
       })
       const isAwsS3VectorJobDeleted: boolean = await awsS3VectorJobServiceObj.deleteAwsS3VectorJobById(
-        retrievedUpdatedJobDetailsOnAwsOpensearch.id
+        updatedJobDetailsOnGcpFirestore.id
       );
 
       if(!isAwsS3VectorJobDeleted) {
         global.logger.error("Unable to delete aws s3 vector job details. [service]", {
           methodName: this.updateInternalOrExternalJobById.name,
-          jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+          jobId: updatedJobDetailsOnGcpFirestore.id,
         });
         throw new BaseError(
           "Unable to update job details.",
@@ -759,34 +541,34 @@ class JobService {
     }
     // If job status before update is not published and job status after update is published then create job in aws s3 vector
     else if(
-      jobDetailsOnAwsOpensearchBeforeUpdate.status !== JobStatusEnum.PUBLISHED &&
-      retrievedUpdatedJobDetailsOnAwsOpensearch.status === JobStatusEnum.PUBLISHED
+      jobDetailsOnGcpFirestoreBeforeUpdate.status !== JobStatusEnum.PUBLISHED &&
+      updatedJobDetailsOnGcpFirestore.status === JobStatusEnum.PUBLISHED
     ) {
       global.logger.info("Job status before update is not published and job status after update is published, so create job in aws s3 vector. [service]", {
         methodName: this.updateInternalOrExternalJobById.name,
-        jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+        jobId: updatedJobDetailsOnGcpFirestore.id,
       });
 
       await this.prepareAndCreateJobInAwsS3Vector(
-        retrievedUpdatedJobDetailsOnAwsOpensearch
+        updatedJobDetailsOnGcpFirestore
       );
     } 
     // If job status before update is published and job status after update is published then update job in aws s3 vector
     else if(
-      jobDetailsOnAwsOpensearchBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
-      retrievedUpdatedJobDetailsOnAwsOpensearch.status === JobStatusEnum.PUBLISHED
+      jobDetailsOnGcpFirestoreBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
+      updatedJobDetailsOnGcpFirestore.status === JobStatusEnum.PUBLISHED
     ) {
       global.logger.info("Job status before update is published and job status after update is published, so update job in aws s3 vector. [service]", {
         methodName: this.updateInternalOrExternalJobById.name,
-        jobId: retrievedUpdatedJobDetailsOnAwsOpensearch.id,
+        jobId: updatedJobDetailsOnGcpFirestore.id,
       })
       await this.updateJobByIdInAwsS3Vector(
-        retrievedUpdatedJobDetailsOnAwsOpensearch
+        updatedJobDetailsOnGcpFirestore
       );
     }
 
     // Return the external job details
-    return retrievedUpdatedJobDetailsOnAwsOpensearch;
+    return updatedJobDetailsOnGcpFirestore;
   }
 
   /**
@@ -799,7 +581,6 @@ class JobService {
   ): Promise<DbCompanyJobDto> {
     // Global Logger for the Delete Job Controller
     global.logger.info("Deleting Job. [controller]", {
-      filePath: __filename,
       methodName: this.softDeleteJobById.name,
       jobId: jobId,
       companyId: companyId,
@@ -813,29 +594,24 @@ class JobService {
       jobClosedByUserId = actionByCorporateUserId;
     }
 
-    // Prepare Update Object for opensearch
-    const updateObjectForOpensearch: Partial<JobUpdateInternalDto> = {
-      isDeleted: true,
-      status: JobStatusEnum.CLOSED,
-      shortSoftDeleteReason: requestBody.shortSoftDeleteReason,
-      detailedSoftDeleteReason: requestBody.detailedSoftDeleteReason,
-    };
-
-    // Soft deleting the job from opensearch database
-    const softDeleteJobOnAwsOpensearch: Update_Response =
-      await jobDaoObj.softDeleteJobById(jobId, updateObjectForOpensearch);
-    if (softDeleteJobOnAwsOpensearch.statusCode !== HttpStatusCode.OK_200) {
+    const softDeleteJobOnGcpFirestore: DbGcpFirestoreJobDto | undefined  =
+      await gcpFirestoreJobServiceObj.updateJobById(jobId, {
+        status: JobStatusEnum.CLOSED,
+        shortSoftDeleteReason: requestBody.shortSoftDeleteReason,
+        detailedSoftDeleteReason: requestBody.detailedSoftDeleteReason,
+    });
+    if (!softDeleteJobOnGcpFirestore) {
+      global.logger.error(`Unable to soft delete job in gcp firestore.`, {
+        softDeleteJobOnGcpFirestore,
+        jobId
+      })
       throw new BaseError(
         "Unable to soft delete job, Please try again.",
         HttpStatusCode.INTERNAL_SERVER_ERROR_500
       );
     }
-    global.logger.debug("Soft delete job on aws opensearch. [service]", {
-      softDeleteJobOnAwsOpensearchStatusCode:
-        softDeleteJobOnAwsOpensearch.statusCode,
-    });
 
-    const prepareSoftDeletData: Partial<CompanyJobCommonUpdateDto> = {
+    const prepareSoftDeletDataForAwsDynamodb: Partial<CompanyJobCommonUpdateDto> = {
       isDeleted: true,
       status: JobStatusEnum.CLOSED,
       shortSoftDeleteReason: requestBody.shortSoftDeleteReason,
@@ -843,7 +619,7 @@ class JobService {
     }
 
     // Soft delete the job from `CompanyJob` 
-    const updatedJobDetails: DbCompanyJobDto = await companyJobServiceObj.softDeleteJobById(jobId, companyId,prepareSoftDeletData);
+    const updatedJobDetails: DbCompanyJobDto = await companyJobServiceObj.softDeleteJobById(jobId, companyId, prepareSoftDeletDataForAwsDynamodb);
     if(updatedJobDetails.status !== JobStatusEnum.CLOSED && updatedJobDetails.isDeleted !== true) {
       global.logger.error("Unable to soft delete job in dynamodb, Please try again. [service]", {
         updatedJobDetails
@@ -869,7 +645,7 @@ class JobService {
       );
     }
 
-    userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
+    await userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
       jobId,
       updatedJobDetails.jobTitle,
       jobClosedByUserId,
@@ -881,48 +657,30 @@ class JobService {
     return updatedJobDetails;
   }
 
-  /**
-   * getJobByIdFromAwsOpensearch
-   *
-   * Retrieves a job by its ID.
-   *
-   * This method fetches the job details from AWS OpenSearch using the given job ID.
-   * It logs the operation and returns a promise that resolves to the job details.
-   *
-   * @param {string} id - The ID of the job to retrieve.
-   * @returns {Promise<DbJobAwsOpensearchDto | undefined>} A promise that resolves to the job details.
-   */
-  async getJobByIdFromAwsOpensearch(
-    id: string
-  ): Promise<DbJobAwsOpensearchDto | undefined> {
-    // logger
-    global.logger.info(`Get Job By Id From aws opensearch [Service]`, {
-      methodName: this.getJobByIdFromAwsOpensearch.name,
-    });
-
-    return jobDaoObj.getJobById(id);
+  async getJobByIdFromGcpFireStore(id: string): Promise<DbGcpFirestoreJobDto | undefined> {
+    return gcpFirestoreJobServiceObj.getJobById(id);
   }
 
   async getJobByIdFromS3Vector(
     id: string,
     jobListingFilterRequest: JobListingFilterOptions
-  ): Promise<DbJobAwsOpensearchDto & {
+  ): Promise<DbGcpFirestoreJobDto & {
     initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto;
   }> {
     global.logger.info(`Get Job By Id From s3 vector [Service]`, {
-      methodName: this.getJobByIdFromAwsOpensearch.name,
+      methodName: this.getJobByIdFromS3Vector.name,
       requestedJobId: id,
     });
 
-    const jobDetailsOnOpensearch: (DbJobAwsOpensearchDto & {
+    const jobDetailsGcpFirestore: (DbGcpFirestoreJobDto & {
       initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
-    }) | undefined = await this.getJobByIdFromAwsOpensearch(id);
-    if(!jobDetailsOnOpensearch) {
-      global.logger.warn("Job details not found in aws opensearch", {
+    }) | undefined = await this.getJobByIdFromGcpFireStore(id);
+    if(!jobDetailsGcpFirestore) {
+      global.logger.warn("Job details not found in gcp firestore.", {
         requestedJobId: id,
-        methodName: this.getJobByIdFromAwsOpensearch.name,
+        methodName: this.getJobByIdFromS3Vector.name,
       })
-      return {} as DbJobAwsOpensearchDto & {
+      return {} as DbGcpFirestoreJobDto & {
         initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
       };
     }
@@ -935,13 +693,13 @@ class JobService {
     const s3VectorMatchingJobs: AwsS3VectorJobGetParsedResponseDto = await awsS3VectorJobServiceObj.getAllAwsS3VectorJobsByFilterOptions(s3VectorFilterOptions);
 
     if (!s3VectorMatchingJobs?.jobs?.length) {
-      global.logger.warn("No Jobs found in S3 Vector", {
+      global.logger.warn("No Jobs found in S3 Vector, so we are returning job details from gcp firestore as a fallback.", {
         requestedJobId: id,
         methodName: this.getJobByIdFromS3Vector.name,
       });
 
-      // We are returning the job details from opensearch as a fallback if no jobs found in s3 vector
-      return jobDetailsOnOpensearch as DbJobAwsOpensearchDto & {
+      // We are returning the job details from gcp firestore as a fallback if no jobs found in s3 vector
+      return jobDetailsGcpFirestore as DbGcpFirestoreJobDto & {
         initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
       };
     }
@@ -952,48 +710,20 @@ class JobService {
 
     if(!initialMatchingScoreDetails) {
       // Initial matching score details not found
-      global.logger.warn("Initial matching score details not found", {
+      global.logger.warn("Initial matching score details not found, so we are returning job details from gcp firestore as a fallback.", {
         requestedJobId: id,
         methodName: this.getJobByIdFromS3Vector.name,
       });
 
-      // We are returning the job details from opensearch as a fallback, if initial matching score details not found from vector
-      return jobDetailsOnOpensearch as DbJobAwsOpensearchDto & {
+      // We are returning the job details from gcp firestore as a fallback, if initial matching score details not found from vector
+      return jobDetailsGcpFirestore as DbGcpFirestoreJobDto & {
         initialMatchingScoreDetails?: AwsS3VectorJobMatchingScoreDto
       };
     }
 
-    jobDetailsOnOpensearch.initialMatchingScoreDetails = initialMatchingScoreDetails;
+    jobDetailsGcpFirestore.initialMatchingScoreDetails = initialMatchingScoreDetails;
 
-    return jobDetailsOnOpensearch;
-  }
-
-  async getAllOldUnappliedExternalJobs(deleteOlderThanDays: number, sourcedFrom: JobSourcedFromEnum) {
-    return jobDaoObj.getAllOldUnappliedExternalJobs(deleteOlderThanDays, sourcedFrom);
-  }
-
-  /**
-   * updateJobByIdOnAwsOpensearch
-   *
-   * Updates a job by its ID.
-   *
-   * This method logs the update operation and sends an update request to the OpenSearch client to modify the job document with the given ID.
-   *
-   * @param {string} id - The ID of the job to update.
-   * @param {Partial<JobUpdateInternalDto>} updateDto - The updated details of the job.
-   *
-   * @returns {Promise<DbJobAwsOpensearchDto | undefined>} - A promise that resolves to the updated job details from the OpenSearch client.
-   */
-  async updateJobByIdOnAwsOpensearch(
-    id: string,
-    updateDto: Partial<JobUpdateInternalDto>
-  ): Promise<Update_Response> {
-    // logger
-    global.logger.info(`Update Job By Id From aws opensearch [Service]`, {
-      methodName: this.updateJobByIdOnAwsOpensearch.name,
-    });
-
-    return jobDaoObj.updateJobById(id, updateDto);
+    return jobDetailsGcpFirestore;
   }
 
   /**
@@ -1015,31 +745,27 @@ class JobService {
     }) => job.jobId);
 
     // Get all Jobs before update
-    const jobsBeforeUpdate: AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]> = await jobDaoObj.getAllJobsByListOfJobIds(
-      allJobIdsBeforeUpdate,
-      {
-        pageSize: allJobIdsBeforeUpdate.length,
-      }
+    const jobsDataBeforeUpdate: DbGcpFirestoreJobDto[] = await gcpFirestoreJobServiceObj.getJobsByIds(
+      allJobIdsBeforeUpdate
     );
-    const jobsDataBeforeUpdate: DbJobAwsOpensearchDto[] = jobsBeforeUpdate.data;
 
-    const jobsMapBeforeUpdate: Map<string, DbJobAwsOpensearchDto> = new Map(jobsDataBeforeUpdate.map((eachJobBeforeUpdate: DbJobAwsOpensearchDto) => [eachJobBeforeUpdate.id, eachJobBeforeUpdate]));
+    const jobsMapBeforeUpdate: Map<string, DbGcpFirestoreJobDto> = new Map(jobsDataBeforeUpdate.map((eachJobBeforeUpdate: DbGcpFirestoreJobDto) => [eachJobBeforeUpdate.id, eachJobBeforeUpdate]));
 
     // Get action by user id
     const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
 
-    let opensearchUpdateData: Partial<JobUpdateInternalDto> = {};
+    let gcpFirestoreUpdateData: Partial<JobUpdateInternalDto> = {};
     let dynamodbUpdateData: Partial<CompanyJobCommonUpdateDto> = {};
 
     if (actionByUserId) {
-      opensearchUpdateData.updatedByUserId = actionByUserId;
+      gcpFirestoreUpdateData.updatedByUserId = actionByUserId;
       dynamodbUpdateData.updatedByUserId = actionByUserId;
     } else {
-      opensearchUpdateData.updatedByCorporateUserId = actionByCorporateUserId;
+      gcpFirestoreUpdateData.updatedByCorporateUserId = actionByCorporateUserId;
       dynamodbUpdateData.updatedByCorporateUserId = actionByCorporateUserId;
     }
 
-    const opensearchResult: EntityBulkUpdateMetricDto = {
+    const gcpFirestoreResult: EntityBulkUpdateMetricDto = {
       success: { count: 0, primaryIds: [] },
       failure: { count: 0, primaryIds: [] },
     };
@@ -1056,33 +782,33 @@ class JobService {
     for (const jobUpdate of validatedJobRequestBody.bulkJobUpdate) {
       const { companyId, jobId, status: newJobStatus } = jobUpdate;
 
-      // Prepare update data for OpenSearch
-      opensearchUpdateData.status = newJobStatus;
+      // Prepare update data for gcpFirestore
+      gcpFirestoreUpdateData.status = newJobStatus;
 
       // Prepare update data for DynamoDB
       dynamodbUpdateData.status = newJobStatus;
 
       try {
-        // Update in OpenSearch
-        const opensearchResponse: Update_Response =
-          await jobDaoObj.updateJobById(jobId, opensearchUpdateData);
+        // Update in gcpFirestore
+        const gcpFirestoreResponse: DbGcpFirestoreJobDto | undefined =
+          await gcpFirestoreJobServiceObj.updateJobById(jobId, gcpFirestoreUpdateData);
 
-        if (opensearchResponse.statusCode === HttpStatusCode.OK_200) {
-          opensearchResult.success.count++;
-          opensearchResult.success.primaryIds!.push(jobId);
+        if (gcpFirestoreResponse) {
+          gcpFirestoreResult.success.count++;
+          gcpFirestoreResult.success.primaryIds!.push(jobId);
         } else {
-          opensearchResult.failure.count++;
-          opensearchResult.failure.primaryIds!.push(jobId);
+          gcpFirestoreResult.failure.count++;
+          gcpFirestoreResult.failure.primaryIds!.push(jobId);
 
-          global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`,{
-            opensearchResponse
+          global.logger.error(`Failed to update jobId: ${jobId} in gcpFirestore`,{
+            gcpFirestoreResponse
           });
         }
       } catch (error) {
-        opensearchResult.failure.count++;
-        opensearchResult.failure.primaryIds!.push(jobId);
+        gcpFirestoreResult.failure.count++;
+        gcpFirestoreResult.failure.primaryIds!.push(jobId);
 
-        global.logger.error(`Failed to update jobId: ${jobId} in Opensearch`, {
+        global.logger.error(`Failed to update jobId: ${jobId} in gcpFirestore`, {
           error: error,
         });
       }
@@ -1100,7 +826,7 @@ class JobService {
           dynamodbResult.success.count++;
           dynamodbResult.success.primaryIds!.push(jobId);
 
-          const opensearchJobBeforeUpdate: DbJobAwsOpensearchDto | undefined = jobsMapBeforeUpdate.get(jobId);
+          const gcpFirestoreJobBeforeUpdate: DbGcpFirestoreJobDto | undefined = jobsMapBeforeUpdate.get(jobId);
 
           const {
             jobTitle,
@@ -1116,8 +842,8 @@ class JobService {
 
           // If job status before update is not published and job status after update is published then prepare to bulk create job in aws s3 vector
           if(
-            opensearchJobBeforeUpdate
-            && opensearchJobBeforeUpdate.status !== JobStatusEnum.PUBLISHED
+            gcpFirestoreJobBeforeUpdate
+            && gcpFirestoreJobBeforeUpdate.status !== JobStatusEnum.PUBLISHED
             && updateResult.status === JobStatusEnum.PUBLISHED
           ) {
             s3VectorJobsToCreate.push({
@@ -1134,14 +860,14 @@ class JobService {
                 miscellaneousSkills,
                 experienceRange,
                 otherRequirements, 
-                companyName: opensearchJobBeforeUpdate.companyName,
+                companyName: gcpFirestoreJobBeforeUpdate.companyName,
               }
             })
           }
           // If job status before update is published and job status after update is not published then prepare to bulk delete job in aws s3 vector
           else if(
-            opensearchJobBeforeUpdate
-            && opensearchJobBeforeUpdate.status === JobStatusEnum.PUBLISHED
+            gcpFirestoreJobBeforeUpdate
+            && gcpFirestoreJobBeforeUpdate.status === JobStatusEnum.PUBLISHED
             && updateResult.status !== JobStatusEnum.PUBLISHED
           ) {
             s3VectorJobIdsToDelete.push(updateResult.id);
@@ -1164,22 +890,71 @@ class JobService {
       }
     }
 
-    awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobsByIds(
-      s3VectorJobIdsToDelete
-    );
+    await Promise.all([
+      awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobsByIds(
+        s3VectorJobIdsToDelete
+      ),
 
-    awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs({
-      jobData: s3VectorJobsToCreate,
-      indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-    });
+      awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs({
+        jobData: s3VectorJobsToCreate,
+        indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
+      })
+    ])
 
     // Prepare the response
     const bulkJobUpdateResponse: JobBulkUpdateResponseDto = {
-      opensearchBulkJobUpdateMetrics: opensearchResult,
+      gcpFirestoreBulkJobUpdateMetrics: gcpFirestoreResult,
       dynamodbBulkJobUpdateMetrics: dynamodbResult,
     };
 
     return bulkJobUpdateResponse;
+  }
+
+  async validateAndDeleteExpiredBrightDataJobs(
+    deleteOlderThanDays: number,
+    sourcedFrom: JobSourcedFromEnum
+  ): Promise<boolean> {
+    const deleteJobIds: string[] = await gcpFirestoreJobServiceObj.getAllOldExternalJobs(
+      deleteOlderThanDays,
+      sourcedFrom
+    );
+
+    global.logger.debug(`Received deleteJobIds: `, {
+      deleteJobIdsLength: deleteJobIds.length
+    });
+
+    if(deleteJobIds?.length) {
+      /**
+       * @todo Need to think how to abort the transaction if any of the activity fails
+       */
+      const deleteActivities: [boolean, boolean] = await Promise.all([
+        // Hard Delete old jobs
+        gcpFirestoreJobServiceObj.deleteJobsByIds(
+          deleteJobIds,
+        ),
+          
+        awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobsByIds(
+          deleteJobIds
+        )
+      ]);
+
+      global.logger.debug(`Received deleteActivities: `, {
+        deleteActivities
+      });
+
+      if(
+        !deleteActivities[0] || 
+        !deleteActivities[1]
+      ) {
+        return false;
+      }
+
+      return true;
+    }
+
+    global.logger.info(`No jobs to delete, so returning false.`);
+
+    return false;
   }
 }
 

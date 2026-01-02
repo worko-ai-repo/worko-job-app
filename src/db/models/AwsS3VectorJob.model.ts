@@ -3,9 +3,6 @@
 import { JobLocationDto, MinMaxRange } from "../../dtos/Common.dto";
 import { SalaryRangeDto } from "../../dtos/Job.dto";
 
-// Import enums
-import { JobStatusEnum } from "../../enums/Job.enum";
-
 /**
  * DbJobAwsS3VectorDto
  * 

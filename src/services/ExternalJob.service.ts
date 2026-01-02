@@ -15,7 +15,7 @@ import { JobSourcedFromEnum } from "../enums/Common.enum";
 
 // Import models
 import { DbExternalJobDto } from "../db/models/ExternalJob.model";
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchJob.model";
 
 /**
  * ExternalJobService

@@ -10,7 +10,8 @@ import { JobAllowedBulkUpdateStatusEnum, JobAllowedUpdateStatusEnum, JobDashboar
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import schemas
-import { awsOpensearchCommonSchema, optionalCommaSeparatedStringToArray } from "./Common.aws-opensearch.schema";
+import { commonSchema } from "./Common.schema";
+import { gcpFirestoreCommonSchema, optionalCommaSeparatedStringToArray } from "./Common.gcp-firestore.schema";
 
 /**
  * jobCreateApiDtoValidation
@@ -329,31 +330,24 @@ export const jobCreateApiDtoValidation = Joi.object({
 /**
  * jobFilterDtoValidation
  */
-export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
+export const jobFilterDtoValidation = gcpFirestoreCommonSchema.concat(
   Joi.object({
-    includeCompanyDetails: Joi
-      .boolean()
+    includeCompanyDetails: Joi.boolean().optional().messages({
+      "boolean.base": "The includeCompanyDetails field must be a boolean.",
+    }),
+
+    includeCountCompanyJobEntityJobApplication: Joi.boolean()
       .optional()
       .messages({
-        "boolean.base": "The includeCompanyDetails field must be a boolean.",
+        "boolean.base":
+          "The includeCountCompanyJobEntityJobApplication field must be a boolean.",
       }),
 
-    includeCountCompanyJobEntityJobApplication: Joi
-      .boolean()
-      .optional()
-      .messages({
-        "boolean.base": "The includeCountCompanyJobEntityJobApplication field must be a boolean.",
-      }),
+    fromS3Vector: Joi.boolean().optional().messages({
+      "boolean.base": "The fromS3Vector field must be a boolean.",
+    }),
 
-    fromS3Vector: Joi
-      .boolean()
-      .optional()
-      .messages({
-        "boolean.base": "The fromS3Vector field must be a boolean.",
-      }),
-
-    s3VectorPageNumber: Joi
-      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+    s3VectorPageNumber: Joi.number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
       .integer()
       .min(1)
       .optional()
@@ -361,124 +355,121 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
         "number.base": "The Page number field must be a number.",
         "number.min": "The Page number field must be at least 1.",
       }),
-    
-    dashboard: Joi
-      .string()
+
+    dashboard: Joi.string()
       .optional()
       .valid(...Object.values(JobDashboardEnum))
       .messages({
-        "any.type": `The dashboard field must be one of the allowed values i.e. ${Object.values(JobDashboardEnum).join(", ")}.`,
+        "any.type": `The dashboard field must be one of the allowed values i.e. ${Object.values(
+          JobDashboardEnum
+        ).join(", ")}.`,
       }),
 
-    companyId: Joi
-      .string()
-      .optional()
-      .allow("", null)
-      .messages({
-        "any.type": "The company Id field must be a string.",
-      }),
+    companyId: Joi.string().optional().allow("", null).messages({
+      "any.type": "The company Id field must be a string.",
+    }),
 
-    location: Joi
-      .string()
-      .optional()
-      .allow("", null)
-      .messages({
-        "any.type": "The location field must be a string.",
-      }),
+    location: Joi.string().optional().allow("", null).messages({
+      "any.type": "The location field must be a string.",
+    }),
 
-    companyName: Joi
-      .string()
-      .optional()
-      .allow("", null)
-      .messages({
-        "any.type": "The companyName field must be a string.",
-      }),
+    companyName: Joi.string().optional().allow("", null).messages({
+      "any.type": "The companyName field must be a string.",
+    }),
 
-    minExperience: Joi
-      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+    minExperience: Joi.number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
       .integer()
       .min(0)
       .optional()
       .messages({
-        'number.min': 'The Minimum experience field must be a positive integer.',
+        "number.min":
+          "The Minimum experience field must be a positive integer.",
       }),
 
-    maxExperience: Joi
-      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+    maxExperience: Joi.number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
       .integer()
       .min(0)
       .optional()
       .messages({
-        'number.min': 'The Maximum experience field must be a positive integer.',
+        "number.min":
+          "The Maximum experience field must be a positive integer.",
       }),
 
-    minSalary: Joi
-      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+    minSalary: Joi.number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
       .integer()
       .min(0)
       .optional()
       .messages({
-        'number.min': 'The Minimum salary field must be a positive integer.',
+        "number.min": "The Minimum salary field must be a positive integer.",
       }),
 
-    maxSalary: Joi
-      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+    maxSalary: Joi.number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
       .integer()
       .min(0)
       .optional()
       .messages({
-        'number.min': 'The Maximum salary field must be a positive integer.',
+        "number.min": "The Maximum salary field must be a positive integer.",
       }),
 
-    YOE: Joi
-      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+    YOE: Joi.number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
       .min(0)
       .optional()
       .messages({
-        'number.min': 'The Years of experience field must be a positive integer.',
+        "number.min":
+          "The Years of experience field must be a positive integer.",
       }),
 
-    department: Joi 
-      .string()
+    department: Joi.string()
       .optional()
       .allow("", null)
-      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .custom(
+        optionalCommaSeparatedStringToArray,
+        "Comma-separated string to array"
+      )
       .messages({
         "string.base": "The Department field must be a string.",
-        "string.commaSeparated": "Please provide valid comma-separated company names.",
+        "string.commaSeparated":
+          "Please provide valid comma-separated company names.",
       }),
 
-    softSkills: Joi 
-      .string()
+    softSkills: Joi.string()
       .optional()
       .allow("", null)
-      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .custom(
+        optionalCommaSeparatedStringToArray,
+        "Comma-separated string to array"
+      )
       .messages({
         "string.base": "The Soft skills field must be a string.",
-        "string.commaSeparated": "Please provide valid comma-separated company names.",
+        "string.commaSeparated":
+          "Please provide valid comma-separated company names.",
       }),
 
-    coreSkills: Joi 
-      .string()
+    coreSkills: Joi.string()
       .optional()
       .allow("", null)
-      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .custom(
+        optionalCommaSeparatedStringToArray,
+        "Comma-separated string to array"
+      )
       .messages({
         "string.base": "The Core skills field must be a string.",
-        "string.commaSeparated": "Please provide valid comma-separated company names.",
+        "string.commaSeparated":
+          "Please provide valid comma-separated company names.",
       }),
 
-    technicalSkills: Joi 
-      .string()
+    technicalSkills: Joi.string()
       .optional()
       .allow("", null)
-      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .custom(
+        optionalCommaSeparatedStringToArray,
+        "Comma-separated string to array"
+      )
       .messages({
         "string.base": "The Technical skills field must be a string.",
       }),
 
-    workMode: Joi
-      .string()
+    workMode: Joi.string()
       .optional()
       .valid(...Object.values(JobWorkModeEnum))
       .messages({
@@ -488,32 +479,24 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
         "any.type": "The Work mode field must be a string.",
       }),
 
-    status: Joi
-      .string()
+    status: Joi.string()
       .optional()
       .valid(...Object.values(JobStatusEnum))
       .messages({
-        "any.only": `The status field must be one of the allowed values i.e. ${Object.values(JobStatusEnum).join(", ")}.`,
+        "any.only": `The status field must be one of the allowed values i.e. ${Object.values(
+          JobStatusEnum
+        ).join(", ")}.`,
       }),
 
-    jobTitle: Joi
-      .string()
-      .allow("", null)
-      .optional()
-      .lowercase()
-      .messages({
-        "string.base": "The job title field must be a string.",
-      }),
+    jobTitle: Joi.string().allow("", null).optional().lowercase().messages({
+      "string.base": "The job title field must be a string.",
+    }),
 
-    typeofEmployment: Joi
-      .string()
-      .optional()
-      .messages({
-        "string.base": "The type of employment field must be a string.",
-      }),
+    typeofEmployment: Joi.string().optional().messages({
+      "string.base": "The type of employment field must be a string.",
+    }),
 
-    userRole: Joi
-      .string()
+    userRole: Joi.string()
       .optional()
       .valid(...Object.values(CorporateUserTypeEnum))
       .messages({
@@ -523,15 +506,11 @@ export const jobFilterDtoValidation = awsOpensearchCommonSchema.concat(
         "any.type": "The user role field must be a string.",
       }),
 
-    corporateRecruiterUserId: Joi
-      .string()
-      .optional()
-      .allow("", null)
-      .messages({
-        "any.type": "The corporate recruiter user id field must be a string.",
-      }),
+    corporateRecruiterUserId: Joi.string().optional().allow("", null).messages({
+      "any.type": "The corporate recruiter user id field must be a string.",
+    }),
   })
-) 
+); 
 
 /**
  * parsedJobDescriptionApiDtoValidation
@@ -878,3 +857,207 @@ export const jobBulkUpdateApiDtoValidation = Joi.object({
       "array.max": `Atmost ${APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MAX} job updates are allowed.`,
     }),
 });
+
+export const companyJobListingFilterDtoValidation = commonSchema.concat(
+  Joi.object({
+    includeCompanyDetails: Joi
+      .boolean()
+      .optional()
+      .messages({
+        "boolean.base": "The includeCompanyDetails field must be a boolean.",
+      }),
+
+    includeCountCompanyJobEntityJobApplication: Joi
+      .boolean()
+      .optional()
+      .messages({
+        "boolean.base": "The includeCountCompanyJobEntityJobApplication field must be a boolean.",
+      }),
+
+    fromS3Vector: Joi
+      .boolean()
+      .optional()
+      .messages({
+        "boolean.base": "The fromS3Vector field must be a boolean.",
+      }),
+
+    s3VectorPageNumber: Joi
+      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+      .integer()
+      .min(1)
+      .optional()
+      .messages({
+        "number.base": "The Page number field must be a number.",
+        "number.min": "The Page number field must be at least 1.",
+      }),
+    
+    dashboard: Joi
+      .string()
+      .optional()
+      .valid(...Object.values(JobDashboardEnum))
+      .messages({
+        "any.type": `The dashboard field must be one of the allowed values i.e. ${Object.values(JobDashboardEnum).join(", ")}.`,
+      }),
+
+    companyId: Joi
+      .string()
+      .optional()
+      .allow("", null)
+      .messages({
+        "any.type": "The company Id field must be a string.",
+      }),
+
+    location: Joi
+      .string()
+      .optional()
+      .allow("", null)
+      .messages({
+        "any.type": "The location field must be a string.",
+      }),
+
+    companyName: Joi
+      .string()
+      .optional()
+      .allow("", null)
+      .messages({
+        "any.type": "The companyName field must be a string.",
+      }),
+
+    minExperience: Joi
+      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+      .integer()
+      .min(0)
+      .optional()
+      .messages({
+        'number.min': 'The Minimum experience field must be a positive integer.',
+      }),
+
+    maxExperience: Joi
+      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+      .integer()
+      .min(0)
+      .optional()
+      .messages({
+        'number.min': 'The Maximum experience field must be a positive integer.',
+      }),
+
+    minSalary: Joi
+      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+      .integer()
+      .min(0)
+      .optional()
+      .messages({
+        'number.min': 'The Minimum salary field must be a positive integer.',
+      }),
+
+    maxSalary: Joi
+      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+      .integer()
+      .min(0)
+      .optional()
+      .messages({
+        'number.min': 'The Maximum salary field must be a positive integer.',
+      }),
+
+    YOE: Joi
+      .number() // Generates a schema object that matches a number data type (as well as strings that can be converted to numbers).
+      .min(0)
+      .optional()
+      .messages({
+        'number.min': 'The Years of experience field must be a positive integer.',
+      }),
+
+    department: Joi 
+      .string()
+      .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .messages({
+        "string.base": "The Department field must be a string.",
+        "string.commaSeparated": "Please provide valid comma-separated company names.",
+      }),
+
+    softSkills: Joi 
+      .string()
+      .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .messages({
+        "string.base": "The Soft skills field must be a string.",
+        "string.commaSeparated": "Please provide valid comma-separated company names.",
+      }),
+
+    coreSkills: Joi 
+      .string()
+      .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .messages({
+        "string.base": "The Core skills field must be a string.",
+        "string.commaSeparated": "Please provide valid comma-separated company names.",
+      }),
+
+    technicalSkills: Joi 
+      .string()
+      .optional()
+      .allow("", null)
+      .custom(optionalCommaSeparatedStringToArray, "Comma-separated string to array")
+      .messages({
+        "string.base": "The Technical skills field must be a string.",
+      }),
+
+    workMode: Joi
+      .string()
+      .optional()
+      .valid(...Object.values(JobWorkModeEnum))
+      .messages({
+        "any.only": `The Work mode field must be one of the allowed values i.e. ${Object.values(
+          JobWorkModeEnum
+        ).join(", ")}.`,
+        "any.type": "The Work mode field must be a string.",
+      }),
+
+    status: Joi
+      .string()
+      .optional()
+      .valid(...Object.values(JobStatusEnum))
+      .messages({
+        "any.only": `The status field must be one of the allowed values i.e. ${Object.values(JobStatusEnum).join(", ")}.`,
+      }),
+
+    jobTitle: Joi
+      .string()
+      .allow("", null)
+      .optional()
+      .lowercase()
+      .messages({
+        "string.base": "The job title field must be a string.",
+      }),
+
+    typeofEmployment: Joi
+      .string()
+      .optional()
+      .messages({
+        "string.base": "The type of employment field must be a string.",
+      }),
+
+    userRole: Joi
+      .string()
+      .optional()
+      .valid(...Object.values(CorporateUserTypeEnum))
+      .messages({
+        "any.only": `The user role field must be one of the allowed values i.e. ${Object.values(
+          CorporateUserTypeEnum
+        ).join(", ")}.`,
+        "any.type": "The user role field must be a string.",
+      }),
+
+    corporateRecruiterUserId: Joi
+      .string()
+      .optional()
+      .allow("", null)
+      .messages({
+        "any.type": "The corporate recruiter user id field must be a string.",
+      }),
+  })
+);

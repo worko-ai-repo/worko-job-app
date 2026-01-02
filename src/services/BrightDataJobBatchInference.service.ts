@@ -13,11 +13,11 @@ import { JobLocationDto } from "../dtos/Common.dto";
 import { brightDataJobValidateHelperObj } from "../helpers/BrightDataJobValidate.helper";
 
 // Import models
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // Import services
 import { commonExternalJobBatchInferenceServiceObj } from "./CommonExternalJobBatchInference.service";
-import { jobServiceObj } from "./Job.service";
+import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 import UlidService from "./Ulid.service";
 
 // Import utils
@@ -134,11 +134,7 @@ class BrightDataJobBatchInferenceService {
     // Initialize the upload directory
     const uploadDir: string = await this.initBrightDataJobBatchInferenceUploadDirectory();
 
-    /**
-     * This is the maximum number of jobs that can be indexed in a single bulk request to the OpenSearch index,s3 vector
-     * and write to single JSONL file.
-     */
-    const batchSize: number = APP_CONSTANTS.AWS_OPENSEARCH_AND_S3_VECTOR_BULK_CREATE_COUNT;
+    const batchSize: number = APP_CONSTANTS.GCP_FIRESTORE_BULK_CREATE_COUNT;
 
     // Initialize a counter for creating JSONL files
     let fileJsonlRandomId: string = "";
@@ -164,15 +160,7 @@ class BrightDataJobBatchInferenceService {
       );
 
       // Initialize an empty array to hold the bulk job data
-      const bulkJobData: (
-        | DbJobAwsOpensearchDto
-        | {
-            index: {
-              _index: string;
-              _id: string;
-            };
-          }
-      )[] = [];
+      const bulkGcpFirestoreJobData: DbGcpFirestoreJobDto[] = [];
 
       // Loop through the current batch of jobs
       for (const eachJob of batch) {
@@ -187,20 +175,14 @@ class BrightDataJobBatchInferenceService {
         // Generate a unique ULID ID
         const brightDataJobId: string = UlidService.getUlidId();
 
-        const transformedBrightDataJob: DbJobAwsOpensearchDto =
-          jobServiceObj.transformBrightDataJobToAwsOpensearchJobDto(
+        const transformedBrightDataJob: DbGcpFirestoreJobDto =
+          gcpFirestoreJobServiceObj.transformBrightDataJobToGcpFirestoreJobDto(
             brightDataJobId,
             eachJob
           );
 
         // Push the job data to the bulk data array
-        bulkJobData.push(
-          {
-            index: {
-              _index: jobServiceObj.getIndexName(),
-              _id: brightDataJobId,
-            },
-          },
+        bulkGcpFirestoreJobData.push(
           transformedBrightDataJob
         );
 
@@ -225,16 +207,11 @@ class BrightDataJobBatchInferenceService {
         fileStream.write(JSON.stringify(jsonlObj) + "\n");
       }
 
-      const success: boolean = await jobServiceObj.createBulkJobs(bulkJobData);
-
-      global.logger.debug(
-        `Bulk index jobs in aws opensearch success status [SERVICE]`,
-        { success }
-      );
+      const success: boolean = await gcpFirestoreJobServiceObj.createBulkJobs(bulkGcpFirestoreJobData);
 
       // If any batch fails, return false
       if (!success) {
-        global.logger.error(`Bulk index jobs in aws opensearch failed`, {
+        global.logger.error(`Bulk index jobs in gcp firestore failed`, {
           methodName: this.processBrightDataJobBatchInference.name,
         });
 
@@ -250,6 +227,10 @@ class BrightDataJobBatchInferenceService {
 
         return false;
       }
+
+      global.logger.info("Successfully created bulk index jobs in gcp firestore", {
+        methodName: this.processBrightDataJobBatchInference.name,
+      });
 
       // End the file stream and upload the brightData jobs details to `S3`
       await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(

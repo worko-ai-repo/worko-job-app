@@ -19,7 +19,7 @@ import { AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opense
 import { AwsOpensearchSortOrderTypeEnum } from "../enums/Common.aws-opensearch.enum";
 
 // Import models
-import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchUserMatchingScoreJob.model";
+import { DbUserMatchingScoreJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchUserMatchingScoreJob.model";
 
 /**
  * UserMatchingScoreJobDao

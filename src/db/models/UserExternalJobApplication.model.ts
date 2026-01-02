@@ -25,7 +25,31 @@ class DbUserExternalJobApplicationDto extends BaseDbDto {
   GSI1SK!: string;
 
   // references
-  jobId!: string; // `id` attribute from `OpensearchJob.model.ts` in `worko-jobs` index on aws opensearch
+
+  /**
+   * @reference
+   *  "id" field of `GcpFirestoreJob.model.ts`
+   * @description
+   *  1. Whenever we store an external job in `gcp firestore` and if someone applies for that job,
+   *     then we are using `id` field of `GcpFirestoreJob.model.ts` as `jobId` field in `UserExternalJobApplication.model.ts`
+   *  2. We will hard delete the external job from `gcp firestore` whenever its expired, then we should not use
+   *     this `jobId` field as reference, instead we should use `externalJobUrl` field as reference.
+   */
+  jobId!: string;
+
+  /**
+   * @reference
+   *  1. "jobUrl" field of `GcpFirestoreJob.model.ts`
+   * @example "https://www.linkedin.com/jobs/view/test-engineer-at-bajaj-finserv-4292597143?_l=en"
+   */
+  externalJobUrl?: string;
+
+  /**
+   * @reference "externalJobId" field of `GcpFirestoreJob.model.ts`
+   * @example "1357943872"
+   */
+  externalJobId?: string;
+
   applicantUserId!: string; // `id` attribute from `UserDetail` model in `worko` table on aws dynamodb
 
   status!: UserExternalJobApplicationStatusEnum;
@@ -68,6 +92,14 @@ const UserExternalJobApplicationSchema: Schema = new dynamoose.Schema(
     jobId: {
       type: String,
       required: true,
+    },
+    externalJobUrl: {
+      type: String,
+      required: false,
+    },
+    externalJobId: {
+      type: String,
+      required: false,
     },
     applicantUserId: {
       type: String,

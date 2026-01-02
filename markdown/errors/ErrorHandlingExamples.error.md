@@ -879,3 +879,12 @@ Duration: 900000.00 ms	Billed Duration: 900000 ms	Memory Size: 1024 MB	Max Memor
 ```sh
 Request must be smaller than 5120 bytes for the UpdateFunctionConfiguration operation
 ```
+
+
+44. 
+```json
+{
+  "errorMessage": "Response payload size exceeded maximum allowed payload size (6291556 bytes).",
+  "errorType": "Function.ResponseSizeTooLarge"
+}
+```

@@ -12,11 +12,11 @@ import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
 // Import models
 import { DbCountCompanyJobDto } from "../db/models/CountCompanyJob.model";
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // Import services
 import { companyDetailServiceObj } from "./CompanyDetail.service";
-import { jobServiceObj } from "./Job.service";
+import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 
 // Import utils
 import { BaseError } from "../utils/errors.util";
@@ -93,17 +93,17 @@ class CountCompanyJobService {
 
     const companyData: DbCompanyDetailDto = companyDetailQueryResponse[0];
 
-    const jobDetailsFromOpensearch: DbJobAwsOpensearchDto | undefined = await jobServiceObj.getJobByIdFromAwsOpensearch(
+    const jobDetailsFromGcpFirestore: DbGcpFirestoreJobDto | undefined = await gcpFirestoreJobServiceObj.getJobById(
       jobId
     );
-    if(!jobDetailsFromOpensearch) {
+    if(!jobDetailsFromGcpFirestore) {
       throw new BaseError(
          "Job details not found.",
          HttpStatusCode.NOT_FOUND_404
       )
     }
 
-    if(jobDetailsFromOpensearch.companyId !== companyData.id) {
+    if(jobDetailsFromGcpFirestore.companyId !== companyData.id) {
       throw new BaseError(
          "Job does not belong to this particular company.",
          HttpStatusCode.NOT_FOUND_404

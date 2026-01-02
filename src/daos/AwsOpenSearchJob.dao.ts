@@ -26,19 +26,16 @@ import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import helpers
 import { dateHelperObj } from "../helpers/date.helper";
+import { awsOpensearchBase64EncodeStrToLastKey } from "../helpers/aws-opensearch.helper";
 
 // Import models
-import { DbJobAwsOpensearchDto } from "../db/OpenSearch-models/OpenSearchJob.model";
+import { DbJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchJob.model";
 
 // Import utils
 import { invokeVpcLambdaOpenSearchUtilObj } from "../utils/invoke-vpc-lambda-opensearch.util";
 
-/**
- * JobDao
- *
- * Class responsible for managing job related operations in aws opensearch
- */
-class JobDao {
+
+class AwsOpenSearchJobDao {
   IndexName = "worko-jobs";
 
   /**
@@ -260,6 +257,78 @@ class JobDao {
       OpenSearchOperationsEnum.GET_DOCUMENTS,
       "list jobs by given job ids",
       this.getAllJobsByListOfS3VectorJobIds.name
+    );
+  }
+
+  async getAllJobsByFilterOptionsWithoutPagination(): Promise<AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>> {
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<
+      {
+        awsOpensearchQuery: Search_RequestBody;
+      },
+      AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>
+    >(
+      this.IndexName,
+      {
+        awsOpensearchQuery: { query: { match_all: {} } } as Search_RequestBody,
+      },
+      OpenSearchOperationsEnum.GET_ALL_DOCUMENTS_WITHOUT_PAGINATION,
+      "list jobs by filter options without pagination",
+      this.getAllJobsByFilterOptionsWithoutPagination.name
+    )
+  }
+
+  async getAllJobsToMigrateFromAwsOpensearch(
+    filterOptions: {
+      pageSize: number;
+      lastKey?: string;
+    }
+  ): Promise<AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>> {
+    let awsOpensearchQuery: Search_RequestBody = {
+      query: {
+        match_all: {},
+      },
+      size: filterOptions.pageSize,
+      sort: [
+        {
+          createdAt: AwsOpensearchSortOrderTypeEnum.DESCENDING,
+          _id: AwsOpensearchSortOrderTypeEnum.DESCENDING,
+        },
+      ],
+    };
+
+    if (filterOptions?.lastKey) {
+      global.logger.debug(`encoded last key to be used`, { lastKey: filterOptions.lastKey });
+      let decodedLastKey: any[] | undefined = awsOpensearchBase64EncodeStrToLastKey(
+        filterOptions.lastKey
+      ); // decoding base64 string to original value(possibly array of values)
+      global.logger.debug(`decoded last key to be used`, { decodedLastKey });
+      awsOpensearchQuery.search_after = decodedLastKey;
+    }
+
+    global.logger.debug(`aws opensearch query for migrating jobs from aws opensearch`, {
+      awsOpensearchQuery,
+      methodName: this.getAllJobsToMigrateFromAwsOpensearch.name,
+    })
+
+    return invokeVpcLambdaOpenSearchUtilObj.executeOperation<
+      {
+        awsOpensearchQuery: Search_RequestBody;
+        filterOptions: {
+          pageSize: number;
+        };
+      },
+      AwsOpensearchRecordListingResponseDTO<DbJobAwsOpensearchDto[]>
+    >(
+      this.IndexName,
+      {
+        awsOpensearchQuery,
+        filterOptions: {
+          pageSize: filterOptions.pageSize,
+        },
+      },
+      OpenSearchOperationsEnum.GET_DOCUMENTS,
+      "list jobs to migrate from aws opensearch",
+      this.getAllJobsToMigrateFromAwsOpensearch.name
     );
   }
 
@@ -723,7 +792,7 @@ class JobDao {
      * @see https://opensearch.org/docs/latest/search-plugins/searching-data/paginate/#the-search_after-parameter
      */
     if (jobFilterOptions?.lastKey) {
-      awsOpensearchQuery.search_after = jobFilterOptions.lastKey;
+      // awsOpensearchQuery.search_after = jobFilterOptions.lastKey;
     }
 
     // log the query object
@@ -1173,6 +1242,6 @@ class JobDao {
   }
 }
 
-const jobDaoObj = new JobDao();
+const awsOpenSearchJobDaoObj = new AwsOpenSearchJobDao();
 
-export { jobDaoObj, JobDao };
+export { awsOpenSearchJobDaoObj, AwsOpenSearchJobDao };

@@ -42,11 +42,11 @@ export enum ScheduleJobType {
   BRIGHT_DATA_JOB_TO_RETRIEVE = "BRIGHT_DATA_JOB_TO_RETRIEVE",
 
   /**
-   * BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS
+   * BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS
    *
    * When this schedule job is triggered we need to hard and soft delete old unapplied bright data jobs.
    */
-  BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS = "BRIGHT_DATA_JOB_HARD_AND_SOFT_DELETE_OLD_JOBS",
+  BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS = "BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS",
 }
 
 /**

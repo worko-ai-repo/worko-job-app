@@ -184,6 +184,14 @@ class BrightDataJobService {
       return false;
     }
 
+    if(process.env.APP_STAGE === APP_CONSTANTS.STAGES.DEV) {
+      global.logger.info("BrightData Jobs Batch Inference on dev environment");
+      const hundredBrightDataJobs: BrightDataJobApiResponse[] = brightDataJobs.slice(0, 100);
+      return brightDataJobBatchInferenceServiceObj.processBrightDataJobBatchInference(
+        hundredBrightDataJobs
+      )
+    }
+
     return brightDataJobBatchInferenceServiceObj.processBrightDataJobBatchInference(
       brightDataJobs,
     );

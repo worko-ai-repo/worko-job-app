@@ -97,7 +97,7 @@ class EmailTemplateService {
   ): Promise<DbEmailTemplateDto | null> {
     // == Update email template in AWS SES.
     // Email template data required for AWS SES update
-    let updateEmailTempData: AWS.SES.Types.UpdateTemplateRequest = {
+    let updateEmailTempData = {
       Template: {
         TemplateName: emailTemplate.templateName,
         SubjectPart: emailTemplate.subject,
