@@ -142,6 +142,12 @@ export interface ScheduleUserJobApplicationStatusUpdateToRejectedInputDto {
   userId: string;
 }
 
+export interface ScheduleBlacklistedUserJobApplicationStatusUpdateToRejecteInputDto {
+  userJobApplicationId: string;
+  userEmail: string;
+  userId: string;
+}
+
 /**
  * ScheduleUserJobApplicationStatusUpdateToRejectedInputDto
  */
@@ -161,4 +167,9 @@ export interface ScheduleBrightDataJobToRetrieveInputDto {
  */
 export interface ScheduleJobInternalUpdateDto {
   status: ScheduleJobStatus;
+}
+
+export interface ScheduleUnderCoolingPeriodUpdateInputDto {
+  corporateCandidateProfileId: string;
+  companyName: string;
 }

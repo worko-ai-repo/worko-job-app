@@ -64,6 +64,14 @@ class CandidateParsedCvDao implements BaseDao {
       .get();
   }
 
+  async updateCandidateParsedCvById(id: string, updateData: Partial<DbCandidateParsedCvDto>): Promise<DbCandidateParsedCvDto | undefined> {
+    return gcpFirestoreLibrary.updateDocumentById<Partial<DbCandidateParsedCvDto>, DbCandidateParsedCvDto>(
+      this.getCandidateParsedCvModelDetails(),
+      id,
+      updateData
+    );
+  }
+
   async updateCandidateParsedCvWithEmbedding(
     id: string,
     updateData: Partial<DbCandidateParsedCvDto>,

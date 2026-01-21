@@ -141,6 +141,12 @@ export interface EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICAT
   companyJobApplicantsUrl: string;
 }
 
+export interface EmailTemplatePlaceholderCAND_COOLING_PERIOD_END_NOTIFICATION extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  companyName: string;
+  companyCareersUrl: string;
+}
+
 /**
  * EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION
  */

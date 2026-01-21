@@ -60,3 +60,43 @@ export enum OpenSearchOperationsEnum {
   UPDATE_DOCUMENTS_BY_QUERY = "updateDocumentsByQuery",
   BULK_CREATE_DOCUMENT  = "bulkCreateDocument",
 }
+
+export enum HiringEligibilityStatusEnum {
+  ACTIVE = "ACTIVE",
+
+  /*
+  1. `UNDER_COOLING_PERIOD`
+    1. Don't mark `candidate` as `UNDER_COOLING_PERIOD` when `candidate's` job application is rejected after any one of below statuses:
+        1. APPLIED
+        2. ACCEPTED 
+        3. ON_HOLD
+        4. CV_DOWNLOADED
+        5. UNDER_EVALUATION
+    2. Mark `candidate` as `UNDER_COOLING_PERIOD` when `candidate's` job application is rejected after any one of below statuses:
+        1. PROCESSING_INTERVIEW
+        2. INTERVIEW_DONE
+        3. HIRING_IN_PROCESS
+        4. DOCUMENT_REQUESTED
+        5. DOCUMENT_SUBMITTED
+        6. DOCUMENT_ADDITIONAL_REQUESTED
+        7. DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED
+        8. DOCUMENT_REVISION_REQUESTED
+        9. DOCUMENT_REVISION_REQUEST_SUBMITTED
+        10. DOCUMENT_VERIFIED
+        11. OFFER_SENT
+        12. OFFER_ISSUE_RAISED
+        13. REVISED_OFFER_SENT
+        14. HIRED
+        15. JOINED
+    3. Within this `6` months if `candidate` tries to apply then we should throw below error:
+        `You recently interviewed for {COMPANY_NAME} and was rejected. So please wait until {Date} to apply for any other role for {COMPANY_NAME}.`
+    4. After `6` months we should update `candidate` as `UNDER_COOLING_PERIOD` to `ACTIVE` for that particular `company` and send notification to candidate 
+  */
+  UNDER_COOLING_PERIOD = "UNDER_COOLING_PERIOD",
+
+  /*
+   1. Mark `candidate` as `BLACK_LISTED` with a reason
+   2. When `candidate` applies a job and after 24 hours we will mark application as `REJECTED`.
+  */
+  BLACK_LISTED = "BLACK_LISTED",
+}

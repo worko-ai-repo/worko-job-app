@@ -47,6 +47,21 @@ export enum ScheduleJobType {
    * When this schedule job is triggered we need to hard and soft delete old unapplied bright data jobs.
    */
   BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS = "BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS",
+
+  /**
+   * BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE
+   * 
+   * Whenever thr `corporate` mark candidate as `BLACK_LISTED` for his company
+   * And at that time whenever candidate applies a job for corporate's company, then
+   * we allow candidate to apply job and after few hours we update the status to `REJECTED` by 
+   * using this schedule job
+   */
+  BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE = "BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE",
+
+  /**
+   * This schedule job is used to turn off cooling period after certain months.
+   */
+  COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE = "COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE",
 }
 
 /**

@@ -169,6 +169,9 @@ interface DbCandidateParsedCvDto extends BaseFirestoreModel {
    */
   embeddingModel?: string;
   embeddingOptimizedForSearch?: boolean;
+
+  updatedByUserId?: string;
+  updatedByCorporateUserId?: string;
 }
 
 export { DbCandidateParsedCvDto };

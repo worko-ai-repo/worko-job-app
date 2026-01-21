@@ -159,6 +159,10 @@ class CandidateParsedCvService {
     );
   }
 
+  async updateCandidateParsedCvById(id: string, updateData: Partial<DbCandidateParsedCvDto>): Promise<DbCandidateParsedCvDto | undefined> {
+    return candidateParsedCvDaoObj.updateCandidateParsedCvById(id, updateData);
+  }
+
   async updateCandidateParsedCvWithEmbedding(
     id: string,
     updateData: Partial<DbCandidateParsedCvDto>

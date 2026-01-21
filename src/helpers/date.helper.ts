@@ -88,6 +88,30 @@ class DateHelper {
   getISODate(): string {
     return DateTime.now().toISO();
   }
+
+  /**
+   * getISODatePlusHours
+   * 
+   * Gets the current date and time plus the specified hours as an ISO 8601 string.
+   *
+   * @param {number} hours - The number of hours to add to the current date.
+   * @returns {string} The future date and time as an ISO 8601 string.
+   */
+  getISODatePlusHours(hours: number): string {
+    return DateTime.now().plus({ hours }).toISO();
+  }
+
+  /**
+   * formatISODateToDDMMYYYY
+   * 
+   * Formats an ISO date string to dd-MM-YYYY format.
+   *
+   * @param {string} isoDate - The ISO date string to format.
+   * @returns {string} The formatted date string in dd-MM-YYYY format.
+   */
+  formatISODateToDDMMYYYY(isoDate: string): string {
+    return DateTime.fromISO(isoDate).toFormat("dd-MM-yyyy");
+  }
 }
 
 const dateHelperObj = new DateHelper();

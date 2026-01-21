@@ -23,7 +23,7 @@ import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 import { UserJobApplicationApplicantUpdateApiDTO, UserJobApplicationBulkUpdateApiDTO, UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationDocumentMappingDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
 import { EntityBulkUpdateMetricDto, PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
 import { EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_REVISED_OFFER_SENT, EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
-import { ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
+import { ScheduleBlacklistedUserJobApplicationStatusUpdateToRejecteInputDto, ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUnderCoolingPeriodUpdateInputDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
 import { ReferAndEarnStatusTrackerDto, UpdateReferAndEarnInternalDto } from "../dtos/ReferAndEarn.dto";
 
 // import enums
@@ -32,7 +32,7 @@ import { EmailTemplateEnum } from "../enums/EmailTemplate.enum";
 import { UserType } from "../enums/User.enum";
 import { JobStatusEnum } from "../enums/Job.enum";
 import { ScheduleJobStatus, ScheduleJobType } from "../enums/ScheduleJob.enum";
-import { MatchingScoreEntityEnum } from "../enums/Common.enum";
+import { HiringEligibilityStatusEnum, MatchingScoreEntityEnum } from "../enums/Common.enum";
 import { ReferAndEarnJobApplicationStatusEnum, ReferAndEarnStatusEnum } from "../enums/ReferAndEarn.enum";
 import { CountUserDbEntityTypeEnum } from "../enums/CountUser.enum";
 import { CountGlobalDbEntityTypeEnum } from "../enums/CountGlobal.enum";
@@ -69,6 +69,7 @@ import { DbAgencyUserSubmissionDto } from "../db/gcp-firestore-models/AgencyUser
 import { DbInterviewDto } from "../db/models/UserInterview.model";
 import { DbUserSkillDto } from "../db/models/UserSkill.model";
 import { DbUserPreferenceDto } from "../db/models/UserPreference.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // import services
 import scheduleJobService from "../services/ScheduleJob.service";
@@ -91,6 +92,7 @@ import { interviewServiceObj } from "./UserInterview.service";
 import { agencyUserSubmissionServiceObj } from "./AgencyUserSubmission.service";
 import { userSkillServiceObj } from "./UserSkill.service";
 import { userPreferenceServiceObj } from "./UserPreference.service";
+import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 
 // import types
 import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationUserType, JobApplicationUserTypeWithAdmin, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
@@ -221,6 +223,196 @@ class UserJobApplicationService {
     } else {
       global.logger.error(
         `Failed to create scheduled job for job application rejected status update.`
+      );
+      return false;
+    }
+  }
+
+  async scheduleBlacklistedUserJobApplicationStatusUpdate(
+    userJobApplicationId: string,
+    userEmail: string,
+    userId: string
+  ): Promise<boolean> {
+    // Log
+    global.logger.info(
+      `Attempting to create delay for blacklisted user job application status update`,
+      {
+        methodName: this.scheduleBlacklistedUserJobApplicationStatusUpdate.name,
+      }
+    );
+
+    // Calculate the schedule time based on the delay hours constant
+    const delayHours: number = APP_CONSTANTS.BLACK_LISTED_USER_JOB_APPLICATION_UPDATE_AFTER_X_HOURS;
+
+    // Prepare input details
+    let scheduleBlacklistedUserJobApplicationStatusUpdateInput: ScheduleBlacklistedUserJobApplicationStatusUpdateToRejecteInputDto =
+      {
+        userJobApplicationId,
+        userEmail,
+        userId,
+      };
+
+    // Prepare the payload for the scheduled job
+    const scheduleJobPayload: ScheduleJobCreateDto = {
+      type: ScheduleJobType.BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE,
+      scheduleTime: DateTime.now()
+        .plus({ hours: delayHours })
+        .toUTC()
+        .toFormat("yyyy-MM-dd'T'HH:mm:ss"),
+      input: scheduleBlacklistedUserJobApplicationStatusUpdateInput,
+      desc: `Scheduled job to update blacklisted user job application status after ${delayHours} hours`,
+      status: ScheduleJobStatus.SCHEDULED,
+    };
+    global.logger.info(`scheduleJobPayload`, {
+      scheduleJobPayload,
+    });
+
+    // Prepare scheduler lambda arn
+    const schedulerLambdaArn: string = APP_CONSTANTS.AWS_EVENT_BRIDGE_SCHEDULER_ARNS.LAMBDA_ARN.strtr({
+      "{serverlessFunctionName}": APP_CONSTANTS.SERVERLESS_FUNCTION_NAMES.APP_SCHEDULER_HANDLER
+    });
+
+    // Create the scheduled job
+    let scheduleJobCreated: DbScheduleJobDto =
+      await ScheduleJobService.createScheduleJob(scheduleJobPayload,schedulerLambdaArn);
+
+    // Log the result of the scheduled job creation
+    if (scheduleJobCreated) {
+      global.logger.info(`Scheduled job for blacklisted user job application status update.`, {
+        methodName: this.scheduleBlacklistedUserJobApplicationStatusUpdate.name,
+      });
+
+      // Prepare update job application data
+      const updateData: Partial<UserJobApplicationCommonUpdateDto> = {
+        rejectionBlacklistedAwsScheduleId: scheduleJobCreated.id,
+      }
+
+      const updateJobApplication: DbUserJobApplicationDto = await this.updateJobApplicationByIdAndPrimaryEmail(
+        userJobApplicationId,
+        userEmail,
+        updateData
+      )
+
+      return true;
+    } else {
+      global.logger.error(
+        `Failed to create scheduled job for blacklisted user job application status update.`
+      );
+      return false;
+    }
+  }
+
+  async scheduleUnderCoolingPeriodUserJobApplicationUpdate(
+    corporateCandidateProfileId: string,
+    userJobApplicationId: string,
+    companyName: string
+  ): Promise<boolean> {
+    // Log
+    global.logger.info(
+      `Attempting to create delay for under cooling period user job application update`,
+      {
+        methodName: this.scheduleUnderCoolingPeriodUserJobApplicationUpdate.name,
+        userJobApplicationId,
+        corporateCandidateProfileId,
+      }
+    );
+
+    // Calculate the schedule time based on the delay hours constant
+    const delayHours: number = APP_CONSTANTS.UNDER_COOLING_PERIOD_USER_JOB_APPLICATION_UPDATE_AFTER_X_HOURS;
+
+    // Prepare input details
+    let scheduleUnderCoolingPeriodUserJobApplicationInput: ScheduleUnderCoolingPeriodUpdateInputDto =
+      {
+        corporateCandidateProfileId,
+        companyName,
+      };
+
+    // Prepare the payload for the scheduled job
+    const scheduleJobPayload: ScheduleJobCreateDto = {
+      type: ScheduleJobType.COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE,
+      scheduleTime: DateTime.now()
+        .plus({ hours: delayHours })
+        .toUTC()
+        .toFormat("yyyy-MM-dd'T'HH:mm:ss"),
+      input: scheduleUnderCoolingPeriodUserJobApplicationInput,
+      desc: `Scheduled job to update under cooling period user job application after ${delayHours} hours`,
+      status: ScheduleJobStatus.SCHEDULED,
+    };
+    global.logger.info(`scheduleJobPayload`, {
+      scheduleJobPayload,
+    });
+
+    // Prepare scheduler lambda arn
+    const schedulerLambdaArn: string = APP_CONSTANTS.AWS_EVENT_BRIDGE_SCHEDULER_ARNS.LAMBDA_ARN.strtr({
+      "{serverlessFunctionName}": APP_CONSTANTS.SERVERLESS_FUNCTION_NAMES.APP_SCHEDULER_HANDLER
+    });
+
+    // Create the scheduled job
+    let scheduleJobCreated: DbScheduleJobDto =
+      await ScheduleJobService.createScheduleJob(scheduleJobPayload,schedulerLambdaArn);
+
+    // Log the result of the scheduled job creation
+    if (scheduleJobCreated) {
+      global.logger.info(`Scheduled job for under cooling period user job application update.`, {
+        methodName: this.scheduleUnderCoolingPeriodUserJobApplicationUpdate.name,
+      });
+
+      const updateCorporateCandProfile: DbCorporateCandidateProfileDto | undefined = await corporateCandidateProfileServiceObj.updateCorporateCandidateProfileById(
+        corporateCandidateProfileId,
+        {
+          updatedAt: dateHelperObj.getISODate(),
+          hiringEligibilityStatus: HiringEligibilityStatusEnum.UNDER_COOLING_PERIOD,
+          underCoolingPeriod: {
+            startDate: dateHelperObj.getISODate(),
+            endDate: dateHelperObj.getISODatePlusHours(delayHours), // date string of today's date + delay hours
+            scheduledJobId: scheduleJobCreated.id,
+            userJobApplicationId
+          }
+        }
+      );
+      if(!updateCorporateCandProfile) {
+        global.logger.error(`Failed to update under cooling period for user job application.`, {
+          methodName: this.scheduleUnderCoolingPeriodUserJobApplicationUpdate.name,
+          updateCorporateCandProfile
+        });
+        return false;
+      }
+
+      const centralCandProfile: DbCentralCandidateProfileDto | undefined = await centralCandidateProfileServiceObj.getCentralCandidateProfileById(updateCorporateCandProfile.candidateEmail);
+      if(!centralCandProfile) {
+        global.logger.error(`Failed to update under cooling period for user job application.`, {
+          methodName: this.scheduleUnderCoolingPeriodUserJobApplicationUpdate.name,
+          centralCandProfile
+        });
+        return false;
+      }
+
+      const updateCentralCandProfile: DbCentralCandidateProfileDto | undefined = await centralCandidateProfileServiceObj.updateCentralCandidateProfileById(
+        updateCorporateCandProfile.candidateEmail,
+        {
+          updatedAt: dateHelperObj.getISODate(),
+          coolingPeriodCompanies: [
+            ...(centralCandProfile.coolingPeriodCompanies || []),
+            {
+              companyId: updateCorporateCandProfile.companyId,
+              companyName: companyName
+            }
+          ]
+        }
+      );
+
+      if(!updateCentralCandProfile) {
+        global.logger.error(`Failed to update under cooling period for user job application.`, {
+          methodName: this.scheduleUnderCoolingPeriodUserJobApplicationUpdate.name,
+          updateCentralCandProfile
+        });
+        return false;
+      }
+
+      return true;
+    } else {
+      global.logger.error(
+        `Failed to create scheduled job for blacklisted user job application status update.`
       );
       return false;
     }
@@ -372,12 +564,6 @@ class UserJobApplicationService {
           updateCandidateParsedCvData.phoneNumberDetails = updatedPhoneNumberDetails;
         }
 
-        /**
-         * @todo: 
-         *  1. Need to discuss about `refereeType` update after 6 months with "CTO" and "Product Manager"
-         *  2. Need to discuss about comparing and updating candidate details in `CandidateParsedCv` collection with "CTO" and "Product Manager"
-         */
-
         const updateEntityCandidateProfilePromises = [];
 
         if(Object.keys(updateCentralCandidateProfileData).length>1) {
@@ -388,7 +574,7 @@ class UserJobApplicationService {
 
         if(Object.keys(updateCandidateParsedCvData).length>1) {
           updateEntityCandidateProfilePromises.push(
-            candidateParsedCvServiceObj.updateCandidateParsedCvWithEmbedding(existingCorporateCandidateProfileData.candidateParsedCvId, updateCandidateParsedCvData)
+            candidateParsedCvServiceObj.updateCandidateParsedCvById(existingCorporateCandidateProfileData.candidateParsedCvId, updateCandidateParsedCvData)
           )
         }
         
@@ -619,9 +805,15 @@ class UserJobApplicationService {
     const currentDateAndTime: string = DateTime.now().toISO();
 
     // Fetch job details based on job ID
-    const jobDetails: DbCompanyJobDto = (
-      await companyJobServiceObj.getJobById(jobApplicationRequestBody.jobId)
-    )[0];
+    const jobDetails: DbGcpFirestoreJobDto | undefined = await gcpFirestoreJobServiceObj.getJobById(jobApplicationRequestBody.jobId);
+    if(!jobDetails) throw new BaseError(`The job details not found.`, HttpStatusCode.NOT_FOUND_404);
+
+    if(!jobDetails.companyId) {
+      throw new BaseError(
+        `This job is not associated with any company.`,
+        HttpStatusCode.NOT_FOUND_404
+      );
+    }
 
     // Throw an error if job is not published
     if (jobDetails.status !== JobStatusEnum.PUBLISHED || jobDetails.isDeleted) {
@@ -650,6 +842,27 @@ class UserJobApplicationService {
         `You have already applied for this job. Check your dashboard for reference.`,
         HttpStatusCode.CONFLICT_409
       );
+    }
+
+    const corporateCandidateProfileDetails: QuerySnapshot<DocumentData, DocumentData> = await corporateCandidateProfileServiceObj.getCorporateCandidateProfileByCompIdAndCandEmail(
+      jobDetails.companyId,
+      emailId
+    );
+    const corporateCandProfileData: DbCorporateCandidateProfileDto | undefined = corporateCandidateProfileDetails.empty
+      ? undefined
+      : corporateCandidateProfileDetails.docs[0].data() as DbCorporateCandidateProfileDto;
+
+    if(corporateCandProfileData) {
+      if(
+        corporateCandProfileData.hiringEligibilityStatus === HiringEligibilityStatusEnum.UNDER_COOLING_PERIOD
+      ) {
+        const endDate: string = corporateCandProfileData.underCoolingPeriod?.endDate ?? "";
+        const endCoolingPeriod: string = dateHelperObj.formatISODateToDDMMYYYY(endDate);
+        throw new BaseError(
+          `You recently interviewed for ${jobApplicationRequestBody.companyName.toTitleCase()} and got rejected. So please wait until ${endCoolingPeriod} to apply for any other role for ${jobApplicationRequestBody.companyName.toTitleCase()}.`,
+          HttpStatusCode.CONFLICT_409
+        );
+      }
     }
 
     // Check if the request body has a refer and earn id
@@ -897,7 +1110,13 @@ class UserJobApplicationService {
       ),
 
       // Invoke a lambda function to calculate matching scores for this job application
-      InvokeLambdaService.triggerMatchingScoreCalculation(
+      (corporateCandProfileData && corporateCandProfileData.hiringEligibilityStatus === HiringEligibilityStatusEnum.BLACK_LISTED) 
+      ? this.scheduleBlacklistedUserJobApplicationStatusUpdate(
+        jobApplicationDetails.id,
+        emailId,
+        candidateDetails.id
+      )
+      : InvokeLambdaService.triggerMatchingScoreCalculation(
         emailId,
         MatchingScoreEntityEnum.JOB_APP,
         jobApplicationSK
@@ -919,6 +1138,8 @@ class UserJobApplicationService {
     // Return created job application details
     return jobApplicationDetails;
   }
+
+
 
   /**
    * getJobApplicationById
@@ -1081,6 +1302,165 @@ class UserJobApplicationService {
         );
 
       if (!updatedUserJobApplicationDetails.id) {
+        return false;
+      }
+
+      await Promise.all([
+        this.performCountUserActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          userJobApplicationDetails.status
+        ),
+
+        this.performCountGlobalActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          userJobApplicationDetails.status
+        ),
+
+        this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          userJobApplicationDetails.status
+        ),
+
+        this.performCountCompanyActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          userJobApplicationDetails.status
+        )
+      ]);
+
+      // Check if the job application is for a refer and earn id
+      if (updatedUserJobApplicationDetails.referAndEarnId) {
+        // Retrieve refer and earn details by refer and earn id
+        const referAndEarnDetails: QueryResponse<DbReferAndEarnDto> =
+          await referAndEarnServiceObj.getReferAndEarnById(
+            updatedUserJobApplicationDetails.referAndEarnId
+          );
+        if (referAndEarnDetails.count) {
+          // Parse the refer and earn details
+          const parsedReferAndEarnDetails: DbReferAndEarnDto =
+            referAndEarnDetails[0];
+
+          // Prepare statusTracker Data to update 
+          const referAndEarnUpdatedStatusTracker: ReferAndEarnStatusTrackerDto[] = [
+            ...parsedReferAndEarnDetails.statusTracker,
+            {
+              oldStatus: parsedReferAndEarnDetails.status,
+              newStatus: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+              actionDate: currentActionDateTime,
+              actionByUserId: undefined,
+              description: undefined
+            },
+          ]
+
+          // Prepare refer and earn update dto
+          const referAndEarnUpdateDto: Partial<UpdateReferAndEarnInternalDto> =
+            {
+              status: ReferAndEarnStatusEnum.WITHDRAWAL_REJECTED,
+              statusTracker: referAndEarnUpdatedStatusTracker,
+              jobApplicationStatus: ReferAndEarnJobApplicationStatusEnum.REJECTED,
+            };
+
+          // Update refer and earn status
+          const updatedReferAndEarnDetails: DbReferAndEarnDto =
+            await referAndEarnServiceObj.updateReferAndEarnInternalByIdAndEmail(
+              parsedReferAndEarnDetails.id,
+              getEmailFromPK(parsedReferAndEarnDetails.PK),
+              referAndEarnUpdateDto
+            );
+
+          // If refer and earn update failed return false
+          if (!updatedReferAndEarnDetails) {
+            return false;
+          }
+
+          const countUserReferAndEarnQueryResponse: QueryResponse<DbCountUserDto> =
+            await countUserServiceObj.getCountUserByRegisteredEmailAndEntityType(
+              updatedReferAndEarnDetails.referrerDetails.email,
+              CountUserDbEntityTypeEnum.REFER_AND_EARN
+            );
+          const countUserReferAndEarnData: DbCountUserDto =
+            countUserReferAndEarnQueryResponse[0];
+
+          const countGlobalReferAndEarnQueryResponse: QueryResponse<DbCountGlobalDto> =
+            await countGlobalServiceObj.getCountGlobalByEntityType(
+              CountGlobalDbEntityTypeEnum.REFER_AND_EARN
+            );
+          const countGlobalReferAndEarnData: DbCountGlobalDto =
+            countGlobalReferAndEarnQueryResponse[0];
+
+          await Promise.all([
+            countUserServiceObj.createOrUpdateCountUserForReferAndEarnEntityType(
+              updatedReferAndEarnDetails.referrerDetails.email,
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countUserReferAndEarnData?.referAndEarnJobApplicationCounts,
+                  total: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.total - 1 : 0), // count except rejected
+                  rejected: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.rejected  + 1: 1),
+                  applied: (countUserReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countUserReferAndEarnData.referAndEarnJobApplicationCounts.applied - 1 : 0),
+                },
+              },
+              !!countUserReferAndEarnQueryResponse.count, 
+            ),
+            countGlobalServiceObj.createOrUpdateCountGlobalForReferAndEarnEntityType(
+              {
+                referAndEarnJobApplicationCounts: {
+                  ...countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts,
+                  total: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.total ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.total - 1:0), // count except rejected
+                  rejected: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.rejected ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.rejected + 1:1),
+                  applied: (countGlobalReferAndEarnData?.referAndEarnJobApplicationCounts?.applied ? countGlobalReferAndEarnData.referAndEarnJobApplicationCounts.applied - 1: 0),
+                },
+              },
+              !!countGlobalReferAndEarnQueryResponse.count, 
+            )
+          ]);
+        }
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  async performBlacklistedUserJobApplicationStatusUpdate(
+    userJobApplicationId: string,
+    userEmail: string,
+    userId: string
+  ): Promise<boolean> {
+    const userJobApplicationDetailsQueryResponse: QueryResponse<DbUserJobApplicationDto> =
+      await userJobApplicationDao.getJobApplicationById(userJobApplicationId);
+    if (userJobApplicationDetailsQueryResponse.count) {
+      // Fetch job application details
+      const userJobApplicationDetails: DbUserJobApplicationDto =
+        userJobApplicationDetailsQueryResponse[0];
+
+      const currentActionDateTime: string = DateTime.now().toISO();
+
+      // Prepare user job application update dto
+      const updateUserJobApplicationDto: UserJobApplicationInternalUpdateDto = {
+        status: JobApplicationStatus.REJECTED,
+        statusTracker: [
+          ...userJobApplicationDetails.statusTracker,
+          {
+            oldStatus: userJobApplicationDetails.status,
+            newStatus: JobApplicationStatus.REJECTED,
+            actionDate: currentActionDateTime,
+            userId: undefined,
+            userType: undefined,
+          },
+        ],
+      };
+
+      const updatedUserJobApplicationDetails: DbUserJobApplicationDto =
+        await this.updateUserJobApplicationByIdAndEmail(
+          userJobApplicationId,
+          userEmail,
+          updateUserJobApplicationDto
+        );
+
+      if (updatedUserJobApplicationDetails.status !== JobApplicationStatus.REJECTED) {
+        global.logger.error("User job application status update failed", {
+          updatedUserJobApplicationDetails,
+        })
         return false;
       }
 
@@ -3199,6 +3579,50 @@ class UserJobApplicationService {
     }
   }
 
+  async validateAndPerformCoolingPeriodCompletion(updatedJobApplication: DbUserJobApplicationDto): Promise<boolean> {
+    const { statusTracker, companyId } = updatedJobApplication;
+    
+    if (updatedJobApplication.status !== JobApplicationStatus.REJECTED) return false;
+    
+    const coolingPeriodTriggerStatuses: JobApplicationStatus[] = [
+      JobApplicationStatus.PROCESSING_INTERVIEW,
+      JobApplicationStatus.INTERVIEW_DONE,
+      JobApplicationStatus.HIRING_IN_PROCESS,
+      JobApplicationStatus.DOCUMENT_REQUESTED,
+      JobApplicationStatus.DOCUMENT_SUBMITTED,
+      JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUESTED,
+      JobApplicationStatus.DOCUMENT_ADDITIONAL_REQUEST_SUBMITTED,
+      JobApplicationStatus.DOCUMENT_REVISION_REQUESTED,
+      JobApplicationStatus.DOCUMENT_REVISION_REQUEST_SUBMITTED,
+      JobApplicationStatus.DOCUMENT_VERIFIED,
+      JobApplicationStatus.OFFER_SENT,
+      JobApplicationStatus.OFFER_ISSUE_RAISED,
+      JobApplicationStatus.REVISED_OFFER_SENT,
+      JobApplicationStatus.HIRED,
+      JobApplicationStatus.JOINED
+    ];
+    
+    const hasRelevantPreviousStatus: boolean = statusTracker.some(tracker => 
+      coolingPeriodTriggerStatuses.includes(tracker.oldStatus)
+    );
+    
+    if (hasRelevantPreviousStatus) {
+      const applicantEmail: string = getEmailFromPK(updatedJobApplication.PK);
+      const corporateCandidateProfile: QuerySnapshot<DocumentData, DocumentData> = await corporateCandidateProfileServiceObj.getCorporateCandidateProfileByCompIdAndCandEmail(companyId, applicantEmail);
+      
+      if (!corporateCandidateProfile.empty) {
+        const profileData = corporateCandidateProfile.docs[0].data() as DbCorporateCandidateProfileDto;
+        await this.scheduleUnderCoolingPeriodUserJobApplicationUpdate(
+          profileData.id, 
+          updatedJobApplication.id,
+          updatedJobApplication.companyName
+        );
+      }
+    }
+
+    return hasRelevantPreviousStatus;
+  }
+
   private async performActivitiesAfterJobApplicationUpdate(
     jobApplicationStatusBeforeUpdate: JobApplicationStatus,
     updatedJobApplication: DbUserJobApplicationDto,
@@ -3207,6 +3631,9 @@ class UserJobApplicationService {
   ): Promise<void> {
 
     await Promise.all([
+      updatedJobApplication.status === JobApplicationStatus.REJECTED && 
+      this.validateAndPerformCoolingPeriodCompletion(updatedJobApplication),
+
       this.performCountUserActivitiesAfterJobApplicationUpdate(
         updatedJobApplication,
         jobApplicationStatusBeforeUpdate,
@@ -3921,7 +4348,7 @@ class UserJobApplicationService {
     );
 
     if (updatedJobApplication?.id) {
-      this.performActivitiesAfterJobApplicationUpdate(
+      await this.performActivitiesAfterJobApplicationUpdate(
         parsedJobApplication.status,
         updatedJobApplication,
         currentActionDateTime,
@@ -4002,7 +4429,7 @@ class UserJobApplicationService {
           jobApplicationMetric.success.count++;
           jobApplicationMetric.success.primaryIds!.push(jobApplicationId);
           
-          this.performActivitiesAfterJobApplicationUpdate(
+          await this.performActivitiesAfterJobApplicationUpdate(
             oldStatus,
             updatedJobApplication,
             currentActionDateTime,

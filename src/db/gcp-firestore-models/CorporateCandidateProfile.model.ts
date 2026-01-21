@@ -1,8 +1,9 @@
 // Import dtos
-import { CorporateCandidateProfileDbPhoneNumberDto } from "../../dtos/CorporateCandidateProfile.dto";
+import { CorporateCandidateProfileDbPhoneNumberDto, CorporateCandidateProfileDbUnderCoolingPeriodDto } from "../../dtos/CorporateCandidateProfile.dto";
 
 // Import enums
 import { CorporateCandidateProfileDbRefereeTypeEnum } from "../../enums/CorporateCandidateProfile.enum";
+import { HiringEligibilityStatusEnum } from "../../enums/Common.enum";
 
 // Import models
 import { BaseFirestoreModel } from "./Base.model";
@@ -16,8 +17,7 @@ interface DbCorporateCandidateProfileDto extends BaseFirestoreModel {
 
   /**
    * @description
-   *  1. Whenever "agency" submits a candidate profile against a job then "jobId" will be available
-   *  2. Whenever "candidate" apply a job then "jobId" will be available
+   *  1. As of now whenever "agency" submits a candidate profile against a job then "jobId" will be available
    */
   jobId?: string;
 
@@ -31,6 +31,19 @@ interface DbCorporateCandidateProfileDto extends BaseFirestoreModel {
    * @reference "id" field of "CandidateParsedCv.model.ts"
    */
   candidateParsedCvId: string;
+
+  updatedByCorporateUserId?: string;
+
+  hiringEligibilityStatus?: HiringEligibilityStatusEnum;
+
+  reasonForBlacklisting?: string;
+  detailedReasonForBlacklisting?: string;
+
+  /**
+   * @description
+   *  1. If "hiringEligibilityStatus" is "UNDER_COOLING_PERIOD" then "underCoolingPeriod" object will be available.
+   */
+  underCoolingPeriod?: CorporateCandidateProfileDbUnderCoolingPeriodDto;
 
   /**
    * @description

@@ -277,6 +277,7 @@ export interface UserJobApplicationHiredFromOtherPortal {
  * UserJobApplicationCommonUpdateDto
  */
 export interface UserJobApplicationCommonUpdateDto {
+  rejectionBlacklistedAwsScheduleId: string;
   rejectionAwsScheduleId: string;
   status: JobApplicationStatus;
   statusTracker: JobApplicationStatusTrackerType;

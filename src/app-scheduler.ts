@@ -12,7 +12,7 @@ import "./libraries/logger.library";
 import DBConfig from "./db/DB.config";
 
 // import dtos
-import { ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "./dtos/ScheduleJob.dto";
+import { ScheduleBlacklistedUserJobApplicationStatusUpdateToRejecteInputDto, ScheduleUnderCoolingPeriodUpdateInputDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "./dtos/ScheduleJob.dto";
 
 // Import enums
 import { ScheduleJobType } from "./enums/ScheduleJob.enum";
@@ -23,6 +23,7 @@ import { DbScheduleJobDto } from "./db/models/ScheduleJob.model";
 // Import services
 import scheduleJobService from "./services/ScheduleJob.service";
 import { userJobApplicationServiceObj } from "./services/UserJobApplication.service";
+import { corporateCandidateProfileServiceObj } from "./services/CorporateCandidateProfile.service";
 
 // Import error handling utilities
 import { BaseError } from "./utils/errors.util";
@@ -136,6 +137,87 @@ export const handler = async (
           userJobApplicationRejectedStatusInputDetails,
           scheduleJobType: ScheduleJobType.USER_JOB_APPLICATION_STATUS_UPDATE_TO_REJECTED,
         }
+      );
+    } else if(scheduleJob.type === ScheduleJobType.BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE) {
+      // scheduleJob input
+      const blacklistedUserJobApplicationStatusUpdateInputDetails =
+        scheduleJob.input as ScheduleBlacklistedUserJobApplicationStatusUpdateToRejecteInputDto;
+
+      // logger
+      global.logger.info(
+        `Processing scheduled job for updating blacklisted user job application status [app scheduler handler]`,
+        {
+          methodName: "handler",
+          blacklistedUserJobApplicationStatusUpdateInputDetails,
+          scheduleJobType:
+            ScheduleJobType.BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE,
+        },
+      );
+
+      const userJobApplicationId: string =
+        blacklistedUserJobApplicationStatusUpdateInputDetails["userJobApplicationId"];
+      const userEmail: string =
+        blacklistedUserJobApplicationStatusUpdateInputDetails["userEmail"];
+      const userId: string =
+        blacklistedUserJobApplicationStatusUpdateInputDetails["userId"];
+
+      const updatedDetails: boolean =
+        await userJobApplicationServiceObj.performBlacklistedUserJobApplicationStatusUpdate(
+          userJobApplicationId,
+          userEmail,
+          userId,
+        );
+      if (!updatedDetails) {
+        global.logger.error(`Failed to update blacklisted user job application status`, {
+          methodName: "handler",
+          scheduleJobType:
+            ScheduleJobType.BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE,
+          userJobApplicationId,
+          userEmail,
+          userId
+        });
+      }
+
+      // logger
+      global.logger.info(
+        `Completed processing scheduled job for updating blacklisted user job application status [app scheduler handler]`,
+        {
+          methodName: "handler",
+          blacklistedUserJobApplicationStatusUpdateInputDetails,
+          scheduleJobType:
+            ScheduleJobType.BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE,
+        },
+      );
+    } else if(scheduleJob.type === ScheduleJobType.COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE) {
+      const underCoolingPeriodUpdateInputDetails = scheduleJob.input as ScheduleUnderCoolingPeriodUpdateInputDto;
+      const corporateCandidateProfileId: string = underCoolingPeriodUpdateInputDetails["corporateCandidateProfileId"];
+
+      const updatedDetails: boolean =
+        await corporateCandidateProfileServiceObj.performCorporateCandidateProfileCoolingPeriodCompletion(
+          corporateCandidateProfileId,
+          underCoolingPeriodUpdateInputDetails["companyName"],
+        );
+      if (!updatedDetails) {
+        global.logger.error(
+          `Failed to update corporate candidate profile under cooling period.`,
+          {
+            methodName: "handler",
+            scheduleJobType:
+              ScheduleJobType.COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE,
+            corporateCandidateProfileId,
+          },
+        );
+      }
+
+      // logger
+      global.logger.info(
+        `Completed processing scheduled job for updating corporate candidate profile under cooling period [app scheduler handler]`,
+        {
+          methodName: "handler",
+          underCoolingPeriodUpdateInputDetails,
+          scheduleJobType:
+            ScheduleJobType.COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE,
+        },
       );
     } else {
       throw new BaseError(

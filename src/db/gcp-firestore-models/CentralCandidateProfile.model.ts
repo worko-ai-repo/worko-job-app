@@ -27,6 +27,11 @@ interface DbCentralCandidateProfileDto extends BaseFirestoreModel {
     companyName: string;
   }[]; // Company names where profile exists, ex:- "Swiggy", "Zomato"
 
+  coolingPeriodCompanies?: {
+    companyId: string;
+    companyName: string;
+  }[];
+
   /**
    * @reference "id" field of "CorporateCandidateProfile.model.ts"
    */

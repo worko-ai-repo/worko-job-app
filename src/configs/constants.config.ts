@@ -258,6 +258,7 @@ const APP_CONSTANTS = {
    */
   FRONTEND_URLS: {
     WORKO_APP_URL: process.env.APP_WORKO_FRONTEND_BASE_URL ?? "https://worko.ai", 
+    WORKO_JOBS_LISTING_PAGE: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/jobs`,
     WORKO_INTERNAL_JOB_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/jobs/{companyName}/{jobId}`,
 
     WORKO_CORPORATE_COMPANY_JOB_APPLICANTS_URL: `${process.env.APP_WORKO_FRONTEND_BASE_URL}/v1/corporate/cApplicants/{jobId}`,
@@ -444,6 +445,22 @@ const APP_CONSTANTS = {
   get USER_JOB_APPLICATION_UPDATE_AFTER_X_HOURS(): number {
     const PROD_HOURS = 1 * 24; // 24 hours
     const DEV_HOURS = 10 / 60; // 10 minutes converted to hour
+
+    // return the time based on the environment
+    return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_HOURS : DEV_HOURS;
+  },
+
+  get BLACK_LISTED_USER_JOB_APPLICATION_UPDATE_AFTER_X_HOURS(): number {
+    const PROD_HOURS = 1 * 24; // 24 hours
+    const DEV_HOURS = 10 / 60; // 10 minutes converted to hour
+
+    // return the time based on the environment
+    return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_HOURS : DEV_HOURS;
+  },
+
+  get UNDER_COOLING_PERIOD_USER_JOB_APPLICATION_UPDATE_AFTER_X_HOURS(): number {
+    const PROD_HOURS: number = 6 * 30 * 24; // 4320 hours ≈ 6 months
+    const DEV_HOURS: number = 10 / 60; // 10 minutes converted to hour
 
     // return the time based on the environment
     return this.APP_SLS_STAGE === this.STAGES.PROD ? PROD_HOURS : DEV_HOURS;
