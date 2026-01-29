@@ -577,6 +577,10 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
       path: "/file/gsu2v/AGENCY_SUBMIT_USER_CV",
       method: HttpMethodsConstants.POST,
     },
+    {
+      path: "/file/gsu2v/CORP_CAND_BULK_CV_UPLOAD",
+      method: HttpMethodsConstants.POST,
+    },
 
     // Agency User Submission Routers
     { path: "/agency-user-submission*", method: HttpMethodsConstants.GET },
@@ -594,6 +598,7 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
 
     // Corporate Candidate Profile Routers
     { path: "/corporate-candidate-profile*", method: HttpMethodsConstants.GET },
+    { path: "/corporate-candidate-profile/resumes", method: HttpMethodsConstants.POST },
 
     // Candidate Parsed Cv Routers
     { path: "/candidate-parsed-cv/search-in-db/corp-action*", method: HttpMethodsConstants.GET },
@@ -714,6 +719,10 @@ var isCorporateAdminUrl = function (url, httpMethod) {
       path: "/file/gsu2v/AGENCY_SUBMIT_USER_CV",
       method: HttpMethodsConstants.POST,
     },
+    {
+      path: "/file/gsu2v/CORP_CAND_BULK_CV_UPLOAD",
+      method: HttpMethodsConstants.POST,
+    },
 
     // User Interview Routers
     {
@@ -731,6 +740,7 @@ var isCorporateAdminUrl = function (url, httpMethod) {
 
     // Corporate Candidate Profile Routers
     { path: "/corporate-candidate-profile*", method: HttpMethodsConstants.GET },
+    { path: "/corporate-candidate-profile/resumes", method: HttpMethodsConstants.POST },
 
     // Candidate Parsed Cv Routers
     { path: "/candidate-parsed-cv/search-in-db/corp-action*", method: HttpMethodsConstants.GET },
@@ -896,6 +906,10 @@ var isAdminUrl = function (url, httpMethod) {
       path: "/file/gsu2v/AGENCY_SUBMIT_USER_CV",
       method: HttpMethodsConstants.POST,
     },
+    {
+      path: "/file/gsu2v/ADMIN_CAND_BULK_CV_UPLOAD",
+      method: HttpMethodsConstants.POST,
+    },
 
     // Request evaluation routers
     { path: "/request-evaluation/", method: HttpMethodsConstants.POST },
@@ -968,6 +982,7 @@ var isAdminUrl = function (url, httpMethod) {
       path: "/central-candidate-profile*",
       method: HttpMethodsConstants.GET,
     },
+    { path: "/central-candidate-profile/resumes", method: HttpMethodsConstants.POST }
   ];
 
   const result = checkMatchingPattern(url, adminUrlList, httpMethod);

@@ -141,15 +141,19 @@ class CorporateCandidateProfileService {
       return false;
     }
 
+    const updateCentralCandProfileData: Partial<DbCentralCandidateProfileDto> = {
+      updatedAt: dateHelperObj.getISODate(),
+
+      // Remove this specific company from the cooling period companies
+      coolingPeriodCompanies: centralCandProfile.coolingPeriodCompanies?.filter((coolingPeriodCompany) => coolingPeriodCompany.companyId !== updateCorpCandProfile.companyId),      
+    }
+    if(!centralCandProfile.candidateParsedCvIds.includes(updateCorpCandProfile.candidateParsedCvId)) {
+      updateCentralCandProfileData.candidateParsedCvIds = [...centralCandProfile.candidateParsedCvIds, updateCorpCandProfile.candidateParsedCvId];
+    }
     const updateCentralCandProfile: DbCentralCandidateProfileDto | undefined =
       await centralCandidateProfileServiceObj.updateCentralCandidateProfileById(
         updateCorpCandProfile.candidateEmail,
-        {
-          updatedAt: dateHelperObj.getISODate(),
-
-          // Remove this specific company from the cooling period companies
-          coolingPeriodCompanies: centralCandProfile.coolingPeriodCompanies?.filter((coolingPeriodCompany) => coolingPeriodCompany.companyId !== updateCorpCandProfile.companyId),
-        },
+        updateCentralCandProfileData
       );
 
     /**

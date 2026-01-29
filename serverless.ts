@@ -92,8 +92,10 @@ const serverlessConfiguration: AWS = {
         "${env:APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME}",
       APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME:
         "${env:APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME}",
-      APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET: "${env:APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET}",
-      APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET: "${env:APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET}",
+      APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET:
+        "${env:APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET}",
+      APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET:
+        "${env:APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET}",
     },
   },
 
@@ -280,15 +282,13 @@ const serverlessConfiguration: AWS = {
         ],
       },
       {
-        "Effect": "Allow",
-        "Action": [
-            "secretsmanager:GetSecretValue",
-        ],
-        "Resource":[
+        Effect: "Allow",
+        Action: ["secretsmanager:GetSecretValue"],
+        Resource: [
           "arn:aws:secretsmanager:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:secret:${self:custom.aws.APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET}",
-          "arn:aws:secretsmanager:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:secret:${self:custom.aws.APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET}"
-        ] 
-      }
+          "arn:aws:secretsmanager:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:secret:${self:custom.aws.APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET}",
+        ],
+      },
     ],
   },
 
@@ -419,8 +419,8 @@ const serverlessConfiguration: AWS = {
                 schedule: {
                   name: "bright-data-external-job-schedule-${self:custom.app.STAGE}", // Name can be specified for a schedule event. This is not a required property.
                   description:
-                    "Triggers to retrieve bright data external job according to cron expression", // Description can be specified for a schedule event. This is not a required property.
-                  rate: ["cron(0 13 ? * MON *)"],
+                    "Triggers to retrieve bright data external job.", // Description can be specified for a schedule event. This is not a required property.
+                  rate: ["rate(14 days)"], // ["rate(5 minutes)"]
                   enabled: true,
                   input: {
                     scheduleJob: {
@@ -492,10 +492,12 @@ const serverlessConfiguration: AWS = {
      *  2. `worko-job-app-dev-app-migrate-jobs`
      *  3. `worko-job-app-prod-app-migrate-jobs`
      */
+    /*
     "app-migrate-jobs": {
       handler: "dist/src/app-migrate-jobs.handler",
       timeout: 900, // Set timeout to 900 seconds (15 minutes)
     },
+    */
   },
 };
 

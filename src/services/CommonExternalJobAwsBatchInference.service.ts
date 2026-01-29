@@ -39,11 +39,11 @@ import { fileUtilObj } from "../utils/file.util";
 import HttpStatusCode from "../utils/http-codes.util";
 
 /**
- * CommonExternalJobBatchInferenceService
+ * CommonExternalJobAwsBatchInferenceService
  *
  * @see https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html
  */
-class CommonExternalJobBatchInferenceService {
+class CommonExternalJobAwsBatchInferenceService {
   /**
    * prepareCommonExternalJobBatchInferenceS3Config
    *
@@ -437,7 +437,7 @@ class CommonExternalJobBatchInferenceService {
                 "Failed to create model invocation job in AWS Bedrock.",
             },
             methodName: this.createCommonExternalJobBatchInference.name,
-            className: CommonExternalJobBatchInferenceService.name,
+            className: CommonExternalJobAwsBatchInferenceService.name,
           }
         );
 
@@ -460,7 +460,7 @@ class CommonExternalJobBatchInferenceService {
         {
           error: error,
           methodName: this.createCommonExternalJobBatchInference.name,
-          className: CommonExternalJobBatchInferenceService.name,
+          className: CommonExternalJobAwsBatchInferenceService.name,
         }
       );
 
@@ -469,8 +469,8 @@ class CommonExternalJobBatchInferenceService {
   }
 }
 
-const commonExternalJobBatchInferenceServiceObj: CommonExternalJobBatchInferenceService = new CommonExternalJobBatchInferenceService();
+const commonExternalJobAwsBatchInferenceServiceObj: CommonExternalJobAwsBatchInferenceService = new CommonExternalJobAwsBatchInferenceService();
 export {
-  commonExternalJobBatchInferenceServiceObj,
-  CommonExternalJobBatchInferenceService,
+  commonExternalJobAwsBatchInferenceServiceObj,
+  CommonExternalJobAwsBatchInferenceService,
 };

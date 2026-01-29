@@ -1,13 +1,14 @@
 
 // Import constants
 import APP_CONSTANTS from "../configs/constants.config";
-import { BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS } from "../configs/constants/BrightDataJobBatchInference.constant";
+import { BRIGHT_DATA_JOB_GCP_BATCH_INFERENCE_APP_CONSTANTS } from "../configs/constants/BrightDataJobGcpBatchInference.constant";
 import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJob.constant";
 
 // Import dtos
 import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
-import { BatchInferenceModelInput } from "../dtos/BatchInference.dto";
+import { AwsBatchInferenceModelInput } from "../dtos/AwsBatchInference.dto";
 import { JobLocationDto } from "../dtos/Common.dto";
+import { GcpBatchInferenceModelInput } from "../dtos/GcpBatchInference.dto";
 
 // Import helpers
 import { brightDataJobValidateHelperObj } from "../helpers/BrightDataJobValidate.helper";
@@ -16,7 +17,7 @@ import { brightDataJobValidateHelperObj } from "../helpers/BrightDataJobValidate
 import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // Import services
-import { commonExternalJobBatchInferenceServiceObj } from "./CommonExternalJobBatchInference.service";
+import { commonExternalJobGcpBatchInferenceServiceObj } from "./CommonExternalJobGcpBatchInference.service";
 import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 import UlidService from "./Ulid.service";
 
@@ -25,28 +26,15 @@ import { fileUtilObj } from "../utils/file.util";
 import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
 
-class BrightDataJobBatchInferenceService {
-  /**
-   * initBrightDataJobBatchInferenceUploadDirectory
-   *
-   * Initializes the upload directory for batch inference processing.
-   *
-   * This method validates and creates a temporary directory used for
-   * storing batch inference files. It ensures the directory exists
-   * and deletes any existing files within it. If directory creation
-   * or file deletion fails, it throws an exception
-   * with the appropriate error details and HTTP status code.
-   *
-   * @returns {Promise<string>} - A promise that resolves to the path of the upload directory.
-   * @throws {BaseError} - Throws an error if directory creation or file deletion fails.
-   */
+class BrightDataJobGcpBatchInferenceService {
+
   private async initBrightDataJobBatchInferenceUploadDirectory(): Promise<string> {
     const uploadDir: string | undefined =
       fileUtilObj.validateAndCreateDirectory(
         "/tmp",
         APP_CONSTANTS.APP_TEMPORARY_FOLDER_NAMES
-          .BRIGHT_DATA_JOBS_BATCH_INFERENCE
-      ); // @example: "/tmp/bright-data-jobs-batch-inference"
+          .BRIGHT_DATA_JOBS_GCP_BATCH_INFERENCE
+      ); // @example: "/tmp/bright-data-jobs-gcp-batch-inference"
 
     if (!uploadDir) {
       throw new BaseError(
@@ -72,55 +60,53 @@ class BrightDataJobBatchInferenceService {
   private buildBrightDataBatchInferenceRecord(
     ulidId: string,
     jobDescription: string,
-    opensearchJobDetails: {
+    jobDetails: {
       jobTitle: string;
       location: JobLocationDto;
       otherRequirements: string;
     }
-  ): BatchInferenceModelInput {
-    // Prepare JSONL line for model input
-    const jsonlObj: BatchInferenceModelInput = {
-      recordId: ulidId, // `id` attribute of `OpenSearchJob.model.ts`
-      modelInput: {
-        anthropic_version:
-          BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
-            .BATCH_INFERENCE_MODEL_INPUT.ANTHROPIC_VERSION,
-        max_tokens:
-          BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
-            .BATCH_INFERENCE_MODEL_INPUT.MAX_TOKENS,
-        messages: [
+  ): GcpBatchInferenceModelInput {
+    const {
+      GENERATION_CONFIG,
+      ROLES,
+      PROMPT,
+    } = BRIGHT_DATA_JOB_GCP_BATCH_INFERENCE_APP_CONSTANTS.BATCH_INFERENCE_MODEL_INPUT;
+
+    const {
+      MAX_OUTPUT_TOKENS,
+      TEMPERATURE,
+      TOP_P,
+    } = GENERATION_CONFIG;
+
+    const jsonLObj: GcpBatchInferenceModelInput = {
+      custom_id: ulidId,
+      request: {
+        contents: [
           {
-            role: BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
-              .BATCH_INFERENCE_MODEL_INPUT.ROLES.USER,
-              // location, jobTitle, otherRequirements(as empty string)
-            content: [
+            role: ROLES.USER,
+            parts: [
               {
-                type: "text",
-                /**
-                 * @description 
-                 *  First we are storing "Bright data external jobs" in to opensearch,
-                 *  next we are storing these job details in to `s3 path` as part of batch inference.
-                 *  And we create batch inference in aws bedrock then batch inference will generate output in 
-                 *  s3 path and these "opensearchJobDetails" will be used to store in "s3 vector"
-                 */
-                text: JSON.stringify(opensearchJobDetails),
+                text: JSON.stringify(jobDetails),
               },
               {
-                type: BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
-                  .BATCH_INFERENCE_MODEL_INPUT.CONTENT_TYPES.TEXT,
-                text: BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS.BATCH_INFERENCE_MODEL_INPUT.PROMPT.strtr(
+                text: PROMPT.strtr(
                   {
                     "{promptJobDescription}": jobDescription,
                   }
-                ),
+                )                
               },
             ],
           },
         ],
+        generationConfig: {
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+          temperature: TEMPERATURE,
+          topP: TOP_P,
+        },
       },
     };
 
-    return jsonlObj;
+    return jsonLObj;
   }
 
   async processBrightDataJobBatchInference(
@@ -139,16 +125,16 @@ class BrightDataJobBatchInferenceService {
     // Initialize a counter for creating JSONL files
     let fileJsonlRandomId: string = "";
 
-    const { s3CurrentDate, s3UlidId, externalJobSource } =
-      commonExternalJobBatchInferenceServiceObj.prepareCommonExternalJobBatchInferenceS3Config(
-        BRIGHT_DATA_JOB_APP_CONSTANTS.AWS_S3_PATH
+    const { gcpStorageCurrentDate, gcpStorageUlidId, externalJobSource } =
+      commonExternalJobGcpBatchInferenceServiceObj.prepareCommonExternalJobBatchInferenceGcpStorageConfig(
+        BRIGHT_DATA_JOB_APP_CONSTANTS.GCP_STORAGE_PATH
       );
 
     // Split the brightDataJobs into chunks of given `batchSize`
     for (let i = 0; i < brightDataJobs.length; i += batchSize) {
       fileJsonlRandomId = UlidService.getUlidId();
       const { fileName, filePath, fileStream } =
-        commonExternalJobBatchInferenceServiceObj.initCommonExternalJobBatchInferenceJsonlFileStream(
+        commonExternalJobGcpBatchInferenceServiceObj.initCommonExternalJobBatchInferenceJsonlFileStream(
           uploadDir,
           fileJsonlRandomId
         );
@@ -186,7 +172,7 @@ class BrightDataJobBatchInferenceService {
           transformedBrightDataJob
         );
 
-        const jsonlObj: BatchInferenceModelInput =
+        const jsonlObj: GcpBatchInferenceModelInput =
           this.buildBrightDataBatchInferenceRecord(
             brightDataJobId,
             transformedBrightDataJob.jobDescription ??
@@ -215,13 +201,13 @@ class BrightDataJobBatchInferenceService {
           methodName: this.processBrightDataJobBatchInference.name,
         });
 
-        // End the file stream without uploading bright data jobs details to `S3`
-        await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
+        // End the file stream without uploading bright data jobs details to `GCP Storage Bucket`
+        await commonExternalJobGcpBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
           fileStream,
           filePath,
           false,
-          s3CurrentDate,
-          s3UlidId,
+          gcpStorageCurrentDate,
+          gcpStorageUlidId,
           externalJobSource
         );
 
@@ -232,34 +218,28 @@ class BrightDataJobBatchInferenceService {
         methodName: this.processBrightDataJobBatchInference.name,
       });
 
-      // End the file stream and upload the brightData jobs details to `S3`
-      await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
+      // End the file stream and upload the brightData jobs details to `GCP Storage Bucket`
+      await commonExternalJobGcpBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
         fileStream,
         filePath,
         true,
-        s3CurrentDate,
-        s3UlidId,
+        gcpStorageCurrentDate,
+        gcpStorageUlidId,
         externalJobSource,
         fileName
       );
     }
 
-    return commonExternalJobBatchInferenceServiceObj.createCommonExternalJobBatchInference(
-      s3CurrentDate,
-      s3UlidId,
+    return commonExternalJobGcpBatchInferenceServiceObj.createCommonExternalJobBatchInference(
+      gcpStorageCurrentDate,
+      gcpStorageUlidId,
       externalJobSource,
-      BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
-        .BATCH_INFERENCE_AWS_BEDROCK_ARNS.MODEL,
-      BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
-        .BATCH_INFERENCE_AWS_BEDROCK_ARNS.SERVICE_ROLE,
-      BRIGHT_DATA_JOB_BATCH_INFERENCE_APP_CONSTANTS
-        .BATCH_INFERENCE_TIME_OUT_DURATION_IN_HOURS.MIN
     );
   }
 }
 
-const brightDataJobBatchInferenceServiceObj: BrightDataJobBatchInferenceService = new BrightDataJobBatchInferenceService();
+const brightDataJobGcpBatchInferenceServiceObj: BrightDataJobGcpBatchInferenceService = new BrightDataJobGcpBatchInferenceService();
 export {
-   BrightDataJobBatchInferenceService,
-   brightDataJobBatchInferenceServiceObj
+  BrightDataJobGcpBatchInferenceService,
+  brightDataJobGcpBatchInferenceServiceObj,
 };

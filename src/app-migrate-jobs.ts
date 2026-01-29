@@ -1,3 +1,4 @@
+/*
 // Import aws lambda related types
 import { APIGatewayProxyResult, Context } from "aws-lambda";
 
@@ -20,9 +21,7 @@ import { scriptServiceObj } from "./services/Script.service";
 import HttpStatusCode from "./utils/http-codes.util";
 import { responseHandlerUtilObj } from "./utils/response-handler.util";
 
-/**
- * Initializes the database configuration.
- */
+
 const initDatabaseConfig = () => {
   // Create a new database configuration instance
   const dbConf = new DBConfig();
@@ -63,3 +62,4 @@ export const handler = async (
     };
   }
 };
+*/

@@ -19,6 +19,8 @@ const BRIGHT_DATA_JOB_APP_CONSTANTS = {
    */
   AWS_S3_PATH: "bright-data-external-jobs",
 
+  GCP_STORAGE_PATH: "bright-data-external-jobs",
+
   // ENVIRONMENT_RETRIEVAL_LIMIT
   ENVIRONMENT_RETRIEVAL_LIMIT: {
     DEV: 110,

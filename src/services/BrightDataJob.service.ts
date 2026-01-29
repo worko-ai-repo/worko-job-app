@@ -20,8 +20,8 @@ import { brightDataJobCloudApiLibraryObj } from "../libraries/BrightDataJobCloud
 import { DbScheduleJobDto } from "../db/models/ScheduleJob.model";
 
 // Import services
-import { brightDataJobBatchInferenceServiceObj } from "./BrightDataJobBatchInference.service";
 import ScheduleJobService from "./ScheduleJob.service";
+import { brightDataJobGcpBatchInferenceServiceObj } from "./BrightDataJobGcpBatchInference.service";
 
 /**
  * BrightDataJobService
@@ -158,7 +158,7 @@ class BrightDataJobService {
    *
    * Retrieves BrightData jobs based on the given snapshot ID and processes them for batch inference.
    * If the jobs length is 0, then it returns false.
-   * Otherwise, it calls the processBatchInferenceForBrightDataJobs method of the BrightDataJobBatchInferenceService
+   * Otherwise, it calls the processBatchInferenceForBrightDataJobs method of the BrightDataJobAwsBatchInferenceService
    * to process the jobs for batch inference.
    *
    * @param {string} snapshotId - The snapshot ID of the BrightData job to be retrieved.
@@ -187,12 +187,12 @@ class BrightDataJobService {
     if(process.env.APP_STAGE === APP_CONSTANTS.STAGES.DEV) {
       global.logger.info("BrightData Jobs Batch Inference on dev environment");
       const hundredBrightDataJobs: BrightDataJobApiResponse[] = brightDataJobs.slice(0, 100);
-      return brightDataJobBatchInferenceServiceObj.processBrightDataJobBatchInference(
+      return brightDataJobGcpBatchInferenceServiceObj.processBrightDataJobBatchInference(
         hundredBrightDataJobs
       )
     }
 
-    return brightDataJobBatchInferenceServiceObj.processBrightDataJobBatchInference(
+    return brightDataJobGcpBatchInferenceServiceObj.processBrightDataJobBatchInference(
       brightDataJobs,
     );
   }

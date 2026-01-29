@@ -13,19 +13,19 @@ import { GcpAiplatformSecretResponseDto } from "../dtos/Common.gcp-aiplatform.dt
 import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
 
-class GcpAiPlatformLibrary {
+class GcpAiPlatformEmbeddingLibrary {
   constructor() {
     if (
-      !process.env.APP_GCP_AI_PLATFORM_MODEL_NAME ||
-      !process.env.APP_GCP_AI_PLATFORM_LOCATION ||
+      !process.env.APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME ||
+      !process.env.APP_GCP_AI_PLATFORM_EMBEDDING_LOCATION ||
       !process.env.APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM ||
       !process.env.APP_GCP_PROJECT_ID
     ) {
       global.logger.error(
         `MODEL_NAME or LOCATION is not defined in .env file.`,
         {
-          modelName: process.env.APP_GCP_AI_PLATFORM_MODEL_NAME,
-          location: process.env.APP_GCP_AI_PLATFORM_LOCATION,
+          modelName: process.env.APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME,
+          location: process.env.APP_GCP_AI_PLATFORM_EMBEDDING_LOCATION,
           projectId: process.env.APP_GCP_PROJECT_ID,
           awsSecretsManager: process.env.APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM,
         }
@@ -39,12 +39,12 @@ class GcpAiPlatformLibrary {
 
   private predictionClient?: PredictionServiceClient;
   private readonly MODEL_NAME = process.env
-    .APP_GCP_AI_PLATFORM_MODEL_NAME as string;
+    .APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME as string;
   private readonly LOCATION = process.env
-    .APP_GCP_AI_PLATFORM_LOCATION as string;
+    .APP_GCP_AI_PLATFORM_EMBEDDING_LOCATION as string;
   private readonly PROJECT_ID: string = process.env.APP_GCP_PROJECT_ID as string;
 
-  async initAiPlatformArguments(): Promise<PredictionServiceClientConfig> {
+  async initAiPlatformEmbeddingArguments(): Promise<PredictionServiceClientConfig> {
     const credentials: GcpAiplatformSecretResponseDto =
       await awsClientSecretsManagerLibrary.getParsedSecret<GcpAiplatformSecretResponseDto>(
         process.env.APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM as string
@@ -60,10 +60,10 @@ class GcpAiPlatformLibrary {
     return config;
   }
 
-  private async getAiPlatform(): Promise<PredictionServiceClient> {
+  private async getAiPlatformPredictionClient(): Promise<PredictionServiceClient> {
     if (!this.predictionClient) {
       const config: PredictionServiceClientConfig =
-        await this.initAiPlatformArguments();
+        await this.initAiPlatformEmbeddingArguments();
       this.predictionClient = new PredictionServiceClient(config);
     }
     return this.predictionClient;
@@ -79,7 +79,7 @@ class GcpAiPlatformLibrary {
     dimensions: number;
   }> {
     const predictionClient: PredictionServiceClient =
-      await this.getAiPlatform();
+      await this.getAiPlatformPredictionClient();
 
     const endpoint: string = `projects/${this.PROJECT_ID}/locations/${this.LOCATION}/publishers/google/models/${this.MODEL_NAME}`;
 
@@ -194,4 +194,4 @@ class GcpAiPlatformLibrary {
   }
 }
 
-export { GcpAiPlatformLibrary };
+export { GcpAiPlatformEmbeddingLibrary };

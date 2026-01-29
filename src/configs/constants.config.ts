@@ -55,12 +55,18 @@ const APP_CONSTANTS = {
     HR_OFFER_LETTER_SENT: `users/{userId}/job-applications/{jobApplicationId}/offer-letters`,
   },
 
+  GCP_STORAGE_DIR_PATHS: {
+    BATCH_INFERENCE_INPUT: "input/{externalJobSource}/{date}/{ulidId}",
+    BATCH_INFERENCE_OUTPUT: "output/{externalJobSource}/{date}/{ulidId}",
+  },
+
   /**
    * APP_TEMPORARY_FOLDER_NAMES
    */
   APP_TEMPORARY_FOLDER_NAMES: {
     FANTASTIC_JOBS_BATCH_INFERENCE: "fantastic-jobs-batch-inference",
-    BRIGHT_DATA_JOBS_BATCH_INFERENCE: "bright-data-jobs-batch-inference",
+    BRIGHT_DATA_JOBS_AWS_BATCH_INFERENCE: "bright-data-jobs-aws-batch-inference",
+    BRIGHT_DATA_JOBS_GCP_BATCH_INFERENCE: "bright-data-jobs-gcp-batch-inference",
   },
 
   /**

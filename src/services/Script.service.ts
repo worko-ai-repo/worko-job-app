@@ -16,6 +16,7 @@ import { DateTime } from "luxon";
 // Import constants
 import { awsOpensearchLibrary, awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import APP_CONSTANTS from "../configs/constants.config";
+import { gcpAiPlatformBatchInferenceLibrary } from "../configs/gcp-sdk.config";
 
 // Import daos
 import { awsOpenSearchJobDaoObj } from "../daos/AwsOpenSearchJob.dao";
@@ -53,6 +54,7 @@ import { CompanyJobModel, DbCompanyJobDto } from "../db/models/CompanyJob.model"
 import { companyJobServiceObj } from "./CompanyJob.service";
 import { userJobApplicationServiceObj } from "./UserJobApplication.service";
 import { fantasticJobServiceObj } from "./FantasticJob.service";
+import UlidService from "./Ulid.service";
 import { jobServiceObj } from "./Job.service";
 import { brightDataJobServiceObj } from "./BrightDataJob.service";
 
@@ -61,19 +63,21 @@ import HttpStatusCode from "../utils/http-codes.util";
 import { BaseError } from "../utils/errors.util";
 import ErrorCodeName from "../utils/error-code-name.util";
 
+import { dateHelperObj } from "../helpers/date.helper";
+
 /**
  * ScriptService
  *
  * Service for handling script-related operations related to updating GSI attributes.
  */
 class ScriptService {
-  async scriptSampleEntityTest() {
+  async scriptSampleEntityTest(reqBody: any) {
     global.logger.info(
       `Script for sample entity test [Script Service]`
     );
 
     return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
-      "sd_mjh5yu9h105e1z8gks"
+      reqBody.snapShotId, 
     ); 
 
     // return jobServiceObj.validateAndDeleteExpiredBrightDataJobs(
@@ -81,7 +85,31 @@ class ScriptService {
     //   JobSourcedFromEnum.BRIGHT_DATA_JOB
     // );
 
-    return false;
+    // const jobDisplayName: string = UlidService.getUlidId();
+    // const gcpStorageUlidId: string = reqBody.gcpStorageUlidId; // "01KE6Q6WD40PPV9XV5DNY7Z4WF";
+    // const gcpStorageCurrentDate: string = reqBody.gcpStorageCurrentDate; // dateHelperObj.getCurrentDayMonthYearFormattedDate();
+    // const externalJobSource: string = reqBody.externalJobSource; // "bright-data-external-jobs";
+    // const jsonLFileName: string = reqBody.jsonLFileName; // "file-01KE6Q6WDDBZPK1Q55G83BKC8M.jsonl";
+    // return gcpAiPlatformBatchInferenceLibrary.createBatchPredictionJob(
+    //   `gs://${
+    //     process.env.APP_GCP_STORAGE_BUCKET_WORKO_BATCH_INFERENCE
+    //   }/${APP_CONSTANTS.GCP_STORAGE_DIR_PATHS.BATCH_INFERENCE_INPUT.strtr({
+    //     "{externalJobSource}": externalJobSource,
+    //     "{date}": gcpStorageCurrentDate,
+    //     "{ulidId}": gcpStorageUlidId,
+    //   })}/${jsonLFileName}`,
+    //   `gs://${
+    //     process.env.APP_GCP_STORAGE_BUCKET_WORKO_BATCH_INFERENCE
+    //   }/${APP_CONSTANTS.GCP_STORAGE_DIR_PATHS.BATCH_INFERENCE_OUTPUT.strtr({
+    //     "{externalJobSource}": externalJobSource,
+    //     "{date}": gcpStorageCurrentDate,
+    //     "{ulidId}": gcpStorageUlidId,
+    //   })}/`,
+    //   jobDisplayName,
+    //   `publishers/google/models/${process.env.APP_GCP_AI_PLATFORM_BATCH_INFERENCE_MODEL_NAME}`
+    // );
+
+    // return false;
   }
 
   /**

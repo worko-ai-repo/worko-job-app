@@ -387,18 +387,25 @@ class UserJobApplicationService {
         return false;
       }
 
+      const updateCentralCandProfileData: Partial<DbCentralCandidateProfileDto> = {
+        updatedAt: dateHelperObj.getISODate(),
+        coolingPeriodCompanies: [
+          ...(centralCandProfile.coolingPeriodCompanies || []),
+          {
+            companyId: updateCorporateCandProfile.companyId,
+            companyName: companyName
+          }
+        ]
+      }
+      if(!centralCandProfile.candidateParsedCvIds.includes(updateCorporateCandProfile.candidateParsedCvId)) {
+        updateCentralCandProfileData.candidateParsedCvIds = [
+          ...(centralCandProfile.candidateParsedCvIds || []),
+          updateCorporateCandProfile.candidateParsedCvId
+        ]
+      }
       const updateCentralCandProfile: DbCentralCandidateProfileDto | undefined = await centralCandidateProfileServiceObj.updateCentralCandidateProfileById(
         updateCorporateCandProfile.candidateEmail,
-        {
-          updatedAt: dateHelperObj.getISODate(),
-          coolingPeriodCompanies: [
-            ...(centralCandProfile.coolingPeriodCompanies || []),
-            {
-              companyId: updateCorporateCandProfile.companyId,
-              companyName: companyName
-            }
-          ]
-        }
+        updateCentralCandProfileData
       );
 
       if(!updateCentralCandProfile) {

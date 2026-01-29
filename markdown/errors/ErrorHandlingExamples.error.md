@@ -888,3 +888,34 @@ Request must be smaller than 5120 bytes for the UpdateFunctionConfiguration oper
   "errorType": "Function.ResponseSizeTooLarge"
 }
 ```
+
+45. 
+```json
+{
+    "bucketName": "worko-batch-inference-dev",
+    "error": {
+        "code": "ENOENT",
+        "errno": -2,
+        "path": "input/bright-data-external-jobs/02-01-2026/01KDZCA3RYED8A8RX30MNNPGBS/",
+        "syscall": "open"
+    },
+    "fileName": "file-01KDZCA3S41Q9XSC4M8083CRTJ.jsonl",
+    "level": "error",
+    "message": "Failed to upload file to GCP Storage"
+}
+```
+
+46. 
+```json
+{
+    "bucketName": "worko-batch-inference-dev",
+    "error": {
+        "code": "ERR_OSSL_UNSUPPORTED",
+        "library": "DECODER routines",
+        "reason": "unsupported"
+    },
+    "fileName": "file-01KDZECVQ90NXZ16XRX87ZKS68.jsonl",
+    "level": "error",
+    "message": "Failed to upload file to GCP Storage"
+}
+```

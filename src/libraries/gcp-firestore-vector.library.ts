@@ -9,7 +9,7 @@ import {
 
 // Import sdk configs
 import {
-  gcpAiPlatformLibrary,
+  gcpAiPlatformEmbeddingLibrary,
   gcpFirestoreLibrary,
 } from "../configs/gcp-sdk.config";
 
@@ -26,9 +26,9 @@ import HttpStatusCode from "../utils/http-codes.util";
 
 class GcpFirestoreVectorLibrary {
   constructor() {
-    if (!process.env.APP_GCP_AI_PLATFORM_MODEL_NAME) {
+    if (!process.env.APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME) {
       global.logger.error(`MODEL_NAME is not defined in .env file.`, {
-        modelName: process.env.APP_GCP_AI_PLATFORM_MODEL_NAME,
+        modelName: process.env.APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME,
       });
       throw new BaseError(
         "MODEL_NAME is not defined in .env file.",
@@ -37,7 +37,7 @@ class GcpFirestoreVectorLibrary {
     }
   }
   private readonly MODEL_NAME = process.env
-    .APP_GCP_AI_PLATFORM_MODEL_NAME as string;
+    .APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME as string;
 
   async createDocumentWithEmbedding<DbEntityDto extends DocumentData>(
     commonDbDetails: GcpFirestoreInteractionDto,
@@ -45,7 +45,7 @@ class GcpFirestoreVectorLibrary {
     embeddingText: string
   ): Promise<DbEntityDto | undefined> {
     const { embedding, dimensions } =
-      await gcpAiPlatformLibrary.generateEmbedding(embeddingText);
+      await gcpAiPlatformEmbeddingLibrary.generateEmbedding(embeddingText);
 
     const documentWithEmbedding: DbEntityDto & {
       embeddingVector: FieldValue;
@@ -87,7 +87,7 @@ class GcpFirestoreVectorLibrary {
     // Note: Embeddings cannot be partially updated - they must be fully regenerated
     // when the source text changes to maintain semantic accuracy
     const { embedding, dimensions } =
-      await gcpAiPlatformLibrary.generateEmbedding(
+      await gcpAiPlatformEmbeddingLibrary.generateEmbedding(
         embeddingText,
         "RETRIEVAL_DOCUMENT",
         title
@@ -154,7 +154,7 @@ class GcpFirestoreVectorLibrary {
     const distanceThreshold = options?.distanceThreshold;
 
     // Generate embedding for the query text with RETRIEVAL_QUERY task type
-    const { embedding } = await gcpAiPlatformLibrary.generateEmbedding(
+    const { embedding } = await gcpAiPlatformEmbeddingLibrary.generateEmbedding(
       queryText,
       "RETRIEVAL_QUERY"
     );

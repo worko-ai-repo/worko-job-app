@@ -5,7 +5,7 @@ import { FANTASTIC_JOB_BATCH_INFERENCE_APP_CONSTANTS } from "../configs/constant
 import { FANTASTIC_JOB_APP_CONSTANTS } from "../configs/constants/FantasticJob.constant";
 
 // Import dtos
-import { BatchInferenceModelInput } from "../dtos/BatchInference.dto";
+import { AwsBatchInferenceModelInput } from "../dtos/AwsBatchInference.dto";
 import { FantasticJobApiResponse } from "../dtos/FantasticJob.dto";
 import { FantasticJobLogCommonUpdateDto } from "../dtos/FantasticJobLog.dto";
 
@@ -17,7 +17,7 @@ import { DbJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearch
 import { DbFantasticJobLogDto } from "../db/models/FantasticJobLog.model";
 
 // Import services
-import { commonExternalJobBatchInferenceServiceObj } from "./CommonExternalJobBatchInference.service";
+import { commonExternalJobAwsBatchInferenceServiceObj } from "./CommonExternalJobAwsBatchInference.service";
 import UlidService from "./Ulid.service";
 import { fantasticJobLogServiceObj } from "./FantasticJobLog.service";
 import { awsOpenSearchJobServiceObj } from "./AwsOpenSearchJob.service";
@@ -38,23 +38,23 @@ class FantasticJobBatchInferenceService {
   /**
    * buildFantasticJobBatchInferenceRecord
    *
-   * Transforms a job description into a BatchInferenceModelInput object formatted as a JSONL line.
+   * Transforms a job description into a AwsBatchInferenceModelInput object formatted as a JSONL line.
    *
    * This function takes a unique identifier and a job description string, then constructs
-   * a BatchInferenceModelInput object which includes the record ID and model input details
+   * a AwsBatchInferenceModelInput object which includes the record ID and model input details
    * suitable for inference processing. The model input includes versioning, token limits,
    * and user messages, which contain the job description details.
    *
    * @param {string} fantasticJobId - A unique identifier for the job record.
    * @param {string} jobDescription - The job description to be included in the model input.
-   * @returns {BatchInferenceModelInput} - The formatted JSONL object for batch inference.
+   * @returns {AwsBatchInferenceModelInput} - The formatted JSONL object for batch inference.
    */
   private buildFantasticJobBatchInferenceRecord(
     fantasticJobId: string,
     jobDescription: string
-  ): BatchInferenceModelInput {
+  ): AwsBatchInferenceModelInput {
     // Prepare JSONL line for model input
-    const jsonlObj: BatchInferenceModelInput = {
+    const jsonlObj: AwsBatchInferenceModelInput = {
       recordId: fantasticJobId, // `id` attribute of `OpenSearchJob.model.ts`
       modelInput: {
         anthropic_version:
@@ -258,7 +258,7 @@ class FantasticJobBatchInferenceService {
     let openSearchDbStoredCount: number = 0;
 
     const { s3CurrentDate, s3UlidId, externalJobSource } =
-      commonExternalJobBatchInferenceServiceObj.prepareCommonExternalJobBatchInferenceS3Config(
+      commonExternalJobAwsBatchInferenceServiceObj.prepareCommonExternalJobBatchInferenceS3Config(
         FANTASTIC_JOB_APP_CONSTANTS.AWS_S3_PATH
       );
 
@@ -266,7 +266,7 @@ class FantasticJobBatchInferenceService {
     for (let i = 0; i < bulkJobDetails.length; i += batchSize) {
       fileJsonlRandomId = UlidService.getUlidId();
       const { fileName, filePath, fileStream } =
-        commonExternalJobBatchInferenceServiceObj.initCommonExternalJobBatchInferenceJsonlFileStream(
+        commonExternalJobAwsBatchInferenceServiceObj.initCommonExternalJobBatchInferenceJsonlFileStream(
           uploadDir,
           fileJsonlRandomId
         );
@@ -315,7 +315,7 @@ class FantasticJobBatchInferenceService {
           transformFantasticJob
         );
 
-        const jsonlObj: BatchInferenceModelInput =
+        const jsonlObj: AwsBatchInferenceModelInput =
           this.buildFantasticJobBatchInferenceRecord(
             fantasticJobId,
             transformFantasticJob.jobDescription ?? "Job Description Not Found."
@@ -344,7 +344,7 @@ class FantasticJobBatchInferenceService {
         });
 
         // End the file stream without uploading fantastic jobs details to `S3`
-        await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
+        await commonExternalJobAwsBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
           fileStream,
           filePath,
           false,
@@ -367,7 +367,7 @@ class FantasticJobBatchInferenceService {
       openSearchDbStoredCount += batch.length;
 
       // End the file stream and upload the fantastic jobs details to `S3`
-      await commonExternalJobBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
+      await commonExternalJobAwsBatchInferenceServiceObj.finalizeCommonExternalJobBatchInferenceJsonlFile(
         fileStream,
         filePath,
         true,
@@ -385,7 +385,7 @@ class FantasticJobBatchInferenceService {
       false
     );
 
-    return commonExternalJobBatchInferenceServiceObj.createCommonExternalJobBatchInference(
+    return commonExternalJobAwsBatchInferenceServiceObj.createCommonExternalJobBatchInference(
       s3CurrentDate,
       s3UlidId,
       externalJobSource,

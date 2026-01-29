@@ -41,7 +41,7 @@ class ScriptController {
       );
 
       const response =
-        await scriptServiceObj.scriptSampleEntityTest();
+        await scriptServiceObj.scriptSampleEntityTest(req.body);
 
       res.status(HttpStatusCode.OK_200).json(response);
     } catch (error) {

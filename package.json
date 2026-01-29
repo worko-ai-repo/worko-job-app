@@ -51,6 +51,7 @@
     "@aws-sdk/s3-request-presigner": "^3.948.0",
     "@google-cloud/aiplatform": "^6.0.0",
     "@google-cloud/firestore": "^8.0.0",
+    "@google-cloud/storage": "^7.18.0",
     "@opensearch-project/opensearch": "^3.2.0",
     "axios": "^1.7.9",
     "cors": "^2.8.5",

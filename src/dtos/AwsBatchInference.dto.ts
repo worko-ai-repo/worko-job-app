@@ -7,7 +7,7 @@
  * Format and upload your batch inference data
  * @see https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference-data.html
  */
-export interface BatchInferenceModelInput {
+export interface AwsBatchInferenceModelInput {
   recordId: string;
   modelInput: {
     anthropic_version: string;
