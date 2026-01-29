@@ -22,7 +22,7 @@ const BRIGHT_DATA_JOB_GCP_BATCH_INFERENCE_APP_CONSTANTS = {
      *    8. noticePeriod
      *    9. typeOfEmployment
      */
-    PROMPT: `**JOB DESCRIPTION EXTRACTION TASK**\n\n"
+    PROMPT: `"**JOB DESCRIPTION EXTRACTION TASK**\n\n"
             
             "**STEP 1 - Extract Basic Information:**\n"
             "- Job Title\n"
@@ -107,7 +107,7 @@ const BRIGHT_DATA_JOB_GCP_BATCH_INFERENCE_APP_CONSTANTS = {
             "8. Remove any redundant or repeating data\n\n"
             
             "**EMPTY FIELD RULE:**\n"
-            "- If information is not explicitly mentioned, leave field empty (not 'Not Mentioned')\n\n"
+            "- If information is not explicitly mentioned, put it as null. never put anything else then null\n\n"
             
             "**PROCESSING THE JOB DESCRIPTION:**\n"
             "Now analyze this job description step by step:\n\n"
@@ -170,7 +170,7 @@ const BRIGHT_DATA_JOB_GCP_BATCH_INFERENCE_APP_CONSTANTS = {
             "        \"<p>[Additional details from job description]</p>\\n\"\n"
             "        \"</section>\\n\"\n"
             "        \"</div>\"\n"
-            "}`,
+            "}"`,
   },
 };
 
