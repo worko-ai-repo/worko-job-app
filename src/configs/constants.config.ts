@@ -53,6 +53,7 @@ const APP_CONSTANTS = {
     USER_JOB_APPL_DOC:
       "users/{userId}/job-applications/{jobApplicationId}/documents",
     HR_OFFER_LETTER_SENT: `users/{userId}/job-applications/{jobApplicationId}/offer-letters`,
+    SITEMAP_S3_DIR_PATH: "sitemap/sitemap.xml",
   },
 
   GCP_STORAGE_DIR_PATHS: {
@@ -544,6 +545,61 @@ const APP_CONSTANTS = {
   },
 
   WORKO_LOGO_URL: process.env.APP_WORKO_LOGO_URL,
+  
+  /**
+   * SITEMAP_XML_NAMESPACE
+   * 
+   * This constant defines the XML namespace for sitemap files.
+   * It is used to ensure that the sitemap adheres to the standard sitemap protocol.
+   */
+  SITEMAP_XML_NAMESPACE: "http://www.sitemaps.org/schemas/sitemap/0.9",
+  
+  /**
+   * SITEMAP_XMLNS_XSI_NAMESPACE
+   * 
+   * This constant defines the XML Schema Instance namespace for sitemap files.
+   * It is used to specify the schema location for the sitemap.
+   */
+  SITEMAP_XMLNS_XSI_NAMESPACE: "http://www.w3.org/2001/XMLSchema-instance",
+  
+  /**
+   * SITEMAP_XML_SCHEMA
+   *
+   * This constant defines the XML schema location for sitemap files.
+   */
+  SITEMAP_XML_SCHEMA: "http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd",
+
+  /**
+   * SITEMAP_CHANGEFREQ
+   * 
+   * This constant defines the change frequency values for sitemap entries.
+   * These values indicate how frequently the content at a particular URL is expected to change.
+   */
+  SITEMAP_CHANGEFREQ: {
+    ALWAYS: "always",
+    HOURLY: "hourly",
+    DAILY: "daily",
+    WEEKLY: "weekly",
+    MONTHLY: "monthly",
+    YEARLY: "yearly",
+    NEVER: "never",
+  } as const,
+
+  /**
+   * SITEMAP_PRIORITY
+   * 
+   * This constant defines the priority values for sitemap entries.
+   * These values indicate the relative importance of a URL compared to other URLs on the same site.
+   */
+  SITEMAP_PRIORITY: {
+    HIGH: 1.0,
+    MEDIUM_HIGH: 0.8,
+    MEDIUM: 0.5,
+    LOW: 0.3,
+    VERY_LOW: 0.1,
+  } as const,
+
+ 
 };
 
 export default APP_CONSTANTS;

@@ -16,6 +16,7 @@ import CountUserRouter from "./routers/CountUser.router";
 import CountGlobalRouter from "./routers/CountGlobal.router";
 import CountCompanyJobRouter from "./routers/CountCompanyJob.router";
 import CountCompanyRouter from "./routers/CountCompany.router";
+import SitemapRouter from "./routers/Sitemap.router";
 
 // Router that contains all the routes/endpoints in the application
 const router = Router();
@@ -137,6 +138,16 @@ router.use("/job-application", UserJobApplicationRouter);
  * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
  */
 router.use("/job-application-author-note", UserJobApplicationAuthorNoteRouter);
+
+/**
+ * SITEMAP ROUTERS
+ * 
+ * Register the "Sitemap" routers
+ * 
+ * @authorisedRoles ["public"]
+ */
+router.use("/sitemap", SitemapRouter);
+
 
 /**
  * User Matching Score Job Router

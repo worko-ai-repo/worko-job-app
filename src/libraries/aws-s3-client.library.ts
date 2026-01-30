@@ -18,6 +18,8 @@ import APP_CONSTANTS from "../configs/constants.config";
 
 // Import Utils
 import { BaseError } from "../utils/errors.util";
+import HttpStatusCode from "../utils/http-codes.util";
+import ErrorCodeName from "../utils/error-code-name.util";
 
 /**
  * AwsS3ClientLibrary
@@ -127,8 +129,8 @@ class AwsS3ClientLibrary {
       return true;
     } catch (error: any) {
       if (
-        error.name === "NotFound" ||
-        error.$metadata?.httpStatusCode === 404
+        error.name === ErrorCodeName.NOT_FOUND ||
+        error.$metadata?.httpStatusCode === HttpStatusCode.NOT_FOUND_404
       ) {
         return false;
       }
@@ -263,6 +265,53 @@ class AwsS3ClientLibrary {
       }),
       { expiresIn: expiresInSecs }
     );
+  }
+
+  /**
+   * getObjectAsString
+   *
+   * Fetches an object from S3 and returns its contents as a UTF-8 string.
+   *
+   * NOTE: This is primarily intended for small text files like sitemap.xml.
+   * Bucket: APP_AWS_S3_BUCKET_WORKO_APP
+   * Key: sitemap.xml
+   * getObjectAsString(bucket, "sitemap.xml") → "<?xml version=\"1.0\" ...</urlset>"
+   */
+  async getObjectAsString(bucketName: string, key: string): Promise<string | null> {
+    try {
+      const response = await this.s3.send(
+        new GetObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        })
+      );
+
+      // In AWS SDK v3, the Body stream has a helper `transformToString` in Node runtimes.
+      const body: any = response.Body;
+      if (!body || typeof body.transformToString !== "function") {
+        return null;
+      }
+
+      const data: string = await body.transformToString("utf-8");
+      return data;
+    } catch (error: any) {
+      if (
+        error.name === ErrorCodeName.NO_SUCH_KEY ||
+        error.name === ErrorCodeName.NOT_FOUND ||
+        error.$metadata?.httpStatusCode === HttpStatusCode.NOT_FOUND_404
+      ) {
+        return null;
+      }
+
+      console.log("Failed to get object from S3 as string.", {
+        filePath: __filename,
+        methodName: this.getObjectAsString.name,
+        bucket: bucketName,
+        key: key,
+        awsS3Exception: error.message,
+      });
+      throw new BaseError(APP_CONSTANTS.ERROR_MESSAGE_UNKNOWN_EXCEPTION);
+    }
   }
 }
 

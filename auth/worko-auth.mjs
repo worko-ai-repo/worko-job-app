@@ -581,6 +581,10 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
       path: "/file/gsu2v/CORP_CAND_BULK_CV_UPLOAD",
       method: HttpMethodsConstants.POST,
     },
+    {
+      path: "/file/gsu2v/CORP_CAND_REFERRAL_CV",
+      method: HttpMethodsConstants.POST,
+    },
 
     // Agency User Submission Routers
     { path: "/agency-user-submission*", method: HttpMethodsConstants.GET },
@@ -604,6 +608,7 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
     { path: "/candidate-parsed-cv/search-in-db/corp-action*", method: HttpMethodsConstants.GET },
     { path: "/candidate-parsed-cv/move-to-applicant", method: HttpMethodsConstants.POST },
     { path: "/candidate-parsed-cv/find-matching-score", method: HttpMethodsConstants.POST },
+    { path: "/candidate-parsed-cv/:id", method: HttpMethodsConstants.PATCH },
 
     // Candidate Job Matching Routers
     { path: "/candidate-job-matching/:id", method: HttpMethodsConstants.GET },
@@ -647,6 +652,8 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     // corporate user routes
     { path: "/corporate-user/*", method: HttpMethodsConstants.GET },
     { path: "/corporate-user/:id/delete", method: HttpMethodsConstants.PATCH },
+    { path: "/corporate-user/request-otp/referral-sourcetype", method: HttpMethodsConstants.POST },
+    { path: "/corporate-user/verify-otp/referral-sourcetype", method: HttpMethodsConstants.POST },
 
     // corporate invite routes
     { path: "/corporate-invite/", method: HttpMethodsConstants.POST },
@@ -723,6 +730,10 @@ var isCorporateAdminUrl = function (url, httpMethod) {
       path: "/file/gsu2v/CORP_CAND_BULK_CV_UPLOAD",
       method: HttpMethodsConstants.POST,
     },
+    {
+      path: "/file/gsu2v/CORP_CAND_REFERRAL_CV",
+      method: HttpMethodsConstants.POST,
+    },
 
     // User Interview Routers
     {
@@ -746,9 +757,14 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     { path: "/candidate-parsed-cv/search-in-db/corp-action*", method: HttpMethodsConstants.GET },
     { path: "/candidate-parsed-cv/move-to-applicant", method: HttpMethodsConstants.POST },
     { path: "/candidate-parsed-cv/find-matching-score", method: HttpMethodsConstants.POST },
+    { path: "/candidate-parsed-cv/:id", method: HttpMethodsConstants.PATCH },
 
     // Candidate Job Matching Routers
     { path: "/candidate-job-matching/:id", method: HttpMethodsConstants.GET },
+
+    // Referral Source Type Activation Routers
+    { path: "/referral-sourcetype-activation/", method: HttpMethodsConstants.POST },
+    { path: "/referral-sourcetype-activation/company/:companyId", method: HttpMethodsConstants.GET },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -810,6 +826,21 @@ var isAgencyUrl = function (url, httpMethod) {
 
     // Agency Bulk Jd Resume Routers
     { path: "/agency-bulk-jd-resume*", method: HttpMethodsConstants.ANY },
+
+    // Agency Cv Recharge Package routers
+    { path: "/agency-cv-recharge-package*", method: HttpMethodsConstants.GET },
+
+    { path: "/agency-cv-recharge-order/create", method: HttpMethodsConstants.POST },
+    { path: "/agency-cv-recharge-order/verify-payment", method: HttpMethodsConstants.POST },
+
+    // Agency Cv Wallet Routers
+    { path: "/agency-cv-wallet/:agencyUserId", method: HttpMethodsConstants.GET },
+
+    // Agency cv credit transaction routers
+    { path: "/agency-cv-credit-transaction*", method: HttpMethodsConstants.GET },
+
+    // Agency Cv Debit Transaction Routers
+    { path: "/agency-cv-debit-transaction*", method: HttpMethodsConstants.GET },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -910,6 +941,14 @@ var isAdminUrl = function (url, httpMethod) {
       path: "/file/gsu2v/ADMIN_CAND_BULK_CV_UPLOAD",
       method: HttpMethodsConstants.POST,
     },
+    {
+      path: "/file/gsu2v/CORP_CAND_BULK_CV_UPLOAD",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/file/gsu2v/CORP_CAND_REFERRAL_CV",
+      method: HttpMethodsConstants.POST,
+    },
 
     // Request evaluation routers
     { path: "/request-evaluation/", method: HttpMethodsConstants.POST },
@@ -982,7 +1021,14 @@ var isAdminUrl = function (url, httpMethod) {
       path: "/central-candidate-profile*",
       method: HttpMethodsConstants.GET,
     },
-    { path: "/central-candidate-profile/resumes", method: HttpMethodsConstants.POST }
+    { path: "/central-candidate-profile/resumes", method: HttpMethodsConstants.POST },
+
+    // Candidate parsed cvs
+    { path: "/candidate-parsed-cv/search-in-db/admin-action*", method: HttpMethodsConstants.GET },
+    { path: "/candidate-parsed-cv/:id", method: HttpMethodsConstants.PATCH },
+
+    // Agency Cv Recharge Package routers
+    { path: "/agency-cv-recharge-package*", method: HttpMethodsConstants.ANY },
   ];
 
   const result = checkMatchingPattern(url, adminUrlList, httpMethod);

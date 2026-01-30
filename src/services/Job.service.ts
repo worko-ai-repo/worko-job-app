@@ -91,7 +91,7 @@ class JobService {
    * @throws {BaseError} 404 - If the CompanyId is not found.
    * @throws {BaseError} 500 - If the Job is not created successfully.
    */
-  async createJob(jobCreateDto: JobCreateDto): Promise<DbCompanyJobDto> {
+  async createJob(jobCreateDto: JobCreateDto): Promise<DbGcpFirestoreJobDto> {
     // logger
     global.logger.info("Create Job [Service]", {
       filePath: __filename,
@@ -159,9 +159,29 @@ class JobService {
       );
     }
 
-    await this.prepareAndCreateJobInAwsS3Vector(jobOnGcpFirestore)
+    await this.prepareAndCreateJobInAwsS3Vector(jobOnGcpFirestore);
 
-    return companyJobDetailsOnAwsDynamodb;
+    await this.syncSitemapAfterJobCreate(jobOnGcpFirestore);
+
+    return jobOnGcpFirestore;
+  }
+
+  /**
+   * Syncs sitemap after job creation. Uses dynamic import to avoid circular dependency with Sitemap.service.
+   * Failures are logged but do not block job creation.
+   */
+  private async syncSitemapAfterJobCreate(job: DbGcpFirestoreJobDto): Promise<void> {
+    try {
+      const sitemapServiceObj = (await import("./Sitemap.service")).default;
+      await sitemapServiceObj.addOrUpdateJobInSitemap(job);
+    } catch (sitemapError) {
+      global.logger.error("Failed to update sitemap after job creation [Service]", {
+        filePath: __filename,
+        methodName: "createJob",
+        jobId: job.id,
+        error: sitemapError,
+      });
+    }
   }
 
   /**
@@ -567,8 +587,34 @@ class JobService {
       );
     }
 
+    await this.syncSitemapAfterJobUpdate(
+      jobDetailsOnGcpFirestoreBeforeUpdate,
+      updatedJobDetailsOnGcpFirestore
+    );
+
     // Return the external job details
     return updatedJobDetailsOnGcpFirestore;
+  }
+
+  /**
+   * Syncs sitemap after job update. Uses dynamic import to avoid circular dependency with Sitemap.service.
+   * Failures are logged but do not block job update.
+   */
+  private async syncSitemapAfterJobUpdate(
+    gcpFirestoreJobBeforeUpdate: DbGcpFirestoreJobDto | undefined,
+    jobAfterUpdate: DbGcpFirestoreJobDto
+  ): Promise<void> {
+    try {
+      const sitemapServiceObj = (await import("./Sitemap.service")).default;
+      await sitemapServiceObj.syncJobInSitemap(gcpFirestoreJobBeforeUpdate, jobAfterUpdate);
+    } catch (sitemapError) {
+      global.logger.error("Failed to sync sitemap after job update [Service]", {
+        filePath: __filename,
+        methodName: "updateInternalOrExternalJobById",
+        jobId: jobAfterUpdate.id,
+        error: sitemapError,
+      });
+    }
   }
 
   /**
@@ -635,7 +681,7 @@ class JobService {
     );
 
     if(!isAwsS3VectorJobDeleted) {
-      global.logger.error("Unable to hard delete job in aws s3 vector. [service]", {
+      global.logger.error("Unable to hard delete job in aws s3 vector [service]", {
         isAwsS3VectorJobDeleted,
         updatedJobDetails
       })
@@ -652,9 +698,51 @@ class JobService {
       undefined,
       updatedJobDetails.shortSoftDeleteReason,
       updatedJobDetails.detailedSoftDeleteReason,
-    )
+    );
+
+    await this.removeJobFromSitemapAfterSoftDelete(jobId);
 
     return updatedJobDetails;
+  }
+
+  /**
+   * Removes job from sitemap after soft delete. Uses dynamic import to avoid circular dependency.
+   */
+  private async removeJobFromSitemapAfterSoftDelete(jobId: string): Promise<void> {
+    try {
+      const sitemapServiceObj = (await import("./Sitemap.service")).default;
+      await sitemapServiceObj.removeJobFromSitemap(jobId);
+    } catch (sitemapError) {
+      global.logger.error("Failed to remove job from sitemap after soft delete [Service]", {
+        filePath: __filename,
+        methodName: "softDeleteJobById",
+        jobId,
+        error: sitemapError,
+      });
+    }
+  }
+
+  /**
+   * Syncs sitemap after bulk job update (add PUBLISHED jobs, remove ARCHIVED/DRAFT).
+   * Uses one sitemap read/write via syncBulkJobsInSitemap.
+   */
+  private async syncSitemapAfterBulkJobUpdate(
+    jobIdsToRemove: string[],
+    jobsToAddOrUpdate: DbGcpFirestoreJobDto[]
+  ): Promise<void> {
+    if (jobIdsToRemove.length === 0 && jobsToAddOrUpdate.length === 0) return;
+    try {
+      const sitemapServiceObj = (await import("./Sitemap.service")).default;
+      await sitemapServiceObj.syncBulkJobsInSitemap(jobIdsToRemove, jobsToAddOrUpdate);
+    } catch (sitemapError) {
+      global.logger.error("Failed to sync sitemap after bulk job update", {
+        filePath: __filename,
+        methodName: "updateBulkJob",
+        jobIdsToRemoveCount: jobIdsToRemove.length,
+        jobsToAddOrUpdateCount: jobsToAddOrUpdate.length,
+        error: sitemapError,
+      });
+    }
   }
 
   async getJobByIdFromGcpFireStore(id: string): Promise<DbGcpFirestoreJobDto | undefined> {
@@ -775,12 +863,15 @@ class JobService {
       failure: { count: 0, primaryIds: [] },
     };
 
-    let s3VectorJobIdsToDelete: string[] = [];  
+    let s3VectorJobIdsToDelete: string[] = [];
     let s3VectorJobsToCreate: AwsS3VectorJobCreateOrUpdateJobDataDto[] = [];
+    const sitemapJobIdsToRemove: string[] = [];
+    const sitemapJobsToAddOrUpdate: DbGcpFirestoreJobDto[] = [];
 
     // Process each job update
     for (const jobUpdate of validatedJobRequestBody.bulkJobUpdate) {
       const { companyId, jobId, status: newJobStatus } = jobUpdate;
+      const gcpFirestoreJobBeforeUpdate: DbGcpFirestoreJobDto | undefined = jobsMapBeforeUpdate.get(jobId);
 
       // Prepare update data for gcpFirestore
       gcpFirestoreUpdateData.status = newJobStatus;
@@ -796,6 +887,18 @@ class JobService {
         if (gcpFirestoreResponse) {
           gcpFirestoreResult.success.count++;
           gcpFirestoreResult.success.primaryIds!.push(jobId);
+
+          // Sitemap: remove when was PUBLISHED and now not (ARCHIVED/DRAFT)
+          if (
+            gcpFirestoreJobBeforeUpdate?.status === JobStatusEnum.PUBLISHED &&
+            newJobStatus !== JobStatusEnum.PUBLISHED
+          ) {
+            sitemapJobIdsToRemove.push(jobId);
+          }
+          // Sitemap: add/update when now PUBLISHED
+          if (newJobStatus === JobStatusEnum.PUBLISHED && !gcpFirestoreResponse.isDeleted) {
+            sitemapJobsToAddOrUpdate.push(gcpFirestoreResponse);
+          }
         } else {
           gcpFirestoreResult.failure.count++;
           gcpFirestoreResult.failure.primaryIds!.push(jobId);
@@ -825,8 +928,6 @@ class JobService {
         if (updateResult?.id) {
           dynamodbResult.success.count++;
           dynamodbResult.success.primaryIds!.push(jobId);
-
-          const gcpFirestoreJobBeforeUpdate: DbGcpFirestoreJobDto | undefined = jobsMapBeforeUpdate.get(jobId);
 
           const {
             jobTitle,
@@ -859,7 +960,7 @@ class JobService {
                 technicalSkills,
                 miscellaneousSkills,
                 experienceRange,
-                otherRequirements, 
+                otherRequirements,
                 companyName: gcpFirestoreJobBeforeUpdate.companyName,
               }
             })
@@ -899,7 +1000,12 @@ class JobService {
         jobData: s3VectorJobsToCreate,
         indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
       })
-    ])
+    ]);
+
+    await this.syncSitemapAfterBulkJobUpdate(
+      sitemapJobIdsToRemove,
+      sitemapJobsToAddOrUpdate
+    );
 
     // Prepare the response
     const bulkJobUpdateResponse: JobBulkUpdateResponseDto = {

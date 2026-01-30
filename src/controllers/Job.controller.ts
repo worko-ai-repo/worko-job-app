@@ -78,8 +78,8 @@ class JobController {
         createdByCorporateUserId: actionByCorporateUserId,
       };
 
-      // Call the service to create the job
-      const jobDetails: DbCompanyJobDto = await jobServiceObj.createJob(
+      // Call the service to create the job 
+      const jobDetails = await jobServiceObj.createJob(
         jobCreateDto
       );
 
@@ -270,16 +270,18 @@ class JobController {
       // Get actionByUserId and actionByCorporateUserId using the helper function
       const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
 
-      let jobUpdateDto: JobUpdateDto = {
-          ...validatedJobRequestBody,
-          updatedByUserId: actionByUserId,
-          updatedByCorporateUserId: actionByCorporateUserId,
-        };
+      const jobUpdateDto: JobUpdateDto = {
+        ...validatedJobRequestBody,
+        updatedByUserId: actionByUserId,
+        updatedByCorporateUserId: actionByCorporateUserId,
+      };
 
-      const jobDetails: DbGcpFirestoreJobDto = await jobServiceObj.updateInternalOrExternalJobById(
-        jobId,
-        jobUpdateDto
-      );
+      // Service handles job update and sitemap sync (uses job-before-update internally)
+      const jobDetails: DbGcpFirestoreJobDto =
+        await jobServiceObj.updateInternalOrExternalJobById(
+          jobId,
+          jobUpdateDto
+        );
 
       res.status(HttpStatusCode.OK_200).json(jobDetails);
     } catch (error) {
@@ -325,12 +327,13 @@ class JobController {
         throw new RequestValidationError(error);
       }
 
-      // Call the service to update the Job
-      const updatedJob: DbCompanyJobDto = await jobServiceObj.softDeleteJobById(
-        jobId,
-        validatedJobRequestBody.companyId,
-        validatedJobRequestBody
-      );
+      // Call the service to update the Job 
+      const updatedJob: DbCompanyJobDto =
+        await jobServiceObj.softDeleteJobById(
+          jobId,
+          validatedJobRequestBody.companyId,
+          validatedJobRequestBody
+        );
 
       res.status(HttpStatusCode.OK_200).json(updatedJob);
     } catch (error) {

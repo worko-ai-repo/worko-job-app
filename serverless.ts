@@ -186,7 +186,7 @@ const serverlessConfiguration: AWS = {
       {
         Effect: "Allow",
         Action: ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
-        Resource: ["arn:aws:s3:::worko-app-*", "arn:aws:s3:::*/*"],
+        Resource: ["arn:aws:s3:::worko-app-*","arn:aws:s3:::worko-ui-comp-logo-*", "arn:aws:s3:::*/*"],
       },
 
       {
