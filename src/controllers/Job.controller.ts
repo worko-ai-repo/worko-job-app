@@ -2,7 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 
 // Import dtos
-import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateApiDto, JobCreateDto, JobListingFilterOptions, JobListingFilterRequestDTO, JobSoftDeleteApiDto, JobUpdateApiDto, JobUpdateDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from '../dtos/Job.dto';
+import { JobBulkCloseApiDto, JobBulkCloseResponseDto, JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateApiDto, JobCreateDto, JobListingFilterOptions, JobListingFilterRequestDTO, JobSoftDeleteApiDto, JobUpdateApiDto, JobUpdateDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from '../dtos/Job.dto';
 import { AwsS3VectorJobMatchingScoreDto } from "../dtos/AwsS3VectorJob.dto";
 import { CompanyJobListingFilterOptions, CompanyJobListingFilterRequestDTO } from '../dtos/CompanyJob.dto';
 import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
@@ -24,7 +24,7 @@ import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob
 import { jobServiceObj } from '../services/Job.service';
 
 // Import schemas
-import { companyJobListingFilterDtoValidation, jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
+import { companyJobListingFilterDtoValidation, jobBulkCloseApiDtoValidation, jobBulkUpdateApiDtoValidation, jobCreateApiDtoValidation, jobFilterDtoValidation, jobSoftDeleteApiDtoValidation, jobUpdateApiDtoValidation, parsedJobDescriptionApiDtoValidation } from '../schemas/Job.schema';
 
 // Import types
 import { JobsWithOrWithoutEntityDetails } from '../types/Job.type';
@@ -451,6 +451,49 @@ class JobController {
     } catch (error) {
       global.logger.error(`Bulk Update Job Error at Catch Block [Controller]`, {
         methodName: this.updateBulkJob.name,
+        error: error,
+      });
+      next(error);
+    }
+  };
+
+  /**
+   * bulkCloseJob
+   *
+   * This method is used to bulk close jobs from "aws opensearch", "aws dynamodb" and "aws s3 vector"
+   *
+   * @param {Request} req - The request object
+   * @param {Response} res - The response object
+   * @param {NextFunction} next - The next function in the middleware chain
+   */
+  bulkCloseJob = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      global.logger.info(`Bulk Close Job [Controller]`, {
+        methodName: this.bulkCloseJob.name,
+        requestBody: req.body,
+      });
+
+      const requestBody: JobBulkCloseApiDto = req.body;
+
+      const { error: jobBulkCloseApiDtoError, value: validatedJobRequestBody } =
+        jobBulkCloseApiDtoValidation.validate(requestBody, {
+          abortEarly: false,
+        });
+      if (jobBulkCloseApiDtoError) {
+        throw new RequestValidationError(jobBulkCloseApiDtoError);
+      }
+
+      const bulkCloseResult: JobBulkCloseResponseDto = await jobServiceObj.bulkCloseJob(validatedJobRequestBody);
+
+      global.logger.info(`Bulk Close Job Result [Controller]`, {
+        methodName: this.bulkCloseJob.name,
+        bulkCloseResult: bulkCloseResult,
+      });
+
+      res.status(HttpStatusCode.OK_200).json(bulkCloseResult);
+    } catch (error) {
+      global.logger.error(`Bulk Close Job Error at Catch Block [Controller]`, {
+        methodName: this.bulkCloseJob.name,
         error: error,
       });
       next(error);

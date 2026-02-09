@@ -70,5 +70,12 @@ JobRouter.put("/:jobId/delete", jobController.softDeleteJobById);
  */
 JobRouter.patch("/bulk-update", jobController.updateBulkJob);
 
+/**
+ * Bulk close job 
+ * 
+ * @authorisedRoles ["admin", "corporate-admin"]
+ */
+JobRouter.patch("/bulk-close", jobController.bulkCloseJob);
+
 // Export the "JobRouter" router
 export default JobRouter;

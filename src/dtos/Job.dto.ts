@@ -1,7 +1,9 @@
-
 // Import dtos
 import { EntityBulkUpdateMetricDto, JobLocationDto, MinMaxRange } from "./Common.dto";
-import { GcpFirestoreRecordListingFilterOptions, GcpFirestoreRecordListingFilterRequestDTO } from "./Common.gcp-firestore.dto";
+import {
+  GcpFirestoreRecordListingFilterOptions,
+  GcpFirestoreRecordListingFilterRequestDTO,
+} from "./Common.gcp-firestore.dto";
 
 // Import enums
 import { JobDashboardEnum, JobStatusEnum, JobWorkModeEnum } from "../enums/Job.enum";
@@ -39,7 +41,7 @@ export interface JobCreateApiDto {
 
 /**
  * JobCreateDto
- * 
+ *
  * This is the internal interface which would be used in the backend.
  */
 export interface JobCreateDto extends JobCreateApiDto {
@@ -150,11 +152,10 @@ export interface ParsedJobDescriptionApiDto {
   jobDescription: string;
 }
 
-
 /**
  * ParsedJobDescriptionResponseDto
- * 
- * Whenever the job description is sent from the frontend it will be parsed by the lambda function(`worko-job-description-parser`) 
+ *
+ * Whenever the job description is sent from the frontend it will be parsed by the lambda function(`worko-job-description-parser`)
  * and the parsed job description will be returned to the frontend
  */
 export interface ParsedJobDescriptionResponseDto {
@@ -189,7 +190,7 @@ export interface ParsedJobDescriptionResponseDto {
 
 /**
  * JobUpdateApiDto
- * 
+ *
  * This DTO is used to validate and structure the data received from the client (API request).
  */
 export interface JobUpdateApiDto {
@@ -226,7 +227,7 @@ export interface JobUpdateDto extends JobUpdateApiDto {
 
   /**
    * updatedAt
-   * 
+   *
    * @example "2023-02-01T15:33:14.375184"
    */
   updatedAt?: string;
@@ -299,7 +300,7 @@ export interface JobBulkUpdateApiDto {
     companyId: string;
     jobId: string;
     status: JobStatusEnum;
-  }[]
+  }[];
 }
 
 /**
@@ -308,6 +309,28 @@ export interface JobBulkUpdateApiDto {
 export interface JobBulkUpdateResponseDto {
   gcpFirestoreBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
   dynamodbBulkJobUpdateMetrics: EntityBulkUpdateMetricDto;
+}
+
+/**
+ * JobBulkCloseApiDto
+ */
+export interface JobBulkCloseApiDto {
+  jobs: Array<{
+    jobId: string;
+    companyId: string;
+    jobTitle: string;
+  }>;
+  shortSoftDeleteReason: string;
+  detailedSoftDeleteReason?: string;
+}
+
+/**
+ * JobBulkCloseResponseDto
+ */
+export interface JobBulkCloseResponseDto {
+  dynamodbBulkJobCloseMetrics: EntityBulkUpdateMetricDto;
+  s3VectorBulkJobDeleteMetrics: EntityBulkUpdateMetricDto;
+  gcpFirestoreBulkJobCloseMetrics: EntityBulkUpdateMetricDto;
 }
 
 export interface SalaryRangeDto {

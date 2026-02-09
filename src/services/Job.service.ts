@@ -6,7 +6,7 @@ import { APIGatewayProxyResult } from "aws-lambda";
 import { QueryResponse } from "dynamoose/dist/ItemRetriever";
 
 // Import dtos
-import { JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobSoftDeleteApiDto, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
+import { JobBulkCloseApiDto, JobBulkCloseResponseDto, JobBulkUpdateApiDto, JobBulkUpdateResponseDto, JobCreateCompanyDetailInternalDto, JobCreateDto, JobListingFilterOptions, JobSoftDeleteApiDto, JobUpdateDto, JobUpdateInternalDto, ParsedJobDescriptionApiDto, ParsedJobDescriptionResponseDto } from "../dtos/Job.dto";
 import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } from "../dtos/CompanyJob.dto";
 import { EntityBulkUpdateMetricDto } from "../dtos/Common.dto";
 import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto, AwsS3VectorJobListingFilterOptions, AwsS3VectorJobMatchingScoreDto, AwsS3VectorJobGetParsedResponseDto, AwsS3VectorJobUpdateDto, AwsS3VectorJobCreateOrUpdateJobDataDto } from "../dtos/AwsS3VectorJob.dto";
@@ -42,6 +42,7 @@ import { JobsWithOrWithoutEntityDetails } from "../types/Job.type";
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
 import { BaseError } from "../utils/errors.util";
+
 
 /**
  * JobService
@@ -197,7 +198,7 @@ class JobService {
     parsedJobDescriptionApiDto: ParsedJobDescriptionApiDto
   ): Promise<ParsedJobDescriptionResponseDto> {
     // Global Logger for the Parse Job Description Controller
-    global.logger.info("Parsing Job Description. [service]", {
+    global.logger.info("Parsing Job Description. [Service]", {
       filePath: __filename,
       methodName: this.parseJobDescription.name,
     });
@@ -467,7 +468,7 @@ class JobService {
     jobUpdateDto: JobUpdateDto
   ): Promise<DbGcpFirestoreJobDto> {
     // Logger
-    global.logger.debug(`Update job by id [service]`, {
+    global.logger.debug(`Update job by id [Service]`, {
       methodName: this.updateInternalOrExternalJobById.name,
       jobId: jobId,
     });
@@ -524,7 +525,7 @@ class JobService {
       );
 
       if(!updatedCompanyJobDetails || !updatedCompanyJobDetails.id) {
-        global.logger.error("Unable to update company job details in aws dynamodb. [service]", {
+        global.logger.error("Unable to update company job details in aws dynamodb. [Service]", {
           methodName: this.updateInternalOrExternalJobById.name,
           jobId: jobId,
         })
@@ -540,7 +541,7 @@ class JobService {
       jobDetailsOnGcpFirestoreBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
       updatedJobDetailsOnGcpFirestore.status !== JobStatusEnum.PUBLISHED
     ) {
-      global.logger.info("Job status before update is published and job status after update is not published, so delete job from aws s3 vector. [service]", {
+      global.logger.info("Job status before update is published and job status after update is not published, so delete job from aws s3 vector. [Service]", {
         methodName: this.updateInternalOrExternalJobById.name,
         jobId: updatedJobDetailsOnGcpFirestore.id,
       })
@@ -549,7 +550,7 @@ class JobService {
       );
 
       if(!isAwsS3VectorJobDeleted) {
-        global.logger.error("Unable to delete aws s3 vector job details. [service]", {
+        global.logger.error("Unable to delete aws s3 vector job details. [Service]", {
           methodName: this.updateInternalOrExternalJobById.name,
           jobId: updatedJobDetailsOnGcpFirestore.id,
         });
@@ -564,7 +565,7 @@ class JobService {
       jobDetailsOnGcpFirestoreBeforeUpdate.status !== JobStatusEnum.PUBLISHED &&
       updatedJobDetailsOnGcpFirestore.status === JobStatusEnum.PUBLISHED
     ) {
-      global.logger.info("Job status before update is not published and job status after update is published, so create job in aws s3 vector. [service]", {
+      global.logger.info("Job status before update is not published and job status after update is published, so create job in aws s3 vector. [Service]", {
         methodName: this.updateInternalOrExternalJobById.name,
         jobId: updatedJobDetailsOnGcpFirestore.id,
       });
@@ -578,7 +579,7 @@ class JobService {
       jobDetailsOnGcpFirestoreBeforeUpdate.status === JobStatusEnum.PUBLISHED &&
       updatedJobDetailsOnGcpFirestore.status === JobStatusEnum.PUBLISHED
     ) {
-      global.logger.info("Job status before update is published and job status after update is published, so update job in aws s3 vector. [service]", {
+      global.logger.info("Job status before update is published and job status after update is published, so update job in aws s3 vector. [Service]", {
         methodName: this.updateInternalOrExternalJobById.name,
         jobId: updatedJobDetailsOnGcpFirestore.id,
       })
@@ -626,7 +627,7 @@ class JobService {
     requestBody: JobSoftDeleteApiDto
   ): Promise<DbCompanyJobDto> {
     // Global Logger for the Delete Job Controller
-    global.logger.info("Deleting Job. [controller]", {
+    global.logger.info("Deleting Job. [Service]", {
       methodName: this.softDeleteJobById.name,
       jobId: jobId,
       companyId: companyId,
@@ -648,6 +649,8 @@ class JobService {
     });
     if (!softDeleteJobOnGcpFirestore) {
       global.logger.error(`Unable to soft delete job in gcp firestore.`, {
+        filePath: __filename,
+        methodName: this.softDeleteJobById.name,
         softDeleteJobOnGcpFirestore,
         jobId
       })
@@ -667,7 +670,7 @@ class JobService {
     // Soft delete the job from `CompanyJob` 
     const updatedJobDetails: DbCompanyJobDto = await companyJobServiceObj.softDeleteJobById(jobId, companyId, prepareSoftDeletDataForAwsDynamodb);
     if(updatedJobDetails.status !== JobStatusEnum.CLOSED && updatedJobDetails.isDeleted !== true) {
-      global.logger.error("Unable to soft delete job in dynamodb, Please try again. [service]", {
+      global.logger.error("Unable to soft delete job in dynamodb, Please try again. [Service]", {
         updatedJobDetails
       })
       throw new BaseError(
@@ -681,7 +684,7 @@ class JobService {
     );
 
     if(!isAwsS3VectorJobDeleted) {
-      global.logger.error("Unable to hard delete job in aws s3 vector [service]", {
+      global.logger.error("Unable to hard delete job in aws s3 vector [Service]", {
         isAwsS3VectorJobDeleted,
         updatedJobDetails
       })
@@ -814,6 +817,214 @@ class JobService {
     return jobDetailsGcpFirestore;
   }
 
+  /**
+   * @todo: Need to think aborting the bulk job update if any one of update in opensearch or dynamodb or aws s3 vector fails.
+   */
+  async bulkCloseJob(
+    validatedJobRequestBody: JobBulkCloseApiDto
+  ): Promise<JobBulkCloseResponseDto> {
+    global.logger.info("Bulk close job [Service]", {
+      methodName: this.bulkCloseJob.name,
+      validatedJobRequestBody: validatedJobRequestBody,
+    });
+
+    // Get action by user id
+    const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
+
+    let jobClosedByUserId: string | undefined;
+
+    // Determine who is closing the job
+    if (actionByUserId) {
+      jobClosedByUserId = actionByUserId;
+    } else if (actionByCorporateUserId) {
+      jobClosedByUserId = actionByCorporateUserId;
+    }
+
+    // Prepare Update Object for dynamodb
+    const prepareSoftDeleteData: Partial<CompanyJobCommonUpdateDto> = {
+      isDeleted: true,
+      status: JobStatusEnum.CLOSED,
+      shortSoftDeleteReason: validatedJobRequestBody.shortSoftDeleteReason,
+      detailedSoftDeleteReason: validatedJobRequestBody.detailedSoftDeleteReason,
+    };
+
+    // Prepare Update Object for GCP Firestore
+    const updateObjectForGcpFirestore: Partial<DbGcpFirestoreJobDto> = {
+      status: JobStatusEnum.CLOSED,
+      shortSoftDeleteReason: validatedJobRequestBody.shortSoftDeleteReason,
+      detailedSoftDeleteReason: validatedJobRequestBody.detailedSoftDeleteReason,
+    };
+
+    const dynamodbResult: EntityBulkUpdateMetricDto = {
+      success: { count: 0, primaryIds: [] },
+      failure: { count: 0, primaryIds: [] },
+    };
+
+    const s3VectorResult: EntityBulkUpdateMetricDto = {
+      success: { count: 0, primaryIds: [] },
+      failure: { count: 0, primaryIds: [] },
+    };
+
+    const gcpFirestoreResult: EntityBulkUpdateMetricDto = {
+      success: { count: 0, primaryIds: [] },
+      failure: { count: 0, primaryIds: [] },
+    };
+
+    const s3VectorJobIdsToDelete: string[] = [];
+    const sitemapJobIdsToRemove: string[] = [];
+
+    // Process each job close
+    for (const job of validatedJobRequestBody.jobs) {
+      const { jobId, companyId } = job;
+
+        // Update GCP Firestore
+        try {
+          const gcpFirestoreResponse: DbGcpFirestoreJobDto | undefined =
+            await gcpFirestoreJobServiceObj.updateJobById(jobId, updateObjectForGcpFirestore);
+
+          if (gcpFirestoreResponse) {
+            gcpFirestoreResult.success.count++;
+            gcpFirestoreResult.success.primaryIds!.push(jobId);
+          } else {
+            gcpFirestoreResult.failure.count++;
+            gcpFirestoreResult.failure.primaryIds!.push(jobId);
+
+            global.logger.error(`Failed to update jobId: ${jobId} in GCP Firestore [Service].`, {
+              filePath: __filename,
+              methodName: this.bulkCloseJob.name,
+              gcpFirestoreResponse,
+            });
+          }
+        } catch (error) {
+          gcpFirestoreResult.failure.count++;
+          gcpFirestoreResult.failure.primaryIds!.push(jobId);
+
+          global.logger.error(`Failed to update jobId: ${jobId} in GCP Firestore [Service].`, {
+            filePath: __filename,
+            methodName: this.bulkCloseJob.name,
+            error: error,
+          });
+        }
+
+        // Only update DynamoDB if job has companyId (internal job)
+        if (companyId) {
+          try {
+            // Soft delete in DynamoDB
+            const updatedJobDetails: DbCompanyJobDto = await companyJobServiceObj.softDeleteJobById(
+              jobId,
+              companyId,
+              prepareSoftDeleteData
+            );
+
+            if (
+              updatedJobDetails.status === JobStatusEnum.CLOSED &&
+              updatedJobDetails.isDeleted === true
+            ) {
+              dynamodbResult.success.count++;
+              dynamodbResult.success.primaryIds!.push(jobId);
+
+              // Prepare to delete from S3 vector
+              s3VectorJobIdsToDelete.push(updatedJobDetails.id);
+
+              // Update all non-initiated hiring status job applications to reject
+              // This handles email and WhatsApp notifications
+              userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
+                jobId,
+                updatedJobDetails.jobTitle,
+                jobClosedByUserId,
+                undefined,
+                updatedJobDetails.shortSoftDeleteReason,
+                updatedJobDetails.detailedSoftDeleteReason
+              );
+            } else {
+              dynamodbResult.failure.count++;
+              dynamodbResult.failure.primaryIds!.push(jobId);
+
+              global.logger.error(`Failed to soft delete jobId: ${jobId} in DynamoDB [Service]`, {
+                filePath: __filename,
+                methodName: this.bulkCloseJob.name,
+                updatedJobDetails,
+              });
+            }
+          } catch (error) {
+            dynamodbResult.failure.count++;
+            dynamodbResult.failure.primaryIds!.push(jobId);
+
+            global.logger.error(`Failed to soft delete job ${jobId} in DynamoDB [Service]:`, {
+              filePath: __filename,
+              methodName: this.bulkCloseJob.name,
+              error: error,
+            });
+          }
+
+        // Add to sitemap removal list
+        sitemapJobIdsToRemove.push(jobId);
+      }else{
+        global.logger.info(`Skipping DynamoDB update for jobId: ${jobId} as it does not have a companyId [Service].`,{
+          filePath: __filename,
+          methodName: this.bulkCloseJob.name,
+        });
+      }
+    }
+
+    // Bulk delete from S3 vector
+    if (s3VectorJobIdsToDelete.length > 0) {
+      try {
+        const s3VectorDeleteResult: boolean =
+          await awsS3VectorJobServiceObj.deleteBulkAwsS3VectorJobsByIds(s3VectorJobIdsToDelete);
+
+        if (s3VectorDeleteResult) {
+          s3VectorResult.success.count = s3VectorJobIdsToDelete.length;
+          s3VectorResult.success.primaryIds = [...s3VectorJobIdsToDelete];
+        } else {
+          s3VectorResult.failure.count = s3VectorJobIdsToDelete.length;
+          s3VectorResult.failure.primaryIds = [...s3VectorJobIdsToDelete];
+
+          global.logger.error(`Failed to delete jobs from S3 vector`, {
+            jobIds: s3VectorJobIdsToDelete,
+          });
+        }
+      } catch (error) {
+        s3VectorResult.failure.count = s3VectorJobIdsToDelete.length;
+        s3VectorResult.failure.primaryIds = [...s3VectorJobIdsToDelete];
+
+        global.logger.error(`Failed to delete jobs from S3 vector:`, {
+          error: error,
+          jobIds: s3VectorJobIdsToDelete,
+        });
+      }
+    }
+
+    // Sync sitemap - remove closed jobs
+    await this.removeBulkJobsFromSitemapAfterBulkClose(sitemapJobIdsToRemove);
+
+    // Prepare the response
+    const bulkCloseResponse: JobBulkCloseResponseDto = {
+      dynamodbBulkJobCloseMetrics: dynamodbResult,
+      s3VectorBulkJobDeleteMetrics: s3VectorResult,
+      gcpFirestoreBulkJobCloseMetrics: gcpFirestoreResult,
+    };
+
+    return bulkCloseResponse;
+  }
+
+  /**
+   * Removes multiple jobs from sitemap after bulk close operation.
+   */
+  private async removeBulkJobsFromSitemapAfterBulkClose(jobIds: string[]): Promise<void> {
+    if (jobIds.length === 0) return;
+    try {
+      const sitemapServiceObj = (await import("./Sitemap.service")).default;
+      await sitemapServiceObj.syncBulkJobsInSitemap(jobIds, []);
+    } catch (sitemapError) {
+      global.logger.error("Failed to remove jobs from sitemap after bulk close", {
+        filePath: __filename,
+        methodName: "bulkCloseJob",
+        jobIdsCount: jobIds.length,
+        error: sitemapError,
+      });
+    }
+  }
   /**
    * @todo: Need to think aborting the bulk job update if any one of update in opensearch or dynamodb or aws s3 vector fails.
    */

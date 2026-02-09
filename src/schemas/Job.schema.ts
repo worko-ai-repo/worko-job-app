@@ -1,4 +1,3 @@
-
 // Import Joi for validation
 import Joi from "joi";
 
@@ -1061,3 +1060,49 @@ export const companyJobListingFilterDtoValidation = commonSchema.concat(
       }),
   })
 );
+/**
+ * jobBulkCloseApiDtoValidation
+ */
+export const jobBulkCloseApiDtoValidation = Joi.object({
+  jobs: Joi.array()
+    .min(APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MIN)
+    .max(APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MAX)
+    .items(
+      Joi.object({
+        jobId: Joi.string().required().messages({
+          "string.base": "The Job Id field must be a string.",
+          "string.empty": "The Job Id field cannot be empty.",
+          "any.required": "The Job Id field is required.",
+        }),
+
+        companyId: Joi.string().required().messages({
+          "string.base": "The Company Id field must be a string.",
+          "any.required": "The Company Id field is required.",
+        }),
+
+        jobTitle: Joi.string().required().messages({
+          "string.base": "The Job Title field must be a string.",
+          "string.empty": "The Job Title field cannot be empty.",
+          "any.required": "The Job Title field is required.",
+        }),
+      })
+    )
+    .required()
+    .messages({
+      "array.base": "The Jobs field must be an array.",
+      "array.empty": "The Jobs field cannot be empty.",
+      "any.required": "The Jobs field is required.",
+      "array.min": `Atleast ${APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MIN} job is required.`,
+      "array.max": `Atmost ${APP_CONSTANTS.BULK_JOB_UPDATE_LIMIT.MAX} jobs are allowed.`,
+    }),
+
+  shortSoftDeleteReason: Joi.string().required().messages({
+    "string.base": "The reason field must be a string.",
+    "string.empty": "The reason field cannot be empty.",
+    "any.required": "The reason field is required.",
+  }),
+
+  detailedSoftDeleteReason: Joi.string().optional().messages({
+    "string.base": "The detailed reason field must be a string.",
+  }),
+});

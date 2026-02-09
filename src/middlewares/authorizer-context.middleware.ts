@@ -1,6 +1,36 @@
 // Import the npm packages
 import { Request, Response, NextFunction } from "express";
+import { BaseError } from "../utils/errors.util";
+import HttpStatusCode from "../utils/http-codes.util";
+import APP_CONSTANTS from "../configs/constants.config";
 
+export function getAuthorizerContextForLocal() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const mockUserId: string | undefined = process.env.APP_AWS_AUTH_MOCK_USER_ID;
+        const mockUserEmail: string | undefined = process.env.APP_AWS_AUTH_MOCK_USER_EMAIL;
+        if(!mockUserId || !mockUserEmail) {
+          global.logger.error("APP_AWS_AUTH_MOCK_USER_ID or APP_AWS_AUTH_MOCK_USER_EMAIL is not set in the .env file");
+          throw new BaseError("APP_AWS_AUTH_MOCK_USER_ID or APP_AWS_AUTH_MOCK_USER_EMAIL is not set in the .env file", HttpStatusCode.INTERNAL_SERVER_ERROR_500);
+        }
+        global.requestLocalContext = {
+          userId: mockUserId,
+          userEmail: mockUserEmail,
+          cognitoUserGroups: [
+            APP_CONSTANTS.COGNITO_IDENTITY_POOL_GROUPS.ADMIN,
+          ],
+        };
+        next();
+      } catch (error) {
+        global.logger.error(`Get Authorizer Context For Local [Middleware]`, {
+          methodName: "getAuthorizerContextForLocal",
+          error,
+        })
+        next(error);
+      }
+    };
+  }
+  
 /**
  * getAuthorizerContext
  * 

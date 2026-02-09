@@ -919,3 +919,10 @@ Request must be smaller than 5120 bytes for the UpdateFunctionConfiguration oper
     "message": "Failed to upload file to GCP Storage"
 }
 ```
+
+47. 
+```json
+{
+    "Message": "User is not authorized to access this resource because no identity-based policy allows the execute-api:Invoke action"
+}
+```sho

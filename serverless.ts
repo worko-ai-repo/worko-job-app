@@ -325,6 +325,14 @@ const serverlessConfiguration: AWS = {
        */
       events: [
         {
+          // This handles the Preflight (OPTIONS) and has NO Authorizer
+          http: {
+            path: "/",
+            method: "OPTIONS",
+            cors: true,
+          },
+        },
+        {
           http: {
             path: "/{proxy+}",
             method: "ANY",
@@ -344,6 +352,7 @@ const serverlessConfiguration: AWS = {
             authorizer: {
               type: "request",
               arn: "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-auth",
+              // identitySource: "method.request.header.Authorization"
             },
           },
         },

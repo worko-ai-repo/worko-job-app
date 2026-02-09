@@ -23,7 +23,10 @@ Actions:
       # Required - Steps are sequential instructions that run shell commands
       Steps:
         - Run: export NODE_OPTIONS="--max-old-space-size=8192"
+        - Run: export N_PREFIX=$HOME/.n
+        - Run: export PATH=$N_PREFIX/bin:$PATH
         - Run: npm install -g n
+        - Run: n 20
         - Run: npm i -g serverless@3.40.0
         - Run: npm i
         - Run: npm run build

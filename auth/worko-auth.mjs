@@ -502,6 +502,7 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
     { path: "/job/", method: HttpMethodsConstants.POST },
     { path: "/job/parsejd", method: HttpMethodsConstants.POST },
     { path: "/job/bulk-update", method: HttpMethodsConstants.PATCH },
+    { path: "/job/bulk-close", method: HttpMethodsConstants.PATCH },
 
     // corporate user routes
     { path: "/corporate-user/*", method: HttpMethodsConstants.GET },
@@ -648,6 +649,7 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     { path: "/job/", method: HttpMethodsConstants.POST },
     { path: "/job/parsejd", method: HttpMethodsConstants.POST },
     { path: "/job/bulk-update", method: HttpMethodsConstants.PATCH },
+    { path: "/job/bulk-close", method: HttpMethodsConstants.PATCH },
 
     // corporate user routes
     { path: "/corporate-user/*", method: HttpMethodsConstants.GET },
@@ -890,6 +892,7 @@ var isAdminUrl = function (url, httpMethod) {
     { path: "/job/:jobId/delete", method: HttpMethodsConstants.PUT },
     { path: "/job/parsejd", method: HttpMethodsConstants.POST },
     { path: "/job/bulk-update", method: HttpMethodsConstants.PATCH },
+    { path: "/job/bulk-close", method: HttpMethodsConstants.PATCH },
 
     // corporate user routes
     { path: "/corporate-user/*", method: HttpMethodsConstants.GET },
