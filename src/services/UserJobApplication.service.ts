@@ -1675,13 +1675,24 @@ class UserJobApplicationService {
                 cvAwsS3ResourceType,
                 cvAwsS3FileName,
                 currentCompany,
-                currentDesignation
+                currentDesignation,
+                about,
+                education,
+                
               } = candidateParsedCv;
               const internallyCreatedUser: Partial<DbUserDetailDto> & {
                 cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum, 
                 cvAwsS3BucketName?: string,
                 cvAwsS3FilePath?: string,
                 email: string,
+                education?: {
+                  collage: string;
+                  degree: string;
+                  startedYear?: number | undefined;
+                  passingYear: number;
+                  grade?: string | undefined;
+                  field?: string | undefined;
+                }[]
               } = {
                 id: userDetail.id,
                 name: candidateName,
@@ -1695,6 +1706,8 @@ class UserJobApplicationService {
                 cvAwsS3BucketName,
                 cvAwsS3FilePath,
                 CV: cvAwsS3FileName,
+                about,
+                education,
                 multipleCandidateExperience: [
                   {
                     designation: currentDesignation ?? "",
