@@ -1637,7 +1637,7 @@ class UserJobApplicationService {
       );
       if(registeredApplicantDetails.count) {
         const userDetail: DbUserDetailDto = registeredApplicantDetails[0];
-        if(userDetail.isEmailVerified && userDetail.CV) {
+        if(userDetail.CV) {
           const registeredUser: Partial<DbUserDetailDto> & {email: string, cvAwsS3ResourceType?: CandidateParsedCvAwsS3ResourceTypeEnum} = {
             ...userDetail,
             email: eachApplicantEmail,
