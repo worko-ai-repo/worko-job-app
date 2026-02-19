@@ -22,4 +22,16 @@ CountCompanyRouter.get(
   countCompanyController.getCountCompanyByCompanyIdAndEntityType
 );
 
+/**
+ * Get company job status counts (published, closed, archived, draft)
+ *
+ * @route GET /count-company/:companyId/job-status-counts
+ * @authorisedRoles ["corporate-admin", "corporate-recruiter"]
+ */
+CountCompanyRouter.get(
+  "/:companyId/job-status-counts",
+  countCompanyMiddlewareObj.validateGetCountCompany,
+  countCompanyController.getCompanyJobStatusCounts
+);
+
 export default CountCompanyRouter;

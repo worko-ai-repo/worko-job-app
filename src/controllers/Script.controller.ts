@@ -442,6 +442,35 @@ class ScriptController {
       next(error);
     }
   };
+
+  /**
+   * scriptSeedCompanyJobStatusCounts
+   *
+   * Seeds the CountCompany table with existing job status counts for all companies.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @param {NextFunction} next - The Express next middleware function.
+   */
+  scriptSeedCompanyJobStatusCounts = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      global.logger.info(`Script to seed company job status counts [Script Controller]`, {
+        methodName: this.scriptSeedCompanyJobStatusCounts.name,
+      });
+
+      const result = await scriptServiceObj.scriptSeedCompanyJobStatusCounts();
+
+      res.status(HttpStatusCode.OK_200).json(result);
+    } catch (error) {
+      global.logger.error(
+        `Error at catch block while seeding company job status counts. [Script Controller]`,
+        {
+          error,
+        }
+      );
+      next(error);
+    }
+  };
 }
 
 export default ScriptController;
