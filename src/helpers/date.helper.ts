@@ -101,6 +101,14 @@ class DateHelper {
     return DateTime.now().plus({ hours }).toISO();
   }
 
+  getISODateMinusDays(days: number): string {
+    return DateTime.now().minus({ days }).toISO();
+  }
+
+  getISODateToTimestamp(isoDate: string): number {
+    return DateTime.fromISO(isoDate).toMillis();
+  }
+
   /**
    * formatISODateToDDMMYYYY
    * 

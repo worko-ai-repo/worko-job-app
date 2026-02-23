@@ -6,7 +6,6 @@ import { BRIGHT_DATA_JOB_APP_CONSTANTS } from "../configs/constants/BrightDataJo
 
 // Import dtos
 import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
-import { AwsBatchInferenceModelInput } from "../dtos/AwsBatchInference.dto";
 import { JobLocationDto } from "../dtos/Common.dto";
 import { GcpBatchInferenceModelInput } from "../dtos/GcpBatchInference.dto";
 

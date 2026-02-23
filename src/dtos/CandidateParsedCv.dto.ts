@@ -1,6 +1,7 @@
 
 // Import dtos
 import { CommonPhoneNumberDto } from "./Common.dto";
+import { GcpFirestoreRecordListingFilterOptions } from "./Common.gcp-firestore.dto";
 
 // Import enums
 import { CandidateParsedCvAwsS3ResourceTypeEnum } from "../enums/CandidateParsedCv.enum";
@@ -38,3 +39,8 @@ export interface CandidateParsedCvAwsS3FileTrackerDto {
    */
   fileName?: string;
 };
+
+export interface CandidateParsedCvEmbeddingListingFilterOptions extends GcpFirestoreRecordListingFilterOptions {
+  searchByJobDescription: string,
+  pageNumber: number,
+}

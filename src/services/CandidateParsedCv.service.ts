@@ -1,12 +1,21 @@
 
 // Import firestore package
-import { DocumentData, QuerySnapshot } from "@google-cloud/firestore";
+import { DocumentData, QueryDocumentSnapshot, QuerySnapshot } from "@google-cloud/firestore";
 
 // Import daos
 import { candidateParsedCvDaoObj } from "../daos/CandidateParsedCv.dao";
 
+// Import dtos
+import { GcpFirestoreRecordListingResponseDTO } from "../dtos/Common.gcp-firestore.dto";
+import { CandidateParsedCvEmbeddingListingFilterOptions } from "../dtos/CandidateParsedCv.dto";
+
 // Import models
 import { DbCandidateParsedCvDto } from "../db/gcp-firestore-models/CandidateParsedCv.model";
+import { DbCandidateJobAlertDto } from "../db/gcp-firestore-models/CandidateJobAlert.model";
+
+// Import services
+import { candidateJobRecommendationServiceObj } from "./CandidateJobRecommendation.service";
+import { candidateJobAlertServiceObj } from "./CandidateJobAlert.service";
 
 // Import utils
 import { BaseError } from "../utils/errors.util";
@@ -159,6 +168,19 @@ class CandidateParsedCvService {
     );
   }
 
+  async getAllCandidateParsedCvByEmbeddingByWithoutPagination(
+    filterOptions: CandidateParsedCvEmbeddingListingFilterOptions,
+    distanceThreshold: number,
+  ): Promise<
+    GcpFirestoreRecordListingResponseDTO<QueryDocumentSnapshot<DocumentData, DocumentData>[]>
+  > {
+    return candidateParsedCvDaoObj.getAllCandidateParsedCvByEmbeddingByWithoutPagination(
+      filterOptions,
+      distanceThreshold,
+      filterOptions.searchByJobDescription
+    );
+  }
+
   async updateCandidateParsedCvById(id: string, updateData: Partial<DbCandidateParsedCvDto>): Promise<DbCandidateParsedCvDto | undefined> {
     return candidateParsedCvDaoObj.updateCandidateParsedCvById(id, updateData);
   }
@@ -183,6 +205,57 @@ class CandidateParsedCvService {
     const embeddingText: string = this.createSearchOptimizedCandidateParsedCvEmbeddingText(mergedData);
 
     return candidateParsedCvDaoObj.updateCandidateParsedCvWithEmbedding(id, updateData, embeddingText);
+  }
+
+  async processNewCompanyJobCandMatchCandidateParsedCv(
+    jobId: string,
+    companyId: string,
+    jobDescription: string,
+    jobTitle: string,
+    companyName: string
+  ): Promise<(boolean | boolean[])[][]> {
+    // Find matching candidates (embedding 0-0.4)
+    const matchedCandidates: GcpFirestoreRecordListingResponseDTO<QueryDocumentSnapshot<DocumentData, DocumentData>[]> = 
+      await this.getAllCandidateParsedCvByEmbeddingByWithoutPagination({ 
+        searchByJobDescription: jobDescription,
+        pageNumber: 1,
+        pageSize: 1000,
+      }, 0.4);
+    if(!matchedCandidates.data.length) return [
+
+    ];
+
+    // Deduplicate by email - keep best match (lowest distance)
+    // We may get same candidate multiple times because same candidate may present in multiple corporate companies.
+    const uniqueCandidatesMap = new Map<string, {
+      candidate: DbCandidateParsedCvDto;
+      distance: number;
+    }>();
+
+    for (const doc of matchedCandidates.data) {
+      const distance: number = doc.data().embeddingVectorDistance;
+      const candidate = doc.data() as DbCandidateParsedCvDto;
+
+      const candidateEmail: string = candidate.email?.toLowerCase();
+      if (!candidateEmail) {
+        global.logger.error(`Candidate Parsed CV has no email`, { candidate });
+        continue;
+      }
+      
+      const existing = uniqueCandidatesMap.get(candidateEmail);
+      
+      // Keep the one with lowest distance (best match)
+      if (!existing || distance < existing.distance) {
+        uniqueCandidatesMap.set(candidateEmail, { candidate, distance });
+      }
+    }
+
+    const candJobMatches: Promise<(boolean | boolean[])[]>[] = [
+      candidateJobRecommendationServiceObj.performCreateBulkCandidateJobRecommendationFromCandParsedCv(jobId, companyId, jobTitle, companyName, uniqueCandidatesMap),
+      candidateJobAlertServiceObj.performCreateOrUpdateBulkCandidateJobAlertFromCandParsedCv(uniqueCandidatesMap)
+    ];
+
+    return Promise.all(candJobMatches);
   }
 }
 
