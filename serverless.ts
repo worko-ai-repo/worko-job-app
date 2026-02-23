@@ -199,8 +199,9 @@ const serverlessConfiguration: AWS = {
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-rag-feedback-ingestion",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:${self:custom.aws.APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME}",
           "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:${self:custom.aws.APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME}",
-          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-opensearch-operations",
-          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-migrate-jobs",
+          // "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-opensearch-operations",
+          // "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-app-migrate-jobs",
+          "arn:aws:lambda:${self:custom.aws.APP_SLS_REGION}:${self:custom.aws.APP_AWS_ACCOUNT_ID}:function:worko-job-app-${self:custom.app.STAGE}-appInvokeLambda",
         ],
       },
 
@@ -429,11 +430,48 @@ const serverlessConfiguration: AWS = {
                   name: "bright-data-external-job-schedule-${self:custom.app.STAGE}", // Name can be specified for a schedule event. This is not a required property.
                   description:
                     "Triggers to retrieve bright data external job.", // Description can be specified for a schedule event. This is not a required property.
-                  rate: ["rate(14 days)"], // ["rate(5 minutes)"]
+                  rate: ["rate(30 days)"], // ["rate(5 minutes)"]
                   enabled: true,
                   input: {
                     scheduleJob: {
                       type: ScheduleJobType.BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT,
+                    },
+                  },
+                },
+              },
+            ]
+          : [],
+    },
+
+    /**
+     * app-scheduler-candidate-job-alert
+     * 
+     * Using `AWS EventBridge` service
+     * 
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
+     * 
+     * Ex:
+     *  1. `worko-job-app-local-app-scheduler-candidate-job-alert`
+     *  2. `worko-job-app-dev-app-scheduler-candidate-job-alert`
+     *  3. `worko-job-app-prod-app-scheduler-candidate-job-alert`
+     */
+    "app-scheduler-candidate-job-alert": {
+      handler: "dist/src/app-scheduler-candidate-job-alert.handler",
+      timeout: 900, // Set timeout to 900 seconds (15 minutes)
+      events:
+        process.env.APP_SLS_STAGE === APP_CONSTANTS.STAGES.PROD
+          ? [
+              {
+                schedule: {
+                  name: "candidate-job-alert-schedule-${self:custom.app.STAGE}", // Name can be specified for a schedule event. This is not a required property.
+                  description:
+                    "Triggers to send candidate job alert according to cron expression", // Description can be specified for a schedule event. This is not a required property.
+
+                  rate: ["cron(0 9 ? * SUN *)"], // every Sunday at 2:30pm in IST
+                  enabled: true,
+                  input: {
+                    scheduleJob: {
+                      type: ScheduleJobType.SEND_CANDIDATE_JOB_ALERT,
                     },
                   },
                 },
@@ -467,6 +505,27 @@ const serverlessConfiguration: AWS = {
     },
 
     /**
+     * appInvokeLambda
+     * 
+     * @note
+     *  1. This lambda function is used for direct lambda to lambda invocations,
+     *  like if a lambda needs to invoke a another lambda without any sqs queue,
+     *  then in this "worko-job-app" repository this lambda is used,
+     *  for every different kind of use cases if direct lambda to lambda invocation is needed 
+     *  then this lambda can be used.
+     *
+     * AWS Lambda Function Format:- {service}-{enviroment}-{functionName}
+     * Example:
+     *  1. `worko-job-local-appInvokeLambda`
+     *  2. `worko-job-dev-appInvokeLambda`
+     *  3. `worko-job-prod-appInvokeLambda`
+     */
+    appInvokeLambda: {
+      handler: "dist/src/app-invoke-lambda.handler",
+      timeout: 900, // Set timeout to 900 seconds (15 minutes)
+    },
+
+    /**
      * app-opensearch-operations
      *
      * Using to interact with `AWS OpenSearch` service
@@ -477,6 +536,7 @@ const serverlessConfiguration: AWS = {
      *  2. `worko-job-app-dev-app-opensearch-operations`
      *  3. `worko-job-app-prod-app-opensearch-operations`
      */
+    /*
     "app-opensearch-operations": {
       handler: "dist/src/app-opensearch-operations.handler",
       timeout: 900, // Set timeout to 900 seconds (15 minutes)
@@ -489,6 +549,7 @@ const serverlessConfiguration: AWS = {
         ],
       },
     },
+    */
 
     /**
      * app-migrate-jobs

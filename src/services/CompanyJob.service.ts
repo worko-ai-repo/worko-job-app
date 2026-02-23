@@ -1,5 +1,6 @@
 // Load QueryResponse from dynamoose
 import { QueryResponse } from "dynamoose/dist/ItemRetriever";
+import { ObjectType } from "dynamoose/dist/General";
 
 // Load Dao
 import { companyJobDaoObj } from "../daos/CompanyJob.dao";
@@ -10,7 +11,9 @@ import {
   CompanyJobCreateDto,
   CompanyJobUpdateDto,
   CompanyJobCommonUpdateDto,
+  CompanyJobListingFilterOptions,
 } from "../dtos/CompanyJob.dto";
+import { PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
 
 // Import enums
 import { JobStatusEnum } from "../enums/Job.enum";
@@ -115,6 +118,53 @@ class CompanyJobService {
         return (await companyJobDaoObj.getJobById(jobId))[0];
       })
     );
+  }
+
+  async getCompanyJobsByFilterOptions(jobReqBody: CompanyJobListingFilterOptions): Promise<
+    PaginatedResultsWithMatchingConditionsResponse<DbCompanyJobDto>
+  > {
+    return companyJobDaoObj.getCompanyJobsByFilterOptions(jobReqBody);
+  }
+
+  async getAllJobsByFilterOptionsWithoutPagination(jobReqBody: CompanyJobListingFilterOptions): Promise<DbCompanyJobDto[]> {
+    let lastKeyInternal: ObjectType | undefined = undefined;
+    let pageSizeInternal: number = jobReqBody.pageSize ?? 50;
+    let allCompanyJobsWithoutPagination: DbCompanyJobDto[] = [];
+
+    // Continue fetching the data until all the data is fetched
+    do {
+      const filterOptions: RecordListingFilterOptions = {
+        lastKey: lastKeyInternal,
+        pageSize: pageSizeInternal,
+      };
+
+      const companyJobsResponse: PaginatedResultsWithMatchingConditionsResponse<DbCompanyJobDto> =
+        await this.getCompanyJobsByFilterOptions(
+          {
+            ...jobReqBody,
+            ...filterOptions,
+          }
+        );
+
+      const {
+        lastKey,
+        count,
+        timesQueried,
+        queriedCount,
+        ...companyJobsData
+      } = companyJobsResponse;
+
+      const companyJobsArray: DbCompanyJobDto[] = Object.values(companyJobsData);
+
+      allCompanyJobsWithoutPagination =
+        allCompanyJobsWithoutPagination.concat(
+          companyJobsArray
+        );
+
+      lastKeyInternal = lastKey ?? undefined;
+    } while (lastKeyInternal);
+
+    return allCompanyJobsWithoutPagination;
   }
 
   /**

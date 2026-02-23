@@ -1,6 +1,8 @@
 
 // Import enums
 import { MatchingScoreEntityEnum } from "../enums/Common.enum";
+import { InvokeLambdaHandlerEventTypeEnum } from "../enums/InvokeLambda.enum";
+import { JobStatusEnum } from "../enums/Job.enum";
 
 /**
  * InvokeLambdaParsedJobDescriptionDto
@@ -49,4 +51,22 @@ export interface InvokeLambdMatchingScoreCalcualtionDto {
   USER_DETAIL_SK: string;
   MATCHING_ENTITY: MatchingScoreEntityEnum;
   ENTITY_SK: string;
+}
+
+export interface InvokeLambdaHandlerEventPayloadDto {
+  eventType: InvokeLambdaHandlerEventTypeEnum;
+  data: unknown;
+}
+
+export interface InvokeLambdaNewInternalJobCandMatchDto {
+  jobId: string;
+  companyId: string;
+  jobDescription: string;
+  jobTitle: string;
+  companyName: string;
+}
+
+export interface InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto {
+  jobId: string;
+  jobStatusBeforeUpdate: JobStatusEnum,
 }

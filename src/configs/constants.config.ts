@@ -162,7 +162,13 @@ const APP_CONSTANTS = {
      */
     WORKO_S3_VECTOR_JOB_INGESTION: process.env.APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME,
 
-    MIGRATE_JOBS_LAMBDA_NAME: `worko-job-app-${process.env.APP_SLS_STAGE}-app-migrate-jobs`
+    MIGRATE_JOBS_LAMBDA_NAME: `worko-job-app-${process.env.APP_SLS_STAGE}-app-migrate-jobs`,
+
+    /**
+     * @description This lambda is used to invoke other lambda functions in `worko-job-app` repository
+     * you can check in `appInvokeLambda` function in `serverless.ts` file 
+     */
+    WORKO_JOB_APP_INVOKE_LAMBDA_NAME: `worko-job-app-${process.env.APP_STAGE}-appInvokeLambda`,
   },
 
   MATCHING_SCORE_PROMPT:

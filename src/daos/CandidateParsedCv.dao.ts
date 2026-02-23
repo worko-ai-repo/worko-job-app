@@ -7,6 +7,7 @@ import { gcpFirestoreLibrary } from "../configs/gcp-sdk.config";
 
 // Import dtos
 import { GcpFirestoreInteractionDto } from "../dtos/Common.dto";
+import { CandidateParsedCvEmbeddingListingFilterOptions } from "../dtos/CandidateParsedCv.dto";
 
 // Import daos
 import BaseDao from "./BaseGcpFirestore.dao";
@@ -16,6 +17,10 @@ import { gcpFirestoreVectorLibrary } from "../libraries/gcp-firestore-vector.lib
 
 // Import models
 import { DbCandidateParsedCvDto } from "../db/gcp-firestore-models/CandidateParsedCv.model";
+
+// Import utils
+import { BaseError } from "../utils/errors.util";
+import HttpStatusCode from "../utils/http-codes.util";
 
 class CandidateParsedCvDao implements BaseDao {
   databaseName: string = `worko-corp-db-${process.env.APP_SLS_STAGE}`;
@@ -62,6 +67,24 @@ class CandidateParsedCvDao implements BaseDao {
       .where("companyId", "==", companyId)
       .where("email", "==", candidateEmail)
       .get();
+  }
+
+  async getAllCandidateParsedCvByEmbeddingByWithoutPagination(
+    filterOptions: CandidateParsedCvEmbeddingListingFilterOptions,
+    distanceThreshold: number,
+    searchByPrompt: string
+  ) {
+    if(!searchByPrompt) throw new BaseError("Search by prompt is required.", HttpStatusCode.BAD_REQUEST_400);;
+
+    return gcpFirestoreVectorLibrary.getDocumentsByEmbeddingWithoutPagination(
+      this.getCandidateParsedCvModelDetails(),
+      searchByPrompt,
+      {
+        pageSize: filterOptions.pageSize,
+        distanceThreshold,
+        pageNumber: filterOptions.pageNumber,
+      },
+    );
   }
 
   async updateCandidateParsedCvById(id: string, updateData: Partial<DbCandidateParsedCvDto>): Promise<DbCandidateParsedCvDto | undefined> {

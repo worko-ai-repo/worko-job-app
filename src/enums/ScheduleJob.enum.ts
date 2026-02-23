@@ -62,6 +62,8 @@ export enum ScheduleJobType {
    * This schedule job is used to turn off cooling period after certain months.
    */
   COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE = "COOLING_PERIOD_COMPLETION_CORPORATE_CANDIDATE_PROFILE_UPDATE",
+
+  SEND_CANDIDATE_JOB_ALERT = "SEND_CANDIDATE_JOB_ALERT",
 }
 
 /**

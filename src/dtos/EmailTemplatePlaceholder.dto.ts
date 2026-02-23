@@ -375,3 +375,9 @@ export interface EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS
   companyName: string;
   workoAppUrl: string;
 }
+
+export interface EmailTemplatePlaceholderCAND_JOBS_RECOMMENDATION extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  candidateName: string;
+  jobsHtml: string;
+  jobsText: string;
+}
