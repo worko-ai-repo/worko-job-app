@@ -39,3 +39,13 @@ export enum InvocationTypeEnum {
    */
   DryRunType = "DryRun",
 }
+
+export enum InvokeLambdaHandlerEventTypeEnum {
+  NEW_INTERNAL_JOB_CAND_MATCH = "NEW_INTERNAL_JOB_CAND_MATCH",
+
+  /**
+   * @description Whenever the job status is updated to other than "PUBLISHED" then this event will be triggered to 
+   * update `candidateJobRecommendations` and `candidateJobAlerts` collections in firestore.
+   */
+  JOB_STATUS_CAND_JOB_RECOMMEND_ALERT_UPDATE = "JOB_STATUS_CAND_JOB_RECOMMEND_ALERT_UPDATE",
+}

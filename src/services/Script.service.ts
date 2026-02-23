@@ -33,9 +33,12 @@ import { AwsOpensearchRecordListingPaginationResponseDTO, AwsOpensearchRecordLis
 // Import daos
 import { companyJobDaoObj } from "../daos/CompanyJob.dao";
 import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
+import { candidateJobRecommendationDaoObj } from "../daos/CandidateJobRecommendation.dao";
 
 // Import enums
 import { JobSourcedFromEnum } from "../enums/Common.enum";
+import { GcpFirestoreSortOrderTypeEnum } from "../enums/Common.gcp-firestore.enum";
+import { JobStatusEnum } from "../enums/Job.enum";
 
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
@@ -44,6 +47,7 @@ import { DbUserJobApplicationDto, UserJobApplicationModel } from "../db/models/U
 // Import helpers
 import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.helper";
 import { attachCompanyDetails } from "../helpers/companyDetailsInjector.helper";
+import { dateHelperObj } from "../helpers/date.helper";
 
 // Import models
 import { DbJobAwsOpensearchDto } from "../db/aws-opensearch-models/AwsOpenSearchJob.model";
@@ -62,8 +66,8 @@ import { brightDataJobServiceObj } from "./BrightDataJob.service";
 import HttpStatusCode from "../utils/http-codes.util";
 import { BaseError } from "../utils/errors.util";
 import ErrorCodeName from "../utils/error-code-name.util";
-
-import { dateHelperObj } from "../helpers/date.helper";
+import { candidateJobAlertDaoObj } from "../daos/CandidateJobAlert.dao";
+import { candidateJobAlertServiceObj } from "./CandidateJobAlert.service";
 
 /**
  * ScriptService
@@ -76,9 +80,29 @@ class ScriptService {
       `Script for sample entity test [Script Service]`
     );
 
-    return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
-      reqBody.snapShotId, 
-    ); 
+    // return candidateJobAlertDaoObj.getAllCandidateJobAlertByFilterOptions({
+    //   pageSize: reqBody.pageSize,
+    //   publishedJobRecommendationsCountGreaterThan: reqBody.publishedJobRecommendationsCountGreaterThan,
+    //   isEmailJobAlertEnabled: reqBody.isEmailJobAlertEnabled,
+    // });
+
+    // return candidateJobRecommendationDaoObj.getAllCandidateJobRecommendationByFilterOptions({
+    //   jobId: reqBody.jobId,
+    //   pageSize: reqBody.pageSize,
+    // });
+
+    return candidateJobAlertServiceObj.retrieveAndSendEmailCandidateJobAlert()
+
+    // return candidateJobRecommendationDaoObj.getAllCandidateJobRecommendationByFilterOptions({
+    //   pageSize: 3,
+    //   sortOrder: GcpFirestoreSortOrderTypeEnum.DESCENDING,
+    //   isIncludedInEmailCountLessThan: 3,
+    //   candidateEmail: reqBody.candidateEmail,
+    // });
+
+    // return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
+    //   reqBody.snapShotId, 
+    // ); 
 
     // return jobServiceObj.validateAndDeleteExpiredBrightDataJobs(
     //   30,

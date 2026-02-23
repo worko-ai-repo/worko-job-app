@@ -113,6 +113,8 @@ export enum EmailTemplateEnum {
    * The email template is used to send notification to candidates who applied for a job which is closed by worko-admin or corporate recruiter.
    */
   CAND_JOB_CLOSED_UPDATE_STATUS = "CAND_JOB_CLOSED_UPDATE_STATUS",
+
+  CAND_JOBS_RECOMMENDATION = "CAND_JOBS_RECOMMENDATION",
   
   CAND_COOLING_PERIOD_END_NOTIFICATION = "CAND_COOLING_PERIOD_END_NOTIFICATION"
 }

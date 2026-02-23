@@ -11,11 +11,13 @@ import { CompanyJobCommonUpdateDto, CompanyJobCreateDto, CompanyJobUpdateDto } f
 import { EntityBulkUpdateMetricDto } from "../dtos/Common.dto";
 import { AwsS3VectorJobCreateDto, AwsS3VectorJobCreateOrUpdateParsedResponseDto, AwsS3VectorJobListingFilterOptions, AwsS3VectorJobMatchingScoreDto, AwsS3VectorJobGetParsedResponseDto, AwsS3VectorJobUpdateDto, AwsS3VectorJobCreateOrUpdateJobDataDto } from "../dtos/AwsS3VectorJob.dto";
 import { GcpFirestoreRecordListingResponseDTO } from "../dtos/Common.gcp-firestore.dto";
+import { InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto, InvokeLambdaNewInternalJobCandMatchDto } from "../dtos/InvokeLambda.dto";
 
 // Import enums
 import { JobStatusEnum } from "../enums/Job.enum";
 import { JobSourcedFromEnum } from "../enums/Common.enum";
 import { CountCompanyJobDbEntityTypeEnum } from "../enums/CountCompanyJob.enum";
+import { InvocationTypeEnum, InvokeLambdaHandlerEventTypeEnum } from "../enums/InvokeLambda.enum";
 
 // Import helpers
 import { getActionByUserId } from "../helpers/user.helper";
@@ -35,6 +37,7 @@ import InvokeLambdaService from "./InvokeLambda.service";
 import companyServiceObj  from "./Company.service";
 import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
+import { candidateJobRecommendationServiceObj } from "./CandidateJobRecommendation.service";
 
 // Import types
 import { JobsWithOrWithoutEntityDetails } from "../types/Job.type";
@@ -42,7 +45,6 @@ import { JobsWithOrWithoutEntityDetails } from "../types/Job.type";
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
 import { BaseError } from "../utils/errors.util";
-
 
 /**
  * JobService
@@ -160,9 +162,25 @@ class JobService {
       );
     }
 
-    await this.prepareAndCreateJobInAwsS3Vector(jobOnGcpFirestore);
+    const invokeDataPayload: InvokeLambdaNewInternalJobCandMatchDto = {
+      jobId: jobOnGcpFirestore.id,
+      companyId: companyJobDetailsOnAwsDynamodb.companyId,
+      jobDescription: companyJobDetailsOnAwsDynamodb.jobDescription,
+      jobTitle: companyJobDetailsOnAwsDynamodb.jobTitle.toLowerCase(),
+      companyName: parsedCompanyDetails.name.toUpperCase(),
+    };
 
-    await this.syncSitemapAfterJobCreate(jobOnGcpFirestore);
+    await Promise.all([
+      this.prepareAndCreateJobInAwsS3Vector(jobOnGcpFirestore),
+      this.syncSitemapAfterJobCreate(jobOnGcpFirestore),
+      InvokeLambdaService.triggerWorkoJobAppInvokeLambdaTrigger(
+        InvocationTypeEnum.EventType,
+        {
+          eventType: InvokeLambdaHandlerEventTypeEnum.NEW_INTERNAL_JOB_CAND_MATCH,
+          data: invokeDataPayload,
+        }
+      )
+    ]);
 
     return jobOnGcpFirestore;
   }
@@ -460,6 +478,49 @@ class JobService {
     return updatedAwsS3VectorJobDetails;
   }
 
+  private async processCandidateJobRecommendationAfterJobStatusUpdate(
+    jobId: string,
+    jobStatusBeforeUpdate: JobStatusEnum,
+    jobStatusAfterUpdate: JobStatusEnum
+  ) {
+    if(jobStatusBeforeUpdate === jobStatusAfterUpdate) {
+      global.logger.info(`Job status before and after update is same: "${jobStatusBeforeUpdate}", hence skipping candidateJobRecommendation update.`, {
+        methodName: this.processCandidateJobRecommendationAfterJobStatusUpdate.name,
+        jobStatusBeforeUpdate,
+        jobStatusAfterUpdate,
+      });
+      return {
+        statusCode: HttpStatusCode.OK_200,
+        body: `Job status before and after update is same: "${jobStatusBeforeUpdate}", hence skipping candidateJobRecommendation update.`
+      } as APIGatewayProxyResult;
+    }
+
+    const atleastOneCandRecommendJob = await candidateJobRecommendationServiceObj.getAllCandidateJobRecommendationByFilterOptions({jobId, pageSize: 1});
+    if(!atleastOneCandRecommendJob.data.length) {
+      global.logger.info(`No "candidateJobRecommendations" found for jobId: ${jobId}, hence skipping candidateJobRecommendation update.`, {
+        methodName: this.processCandidateJobRecommendationAfterJobStatusUpdate.name,
+        jobId,
+      });
+      return {
+        statusCode: HttpStatusCode.NOT_FOUND_404,
+        body: `No "candidateJobRecommendations" found for jobId: ${jobId}`,
+      } as APIGatewayProxyResult;
+    }
+
+    const invokeDataObj: InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto = {
+      jobId,
+      jobStatusBeforeUpdate,
+    };
+
+    return InvokeLambdaService.triggerWorkoJobAppInvokeLambdaTrigger(
+      InvocationTypeEnum.EventType,
+      {
+        eventType: InvokeLambdaHandlerEventTypeEnum.JOB_STATUS_CAND_JOB_RECOMMEND_ALERT_UPDATE,
+        data: invokeDataObj
+      }
+    )
+  }
+
   /**
    * @todo: Need to think aborting the job update if any one of update in opensearch or dynamodb or aws s3 vector fails.
    */
@@ -482,6 +543,13 @@ class JobService {
       );
     }
 
+    if(!jobDetailsOnGcpFirestoreBeforeUpdate.status) {
+      throw new BaseError(
+        "The Job Status not found.",
+        HttpStatusCode.BAD_REQUEST_400
+      );
+    }
+
     const updatedJobDetailsOnGcpFirestore: DbGcpFirestoreJobDto | undefined =
       await gcpFirestoreJobServiceObj.updateJobById(jobId, jobUpdateDto);
     if (!updatedJobDetailsOnGcpFirestore) {
@@ -498,6 +566,12 @@ class JobService {
       throw new BaseError(
         "Unable to update job details, please try again.",
         HttpStatusCode.INTERNAL_SERVER_ERROR_500
+      );
+    }
+    if(!updatedJobDetailsOnGcpFirestore.status) {
+      throw new BaseError(
+        "The Job Status not found.",
+        HttpStatusCode.BAD_REQUEST_400
       );
     }
 
@@ -588,10 +662,17 @@ class JobService {
       );
     }
 
-    await this.syncSitemapAfterJobUpdate(
-      jobDetailsOnGcpFirestoreBeforeUpdate,
-      updatedJobDetailsOnGcpFirestore
-    );
+    await Promise.all([
+      this.syncSitemapAfterJobUpdate(
+        jobDetailsOnGcpFirestoreBeforeUpdate,
+        updatedJobDetailsOnGcpFirestore
+      ),
+      this.processCandidateJobRecommendationAfterJobStatusUpdate(
+        updatedJobDetailsOnGcpFirestore.id,
+        jobDetailsOnGcpFirestoreBeforeUpdate.status,
+        updatedJobDetailsOnGcpFirestore.status
+      )
+    ]);
 
     // Return the external job details
     return updatedJobDetailsOnGcpFirestore;
@@ -632,6 +713,30 @@ class JobService {
       jobId: jobId,
       companyId: companyId,
     });
+    
+    const jobDetailsOnGcpFirestoreBeforeUpdate: DbGcpFirestoreJobDto | undefined =
+      await gcpFirestoreJobServiceObj.getJobById(jobId);
+    if (!jobDetailsOnGcpFirestoreBeforeUpdate) {
+      global.logger.error(`Job details not found in firestore for jobId: ${jobId}`, {
+        methodName: this.softDeleteJobById.name,
+        jobId,
+      });
+      throw new BaseError(
+        "Job details not found in firestore for jobId: " + jobId,
+        HttpStatusCode.NOT_FOUND_404
+      );
+    }
+
+    if(!jobDetailsOnGcpFirestoreBeforeUpdate.status) {
+        global.logger.error(`Job status not found in firestore for jobId: ${jobId}`, {
+          methodName: this.softDeleteJobById.name,
+          jobId,
+        });
+        throw new BaseError(
+          "Job status not found in firestore",
+          HttpStatusCode.NOT_FOUND_404
+        );
+      }
 
     let jobClosedByUserId: string | undefined;
     const {actionByUserId, actionByCorporateUserId} = getActionByUserId();
@@ -694,16 +799,18 @@ class JobService {
       );
     }
 
-    await userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
-      jobId,
-      updatedJobDetails.jobTitle,
-      jobClosedByUserId,
-      undefined,
-      updatedJobDetails.shortSoftDeleteReason,
-      updatedJobDetails.detailedSoftDeleteReason,
-    );
-
-    await this.removeJobFromSitemapAfterSoftDelete(jobId);
+    await Promise.all([
+      userJobApplicationServiceObj.updateAllNonInitiatedHiringStatusJobApplicationsToReject(
+        jobId,
+        updatedJobDetails.jobTitle,
+        jobClosedByUserId,
+        undefined,
+        updatedJobDetails.shortSoftDeleteReason,
+        updatedJobDetails.detailedSoftDeleteReason,
+      ),
+      this.removeJobFromSitemapAfterSoftDelete(jobId),
+      this.processCandidateJobRecommendationAfterJobStatusUpdate(jobId, jobDetailsOnGcpFirestoreBeforeUpdate.status, JobStatusEnum.CLOSED)
+    ])
 
     return updatedJobDetails;
   }
@@ -872,6 +979,7 @@ class JobService {
 
     const s3VectorJobIdsToDelete: string[] = [];
     const sitemapJobIdsToRemove: string[] = [];
+    const candRecommendAfterUpdatePromises: Promise<APIGatewayProxyResult>[] = [];
 
     // Process each job close
     for (const job of validatedJobRequestBody.jobs) {
@@ -879,12 +987,24 @@ class JobService {
 
         // Update GCP Firestore
         try {
+          const jobDetailsOnGcpFirestoreBeforeUpdate: DbGcpFirestoreJobDto | undefined =
+            await gcpFirestoreJobServiceObj.getJobById(jobId);
+          if(!jobDetailsOnGcpFirestoreBeforeUpdate) {
+            throw new BaseError("The job details not found.", HttpStatusCode.NOT_FOUND_404);
+          }
           const gcpFirestoreResponse: DbGcpFirestoreJobDto | undefined =
             await gcpFirestoreJobServiceObj.updateJobById(jobId, updateObjectForGcpFirestore);
 
           if (gcpFirestoreResponse) {
             gcpFirestoreResult.success.count++;
             gcpFirestoreResult.success.primaryIds!.push(jobId);
+            candRecommendAfterUpdatePromises.push(
+              this.processCandidateJobRecommendationAfterJobStatusUpdate(
+                jobId,
+                jobDetailsOnGcpFirestoreBeforeUpdate.status!,
+                JobStatusEnum.CLOSED
+              )
+            )
           } else {
             gcpFirestoreResult.failure.count++;
             gcpFirestoreResult.failure.primaryIds!.push(jobId);
@@ -996,7 +1116,10 @@ class JobService {
     }
 
     // Sync sitemap - remove closed jobs
-    await this.removeBulkJobsFromSitemapAfterBulkClose(sitemapJobIdsToRemove);
+    await Promise.all([
+      this.removeBulkJobsFromSitemapAfterBulkClose(sitemapJobIdsToRemove),
+      Promise.all(candRecommendAfterUpdatePromises),
+    ]);
 
     // Prepare the response
     const bulkCloseResponse: JobBulkCloseResponseDto = {
@@ -1078,6 +1201,7 @@ class JobService {
     let s3VectorJobsToCreate: AwsS3VectorJobCreateOrUpdateJobDataDto[] = [];
     const sitemapJobIdsToRemove: string[] = [];
     const sitemapJobsToAddOrUpdate: DbGcpFirestoreJobDto[] = [];
+    const candRecommendAfterUpdatePromises: Promise<APIGatewayProxyResult>[] = [];
 
     // Process each job update
     for (const jobUpdate of validatedJobRequestBody.bulkJobUpdate) {
@@ -1110,6 +1234,14 @@ class JobService {
           if (newJobStatus === JobStatusEnum.PUBLISHED && !gcpFirestoreResponse.isDeleted) {
             sitemapJobsToAddOrUpdate.push(gcpFirestoreResponse);
           }
+
+          candRecommendAfterUpdatePromises.push(
+            this.processCandidateJobRecommendationAfterJobStatusUpdate(
+              jobId,
+              gcpFirestoreJobBeforeUpdate?.status!,
+              newJobStatus
+            )
+          )
         } else {
           gcpFirestoreResult.failure.count++;
           gcpFirestoreResult.failure.primaryIds!.push(jobId);
@@ -1210,13 +1342,15 @@ class JobService {
       awsS3VectorJobServiceObj.createBulkAwsS3VectorJobs({
         jobData: s3VectorJobsToCreate,
         indexName: awsS3VectorJobServiceObj.getAwsS3VectorJobIndexName(),
-      })
-    ]);
+      }),
 
-    await this.syncSitemapAfterBulkJobUpdate(
-      sitemapJobIdsToRemove,
-      sitemapJobsToAddOrUpdate
-    );
+      this.syncSitemapAfterBulkJobUpdate(
+        sitemapJobIdsToRemove,
+        sitemapJobsToAddOrUpdate
+      ),
+
+      Promise.all(candRecommendAfterUpdatePromises),
+    ]);
 
     // Prepare the response
     const bulkJobUpdateResponse: JobBulkUpdateResponseDto = {

@@ -10,11 +10,15 @@ import APP_CONSTANTS from "../configs/constants.config";
 import userDetailDao from "../daos/UserDetail.dao";
 
 // import dtos
-import { InvokeLambdaParsedJobDescriptionDto, InvokeLambdaRejectJobApplicationDto, InvokeLambdaToMatchUserResumeWithJobAndJdDto, InvokeLambdMatchingScoreCalcualtionDto } from "../dtos/InvokeLambda.dto";
+import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaParsedJobDescriptionDto, InvokeLambdaRejectJobApplicationDto, InvokeLambdaToMatchUserResumeWithJobAndJdDto, InvokeLambdMatchingScoreCalcualtionDto } from "../dtos/InvokeLambda.dto";
 import { ParsedJobDescriptionApiDto } from "../dtos/Job.dto";
 
 // import enums
 import { MatchingScoreEntityEnum } from "../enums/Common.enum";
+import { InvocationTypeEnum } from "../enums/InvokeLambda.enum";
+
+// import utils
+import { BaseError } from "../utils/errors.util";
 
 class InvokeLambdaService {
   /**
@@ -199,6 +203,37 @@ class InvokeLambdaService {
         lastKey: lastKey
       }
     );
+  }
+
+  async triggerWorkoJobAppInvokeLambdaTrigger(
+    awsLambdaInvocationType: InvocationTypeEnum,
+    payload: InvokeLambdaHandlerEventPayloadDto
+  ) {
+    switch (awsLambdaInvocationType) {
+      case InvocationTypeEnum.EventType:
+        return awsClientLambdaLibrary.triggerLambdaEventInvocationType(
+          APP_CONSTANTS.LAMBDA_FUNCTION_NAMES.WORKO_JOB_APP_INVOKE_LAMBDA_NAME,
+          payload,
+        );
+
+      case InvocationTypeEnum.RequestResponseType:
+        return awsClientLambdaLibrary.triggerLambdaRequestResponseInvocationType(
+          APP_CONSTANTS.LAMBDA_FUNCTION_NAMES.WORKO_JOB_APP_INVOKE_LAMBDA_NAME,
+          payload,
+        );
+
+      case InvocationTypeEnum.DryRunType:
+        global.logger.error("DryRunType not supported as of now we may implement it in near future if needed.", {
+          methodName: this.triggerWorkoJobAppInvokeLambdaTrigger.name,
+        });
+        throw new BaseError("DryRunType not supported as of now, we may implement it in near future if needed.");
+
+      default:
+        global.logger.error("Invalid Invocation Type", {
+          methodName: this.triggerWorkoJobAppInvokeLambdaTrigger.name,
+        });
+        throw new BaseError("Invalid Invocation Type");
+    }
   }
 }
 

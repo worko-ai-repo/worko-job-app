@@ -95,6 +95,12 @@ interface DbCandidateParsedCvDto extends BaseFirestoreModel {
       updatedAt: string;
     };
   }[];
+  softSkills?: {
+    skillName: string;
+    timestamps?: {
+      createdAt: string;
+    };
+  }[];
   userPreferredDepartments?: string[];
   userPreferredIndustries?: string[];
   userPreferredlocations?: string[];

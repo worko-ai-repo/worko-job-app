@@ -925,4 +925,17 @@ Request must be smaller than 5120 bytes for the UpdateFunctionConfiguration oper
 {
     "Message": "User is not authorized to access this resource because no identity-based policy allows the execute-api:Invoke action"
 }
-```sho
+```sh
+
+48. 
+```json
+{
+    "code": 3,
+    "details": "order by clause cannot contain more fields after the key",
+    "metadata": {
+        "x-debug-tracking-id": [
+            "10835241081786467213;o=1"
+        ]
+    }
+}
+```

@@ -10,6 +10,7 @@ import {
   QuerySnapshot,
   QueryDocumentSnapshot,
   Query,
+  SetOptions,
 } from "@google-cloud/firestore";
 
 // Import sdk configs
@@ -38,11 +39,11 @@ class GcpFirestoreLibrary {
         {
           projectId: process.env.APP_GCP_PROJECT_ID,
           awsSecretsManager: process.env.APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE,
-        }
+        },
       );
       throw new BaseError(
         "PROJECT_ID or AWS_SECRETS_MANAGER is not defined in .env file.",
-        HttpStatusCode.INTERNAL_SERVER_ERROR_500
+        HttpStatusCode.INTERNAL_SERVER_ERROR_500,
       );
     }
   }
@@ -50,7 +51,7 @@ class GcpFirestoreLibrary {
   async initFirestoreArguments(databaseId: string): Promise<Settings> {
     const credentials: GcpFirestoreSecretResponseDto =
       await awsClientSecretsManagerLibrary.getParsedSecret<GcpFirestoreSecretResponseDto>(
-        process.env.APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE as string
+        process.env.APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE as string,
       );
 
     const settings: Settings = {
@@ -77,10 +78,10 @@ class GcpFirestoreLibrary {
 
   async createDocument<DbEntityDto extends DocumentData>(
     commonDbDetails: GcpFirestoreInteractionDto,
-    data: DbEntityDto
+    data: DbEntityDto,
   ): Promise<DbEntityDto | undefined> {
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
 
     /*
@@ -110,10 +111,11 @@ class GcpFirestoreLibrary {
    */
   async bulkCreateDocument<DbEntityDto extends DocumentData>(
     commonDbDetails: GcpFirestoreInteractionDto,
-    documents: DbEntityDto[]
+    documents: DbEntityDto[],
+    options?: SetOptions,
   ) {
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
 
     // Get a new write batch
@@ -123,7 +125,11 @@ class GcpFirestoreLibrary {
       const docRef: DocumentReference<DocumentData, DocumentData> = db
         .collection(commonDbDetails.collectionName)
         .doc(doc.id);
-      batch.set(docRef, { ...doc });
+      if(options) {
+        batch.set(docRef, { ...doc }, options);
+      } else {
+        batch.set(docRef, { ...doc });
+      }
     });
 
     const response: WriteResult[] = await batch.commit();
@@ -140,10 +146,10 @@ class GcpFirestoreLibrary {
 
   async getDocumentById<DbEntityDto>(
     commonDbDetails: GcpFirestoreInteractionDto,
-    id: string
+    id: string,
   ): Promise<DbEntityDto | undefined> {
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
     const doc: DocumentSnapshot<DocumentData, DocumentData> = await db
       .collection(commonDbDetails.collectionName)
@@ -159,12 +165,12 @@ class GcpFirestoreLibrary {
 
   async getAllDocumentsByIdsWithoutPagination<DbEntityDto>(
     commonDbDetails: GcpFirestoreInteractionDto,
-    ids: string[]
+    ids: string[],
   ): Promise<DbEntityDto[]> {
     if (!ids.length) return [];
 
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
 
     // Chunk IDs into groups of 10 (Firestore 'in' limit)
@@ -179,7 +185,7 @@ class GcpFirestoreLibrary {
         db
           .collection(commonDbDetails.collectionName)
           .where("id", "in", chunk)
-          .get()
+          .get(),
       );
 
     const querySnapshots: QuerySnapshot<DocumentData, DocumentData>[] =
@@ -190,18 +196,18 @@ class GcpFirestoreLibrary {
       (snapshot: QuerySnapshot<DocumentData, DocumentData>) =>
         snapshot.docs.map(
           (doc: QueryDocumentSnapshot<DocumentData, DocumentData>) =>
-            doc.data() as DbEntityDto
-        )
+            doc.data() as DbEntityDto,
+        ),
     );
   }
 
   async updateDocumentById<UpdateEntityDto extends DocumentData, DbEntityDto>(
     commonDbDetails: GcpFirestoreInteractionDto,
     id: string,
-    data: UpdateEntityDto
+    data: UpdateEntityDto,
   ): Promise<DbEntityDto | undefined> {
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
 
     const response: WriteResult = await db
@@ -233,10 +239,10 @@ class GcpFirestoreLibrary {
   async bulkUpdateDocumentByIds<UpdateEntityDto extends DocumentData>(
     commonDbDetails: GcpFirestoreInteractionDto,
     ids: string[],
-    updateData: UpdateEntityDto
+    updateData: UpdateEntityDto,
   ) {
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
 
     // Get a new write batch
@@ -268,16 +274,70 @@ class GcpFirestoreLibrary {
     return true;
   }
 
+  async bulkUpdateDocumentByIdsWithDifferentData<
+    UpdateEntityDto extends DocumentData
+  >(
+    commonDbDetails: GcpFirestoreInteractionDto,
+    updates: {
+      id: string;
+      updateData: UpdateEntityDto;
+    }[],
+  ) {
+    if (!updates.length) return true;
+
+    const db: Firestore = await this.getFirestoreDatabase(
+      commonDbDetails.databaseName,
+    );
+
+    const chunks: typeof updates[] = [];
+
+    let batchLimit: number = 300;
+    for (let i = 0; i < updates.length; i += batchLimit) {
+      chunks.push(updates.slice(i, i + batchLimit));
+    }
+
+    for (const chunk of chunks) {
+      const batch: WriteBatch = db.batch();
+
+      chunk.forEach(({ id, updateData }) => {
+        if (!id) return;
+
+        const docRef: DocumentReference<DocumentData, DocumentData> = db
+          .collection(commonDbDetails.collectionName)
+          .doc(id);
+
+        batch.update(docRef, updateData);
+      });
+
+      const response: WriteResult[] = await batch.commit();
+
+      global.logger.info("Bulk Update (Different Data) Response", {
+        responseLength: response.length,
+        chunkLength: chunk.length,
+      });
+
+      if (!response || response.length !== chunk.length) {
+        global.logger.error("Bulk Update Failed", {
+          responseLength: response?.length,
+          expected: chunk.length,
+        });
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   async getAllDocumentsWithoutPagination<DbEntityDto>(
     commonDbDetails: GcpFirestoreInteractionDto,
-    query: Query<DocumentData, DocumentData>
+    query: Query<DocumentData, DocumentData>,
   ): Promise<QuerySnapshot<DocumentData, DocumentData>> {
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
 
     /**
-     * @note 
+     * @note
      *  1. We are returnig snapshot because it can be feasible for use differently for different use cases.
      *  2. If you want to parse the data use below piece of code:
      *     const docs: DbEntityDto[] = snapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData, DocumentData>) => doc.data() as DbEntityDto);
@@ -289,30 +349,30 @@ class GcpFirestoreLibrary {
 
   async bulkDeleteDocumentByIds(
     commonDbDetails: GcpFirestoreInteractionDto,
-    ids: string[]
+    ids: string[],
   ) {
     const db: Firestore = await this.getFirestoreDatabase(
-      commonDbDetails.databaseName
+      commonDbDetails.databaseName,
     );
-    
+
     const BATCH_SIZE: number = 500; // Firestore's max batch size
     let totalDeleted: number = 0;
-    
+
     // Process in chunks
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const chunk: string[] = ids.slice(i, i + BATCH_SIZE);
       const batch: WriteBatch = db.batch();
-      
+
       chunk.forEach((id: string) => {
         const docRef: DocumentReference<DocumentData, DocumentData> = db
           .collection(commonDbDetails.collectionName)
           .doc(id);
         batch.delete(docRef);
       });
-      
+
       const response: WriteResult[] = await batch.commit();
       totalDeleted += response.length;
-      
+
       global.logger.info(`Bulk Delete Document Chunk Response`, {
         chunkSize: chunk.length,
         responseLength: response.length,
@@ -320,7 +380,7 @@ class GcpFirestoreLibrary {
         totalIds: ids.length,
       });
     }
-    
+
     if (totalDeleted !== ids.length) {
       global.logger.error("Bulk Delete Document Response", {
         totalDeleted,
@@ -328,7 +388,7 @@ class GcpFirestoreLibrary {
       });
       return false;
     }
-    
+
     return true;
   }
 }
