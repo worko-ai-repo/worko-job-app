@@ -29,10 +29,7 @@ import { BaseError, RequestValidationError } from "../utils/errors.util";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
 
 // Import helpers
-import {
-  resolveUserContext,
-  mapDateRangeToDays,
-} from "../helpers/Analytics.helper";
+import { resolveUserContext, mapDateRangeToDays } from "../helpers/Analytics.helper";
 
 /**
  * AnalyticsController
@@ -45,11 +42,7 @@ class AnalyticsController {
    *
    * Controller for `/analytics/funnel-velocity` aggregate endpoint.
    */
-  getFunnelVelocityAggregate = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getFunnelVelocityAggregate = async (req: Request, res: Response, next: NextFunction) => {
     try {
       global.logger.info(`Get Funnel Velocity Aggregate [Controller]`, {
         filePath: __filename,
@@ -58,12 +51,9 @@ class AnalyticsController {
       });
 
       const { error, value: validatedQuery } =
-        analyticsFunnelVelocityAggregateQueryValidation.validate(
-          req.query,
-          {
-            abortEarly: false,
-          }
-        );
+        analyticsFunnelVelocityAggregateQueryValidation.validate(req.query, {
+          abortEarly: false,
+        });
       if (error) {
         throw new RequestValidationError(error);
       }
@@ -82,13 +72,8 @@ class AnalyticsController {
         jobStatus?: "ALL" | "PUBLISHED";
       };
 
-      const {
-        isAdmin,
-        isCorporateUser,
-        corporateCompanyId,
-        corporateUserId,
-        corporateUserType,
-      } = await resolveUserContext();
+      const { isAdmin, isCorporateUser, corporateCompanyId, corporateUserId, corporateUserType } =
+        await resolveUserContext();
 
       if (!isAdmin && !isCorporateUser) {
         throw new BaseError(
@@ -101,6 +86,15 @@ class AnalyticsController {
         ? corporateCompanyId
         : requestedCompanyId;
 
+      // Warn about admin queries without companyId
+      if (isAdmin && !effectiveCompanyId) {
+        global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          userId: corporateUserId,
+          endpoint: "/analytics/funnel-velocity",
+          query: req.query,
+        });
+      }
+
       let normalizedJobIds: string[] | undefined;
       if (Array.isArray(jobIds)) {
         normalizedJobIds = jobIds;
@@ -108,8 +102,7 @@ class AnalyticsController {
         normalizedJobIds = jobIds.split(",").map((id) => id.trim());
       }
 
-      const dateRangeInDays: number | undefined =
-        mapDateRangeToDays(dateRange);
+      const dateRangeInDays: number | undefined = mapDateRangeToDays(dateRange);
 
       const effectiveRecruiterId: string | undefined =
         recruiterId ??
@@ -117,14 +110,15 @@ class AnalyticsController {
           ? corporateUserId
           : undefined);
 
-      const response: FunnelVelocityResponse =
-        await analyticsServiceObj.getFunnelVelocityAggregate({
+      const response: FunnelVelocityResponse = await analyticsServiceObj.getFunnelVelocityAggregate(
+        {
           companyId: effectiveCompanyId,
           corporateRecruiterUserId: effectiveRecruiterId,
           jobIds: normalizedJobIds,
           dateRangeInDays,
           jobStatusFilter: jobStatus ?? "ALL",
-        });
+        }
+      );
 
       res.status(HttpStatusCode.OK_200).json(response);
     } catch (error) {
@@ -137,11 +131,7 @@ class AnalyticsController {
    *
    * Controller for `/analytics/onboarding-pipeline` endpoint.
    */
-  getOnboardingPipelineData = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getOnboardingPipelineData = async (req: Request, res: Response, next: NextFunction) => {
     try {
       global.logger.info(`Get Onboarding Pipeline Data [Controller]`, {
         filePath: __filename,
@@ -149,10 +139,12 @@ class AnalyticsController {
         query: req.query,
       });
 
-      const { error, value: validatedQuery } =
-        analyticsOnboardingPipelineQueryValidation.validate(req.query, {
+      const { error, value: validatedQuery } = analyticsOnboardingPipelineQueryValidation.validate(
+        req.query,
+        {
           abortEarly: false,
-        });
+        }
+      );
       if (error) {
         throw new RequestValidationError(error);
       }
@@ -175,13 +167,8 @@ class AnalyticsController {
         jobStatus?: "ALL" | "PUBLISHED";
       };
 
-      const {
-        isAdmin,
-        isCorporateUser,
-        corporateCompanyId,
-        corporateUserId,
-        corporateUserType,
-      } = await resolveUserContext();
+      const { isAdmin, isCorporateUser, corporateCompanyId, corporateUserId, corporateUserType } =
+        await resolveUserContext();
 
       if (!isAdmin && !isCorporateUser) {
         throw new BaseError(
@@ -194,14 +181,22 @@ class AnalyticsController {
         ? corporateCompanyId
         : requestedCompanyId;
 
+      // Warn about admin queries without companyId
+      if (isAdmin && !effectiveCompanyId) {
+        global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          userId: corporateUserId,
+          endpoint: "/analytics/onboarding-pipeline",
+          query: req.query,
+        });
+      }
+
       const effectiveRecruiterId: string | undefined =
         recruiterId ??
         (corporateUserType === CorporateUserTypeEnum.CORPORATE_RECRUITER
           ? corporateUserId
           : undefined);
 
-      const dateRangeInDays: number | undefined =
-        mapDateRangeToDays(dateRange);
+      const dateRangeInDays: number | undefined = mapDateRangeToDays(dateRange);
 
       const response: OnboardingPipelineResponse =
         await analyticsServiceObj.getOnboardingPipelineData({
@@ -223,11 +218,7 @@ class AnalyticsController {
    *
    * Controller for `/analytics/dropoff` endpoint.
    */
-  getCriticalDropoffData = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getCriticalDropoffData = async (req: Request, res: Response, next: NextFunction) => {
     try {
       global.logger.info(`Get Critical Dropoff Data [Controller]`, {
         filePath: __filename,
@@ -235,10 +226,9 @@ class AnalyticsController {
         query: req.query,
       });
 
-      const { error, value: validatedQuery } =
-        analyticsDropoffQueryValidation.validate(req.query, {
-          abortEarly: false,
-        });
+      const { error, value: validatedQuery } = analyticsDropoffQueryValidation.validate(req.query, {
+        abortEarly: false,
+      });
       if (error) {
         throw new RequestValidationError(error);
       }
@@ -259,13 +249,8 @@ class AnalyticsController {
         topN?: number;
       };
 
-      const {
-        isAdmin,
-        isCorporateUser,
-        corporateCompanyId,
-        corporateUserId,
-        corporateUserType,
-      } = await resolveUserContext();
+      const { isAdmin, isCorporateUser, corporateCompanyId, corporateUserId, corporateUserType } =
+        await resolveUserContext();
 
       if (!isAdmin && !isCorporateUser) {
         throw new BaseError(
@@ -278,8 +263,16 @@ class AnalyticsController {
         ? corporateCompanyId
         : requestedCompanyId;
 
-      const dateRangeInDays: number | undefined =
-        mapDateRangeToDays(dateRange);
+      // Warn about admin queries without companyId
+      if (isAdmin && !effectiveCompanyId) {
+        global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          userId: corporateUserId,
+          endpoint: "/analytics/dropoff",
+          query: req.query,
+        });
+      }
+
+      const dateRangeInDays: number | undefined = mapDateRangeToDays(dateRange);
 
       const effectiveRecruiterId: string | undefined =
         recruiterId ??
@@ -287,14 +280,13 @@ class AnalyticsController {
           ? corporateUserId
           : undefined);
 
-      const response: CriticalDropoffResponse =
-        await analyticsServiceObj.getCriticalDropoffData({
-          companyId: effectiveCompanyId,
-          corporateRecruiterUserId: effectiveRecruiterId,
-          jobId,
-          dateRangeInDays,
-          topN,
-        });
+      const response: CriticalDropoffResponse = await analyticsServiceObj.getCriticalDropoffData({
+        companyId: effectiveCompanyId,
+        corporateRecruiterUserId: effectiveRecruiterId,
+        jobId,
+        dateRangeInDays,
+        topN,
+      });
 
       res.status(HttpStatusCode.OK_200).json(response);
     } catch (error) {
@@ -307,11 +299,7 @@ class AnalyticsController {
    *
    * Controller for `/analytics/hiring-trend` endpoint.
    */
-  getHiringTrend = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getHiringTrend = async (req: Request, res: Response, next: NextFunction) => {
     try {
       global.logger.info(`Get Hiring Trend [Controller]`, {
         filePath: __filename,
@@ -319,10 +307,12 @@ class AnalyticsController {
         query: req.query,
       });
 
-      const { error, value: validatedQuery } =
-        analyticsHiringTrendQueryValidation.validate(req.query, {
+      const { error, value: validatedQuery } = analyticsHiringTrendQueryValidation.validate(
+        req.query,
+        {
           abortEarly: false,
-        });
+        }
+      );
       if (error) {
         throw new RequestValidationError(error);
       }
@@ -341,13 +331,8 @@ class AnalyticsController {
         jobStatus?: "ALL" | "PUBLISHED";
       };
 
-      const {
-        isAdmin,
-        isCorporateUser,
-        corporateCompanyId,
-        corporateUserId,
-        corporateUserType,
-      } = await resolveUserContext();
+      const { isAdmin, isCorporateUser, corporateCompanyId, corporateUserId, corporateUserType } =
+        await resolveUserContext();
 
       if (!isAdmin && !isCorporateUser) {
         throw new BaseError(
@@ -360,8 +345,16 @@ class AnalyticsController {
         ? corporateCompanyId
         : requestedCompanyId;
 
-      const dateRangeInDays: number | undefined =
-        mapDateRangeToDays(dateRange);
+      // Warn about admin queries without companyId
+      if (isAdmin && !effectiveCompanyId) {
+        global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          userId: corporateUserId,
+          endpoint: "/analytics/hiring-trend",
+          query: req.query,
+        });
+      }
+
+      const dateRangeInDays: number | undefined = mapDateRangeToDays(dateRange);
 
       const effectiveRecruiterId: string | undefined =
         recruiterId ??
@@ -369,22 +362,19 @@ class AnalyticsController {
           ? corporateUserId
           : undefined);
 
-      const response =
-        await analyticsServiceObj.getHiringTrend({
-          companyId: effectiveCompanyId,
-          corporateRecruiterUserId: effectiveRecruiterId,
-          granularity: granularity ?? "monthly",
-          dateRangeInDays,
-          jobStatusFilter: jobStatus ?? "ALL",
-        });
+      const response = await analyticsServiceObj.getHiringTrend({
+        companyId: effectiveCompanyId,
+        corporateRecruiterUserId: effectiveRecruiterId,
+        granularity: granularity ?? "monthly",
+        dateRangeInDays,
+        jobStatusFilter: jobStatus ?? "ALL",
+      });
 
       res.status(HttpStatusCode.OK_200).json(response);
     } catch (error) {
       next(error);
     }
   };
-
 }
 
 export default AnalyticsController;
-
