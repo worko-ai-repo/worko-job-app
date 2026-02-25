@@ -84,7 +84,6 @@ const validateUserJobApplicationMatchingScore = async (
       await userJobApplicationServiceObj.validateUserJobApplicationMatchingScore(
         jobApplicationRequestId,
         userEmail,
-        userId
       );
 
     global.logger.debug(

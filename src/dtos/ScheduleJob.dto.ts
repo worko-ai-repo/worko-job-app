@@ -139,13 +139,11 @@ export interface ScheduleJobFantasticJobTwentyFourHourInputDto {
 export interface ScheduleUserJobApplicationStatusUpdateToRejectedInputDto {
   userJobApplicationId: string;
   userEmail: string;
-  userId: string;
 }
 
 export interface ScheduleBlacklistedUserJobApplicationStatusUpdateToRejecteInputDto {
   userJobApplicationId: string;
   userEmail: string;
-  userId: string;
 }
 
 /**

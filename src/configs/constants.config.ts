@@ -169,6 +169,13 @@ const APP_CONSTANTS = {
      * you can check in `appInvokeLambda` function in `serverless.ts` file 
      */
     WORKO_JOB_APP_INVOKE_LAMBDA_NAME: `worko-job-app-${process.env.APP_STAGE}-appInvokeLambda`,
+
+    /**
+     * @description
+     *  1. In lambda name "sourceType" means candidate came to worko system through which source type.
+     *  2. Sourcetype can be "Referral", "Internal", "Worko", "Agency"
+     */
+    WORKO_SOURCE_TYPE_JD_RESUME_MATCHING_SCORE: `worko-sourcetype-jd-resume-matching-${process.env.APP_SLS_STAGE}`,
   },
 
   MATCHING_SCORE_PROMPT:
