@@ -170,6 +170,14 @@ class DbUserJobApplicationDto extends BaseDbDto {
   isEvaluatorResponded?: boolean;
 
   /**
+   * @description 
+   *  Corporate moving applicant without finding matching score and if corporate wants to find matching score
+   *  in applicants page then we will trigger ai match score and set this attribute to `true`
+   *  once matching score calculation is done then we will update this attribute to `false`
+   */
+  isFindMatchingScoreInProgress?: boolean;
+
+  /**
    * Attributes Being set after comparing `Job description` and `CV`
    * from `Python script` by AI/ML Team
    */
@@ -614,6 +622,10 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
       required: false,
     },
     isEvaluatorResponded: {
+      type: Boolean,
+      required: false,
+    },
+    isFindMatchingScoreInProgress: {
       type: Boolean,
       required: false,
     },

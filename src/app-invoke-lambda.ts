@@ -11,7 +11,7 @@ import DBConfig from "./db/DB.config";
 import "./configs/gcp-sdk.config";
 
 // Import dtos
-import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto, InvokeLambdaNewInternalJobCandMatchDto } from "./dtos/InvokeLambda.dto";
+import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaJobApplicationValidationMatchingScoreDto, InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto, InvokeLambdaNewInternalJobCandMatchDto } from "./dtos/InvokeLambda.dto";
 
 // Import enums
 import { InvokeLambdaHandlerEventTypeEnum } from "./enums/InvokeLambda.enum";
@@ -19,6 +19,7 @@ import { InvokeLambdaHandlerEventTypeEnum } from "./enums/InvokeLambda.enum";
 // Import services
 import { candidateParsedCvServiceObj } from "./services/CandidateParsedCv.service";
 import { candidateJobAlertServiceObj } from "./services/CandidateJobAlert.service";
+import { userJobApplicationServiceObj } from "./services/UserJobApplication.service";
 
 // Import utils
 import { BaseError } from "./utils/errors.util";
@@ -128,6 +129,20 @@ export const handler = async (
           jobStatusBeforeUpdate,
           jobId
         );
+        break;
+      }
+
+      case InvokeLambdaHandlerEventTypeEnum.JOB_APPLICATION_VALIDATE_MATCHING_SCORE: {
+        const {
+          jobApplicationRequestId,
+          userEmail,
+        } = data as InvokeLambdaJobApplicationValidationMatchingScoreDto;
+        // Validate the job application matching score
+        const isjobApplicationMatchingScoreValid: boolean =
+          await userJobApplicationServiceObj.validateUserJobApplicationMatchingScore(
+            jobApplicationRequestId,
+            userEmail,
+          );
         break;
       }
 

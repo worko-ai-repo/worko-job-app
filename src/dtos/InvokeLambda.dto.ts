@@ -1,7 +1,8 @@
 
 // Import enums
+import { CandidateParsedCvAwsS3ResourceTypeEnum } from "../enums/CandidateParsedCv.enum";
 import { MatchingScoreEntityEnum } from "../enums/Common.enum";
-import { InvokeLambdaHandlerEventTypeEnum } from "../enums/InvokeLambda.enum";
+import { InvokeLambdaHandlerEventTypeEnum, SourceTypeMatchingScoreEntityEnum } from "../enums/InvokeLambda.enum";
 import { JobStatusEnum } from "../enums/Job.enum";
 
 /**
@@ -69,4 +70,66 @@ export interface InvokeLambdaNewInternalJobCandMatchDto {
 export interface InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto {
   jobId: string;
   jobStatusBeforeUpdate: JobStatusEnum,
+}
+
+export interface InvokeLambdaJobApplicationValidationMatchingScoreDto {
+  jobApplicationRequestId: string;
+  userEmail: string;
+}
+
+export interface InvokeLambdaSourceTypeJdResumeMatchingScoreDto {
+  sourceTypeMatchingScoreEntity: SourceTypeMatchingScoreEntityEnum;
+
+  applicantEmail?: string;
+
+  /**
+   * @description 
+   *  1. whenever "sourceTypeMatchingScoreEntity" is "USER_JOB_APPLICATION" then "userJobApplicationId" will be required.
+   */
+  userJobApplicationId?: string;
+
+  actionByCorporateUserId?: string;
+
+  actionByUserId?: string;
+
+  /**
+   * @reference The "id" attribute of the "CompanyJob.model.ts" from AWS DynamoDB
+   */
+  jobId: string;
+
+  cvAwsS3ResourceType: CandidateParsedCvAwsS3ResourceTypeEnum;
+
+  /**
+   * @example
+   *  In dev environment
+   *    1. "worko-app-dev"
+   *    2. "worko-corporate-dev"
+   *  In prod environment
+   *    1. "worko-app-prod"
+   *    2. "worko-corporate-prod"
+   */
+  cvAwsS3BucketName: string;
+
+  /**
+   * @example
+   *  1. "/agencies/{agencyUserId}/companies/{companyId}/jobs/{jobId}/user-profiles"
+   *  2. "/users/{userId}/resumes"
+   *  3. "/companies/{companyId}/bulk-cvs/{corporateBulkJdId}"
+   */
+  cvAwsS3FilePath: string;
+
+  /**
+   * @description
+   *  1. Name of the aws s3 file
+   *
+   * @example "01K8TPT1PT2W5DTRSFPWTB92GH.pdf"
+   */
+  cvAwsS3FileName?: string;
+
+  /**
+   * @description
+   *  1. If "cvAwsS3FilePath" is "/users/{userId}/resumes" then this will be used.
+   * @example "USR#EML#shaukt1998+29@gmail.com"
+   */
+  USER_PK?: string;
 }

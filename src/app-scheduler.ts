@@ -111,14 +111,11 @@ export const handler = async (
         userJobApplicationRejectedStatusInputDetails["userJobApplicationId"];
       const userEmail: string =
         userJobApplicationRejectedStatusInputDetails["userEmail"];
-      const userId: string =
-        userJobApplicationRejectedStatusInputDetails["userId"];
 
       const updatedDetails: boolean =
         await userJobApplicationServiceObj.prepareUserJobApplicationUpdateDtoToRejectAfterXHours(
           userJobApplicationId,
           userEmail,
-          userId
         );
       if (!updatedDetails) {
         global.logger.error(`Failed to update user job application status`, {
@@ -158,14 +155,11 @@ export const handler = async (
         blacklistedUserJobApplicationStatusUpdateInputDetails["userJobApplicationId"];
       const userEmail: string =
         blacklistedUserJobApplicationStatusUpdateInputDetails["userEmail"];
-      const userId: string =
-        blacklistedUserJobApplicationStatusUpdateInputDetails["userId"];
 
       const updatedDetails: boolean =
         await userJobApplicationServiceObj.performBlacklistedUserJobApplicationStatusUpdate(
           userJobApplicationId,
           userEmail,
-          userId,
         );
       if (!updatedDetails) {
         global.logger.error(`Failed to update blacklisted user job application status`, {
@@ -174,7 +168,6 @@ export const handler = async (
             ScheduleJobType.BLACK_LISTED_USER_JOB_APPLICATION_STATUS_UPDATE,
           userJobApplicationId,
           userEmail,
-          userId
         });
       }
 
