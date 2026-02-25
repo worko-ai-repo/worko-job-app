@@ -17,6 +17,11 @@ const UserJobApplicationRouter = Router();
 UserJobApplicationRouter.post("/", userJobApplicationController.createJobApplication);
 
 /**
+ * @authorisedRoles ["admin","corporate-admin","corporate-recruiter"]
+ */
+UserJobApplicationRouter.post("/find-matching-score", userJobApplicationController.findMatchingScoreUserJobApplication);
+
+/**
  * Get matching Score for job application
  * @authorisedRoles ["loggedInUser"]
  */

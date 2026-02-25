@@ -10,7 +10,7 @@ import APP_CONSTANTS from "../configs/constants.config";
 import userDetailDao from "../daos/UserDetail.dao";
 
 // import dtos
-import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaParsedJobDescriptionDto, InvokeLambdaRejectJobApplicationDto, InvokeLambdaToMatchUserResumeWithJobAndJdDto, InvokeLambdMatchingScoreCalcualtionDto } from "../dtos/InvokeLambda.dto";
+import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaParsedJobDescriptionDto, InvokeLambdaRejectJobApplicationDto, InvokeLambdaSourceTypeJdResumeMatchingScoreDto, InvokeLambdaToMatchUserResumeWithJobAndJdDto, InvokeLambdMatchingScoreCalcualtionDto } from "../dtos/InvokeLambda.dto";
 import { ParsedJobDescriptionApiDto } from "../dtos/Job.dto";
 
 // import enums
@@ -234,6 +234,14 @@ class InvokeLambdaService {
         });
         throw new BaseError("Invalid Invocation Type");
     }
+  }
+
+  async triggerSourceTypeJdResumeMatchingScore(payload: InvokeLambdaSourceTypeJdResumeMatchingScoreDto): Promise<APIGatewayProxyResult> {
+    global.logger.info("Trigger Source Type JD Resume Matching Score Lambda [service]", { methodName: this.triggerSourceTypeJdResumeMatchingScore.name });
+    return awsClientLambdaLibrary.triggerLambdaEventInvocationType<InvokeLambdaSourceTypeJdResumeMatchingScoreDto>(
+      APP_CONSTANTS.LAMBDA_FUNCTION_NAMES.WORKO_SOURCE_TYPE_JD_RESUME_MATCHING_SCORE,
+      payload
+    );
   }
 }
 
