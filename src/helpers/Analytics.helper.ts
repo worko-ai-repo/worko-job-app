@@ -463,7 +463,7 @@ export async function resolveUserContext(): Promise<{
 /**
  * mapDateRangeToDays
  *
- * Maps string dateRange (e.g. "7d", "30d") to numeric number of days.
+ * Maps string dateRange (e.g. "7d", "30d", "90d", "180d") to numeric number of days.
  */
 export function mapDateRangeToDays(
   dateRange?: string
@@ -479,6 +479,8 @@ export function mapDateRangeToDays(
       return 30;
     case "90d":
       return 90;
+    case "180d":
+      return 180;
     default:
       return undefined;
   }

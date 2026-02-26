@@ -89,6 +89,7 @@ class AnalyticsController {
       // Warn about admin queries without companyId
       if (isAdmin && !effectiveCompanyId) {
         global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          methodName: this.getFunnelVelocityAggregate.name,
           userId: corporateUserId,
           endpoint: "/analytics/funnel-velocity",
           query: req.query,
@@ -184,6 +185,7 @@ class AnalyticsController {
       // Warn about admin queries without companyId
       if (isAdmin && !effectiveCompanyId) {
         global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          methodName: this.getOnboardingPipelineData.name,
           userId: corporateUserId,
           endpoint: "/analytics/onboarding-pipeline",
           query: req.query,
@@ -266,6 +268,7 @@ class AnalyticsController {
       // Warn about admin queries without companyId
       if (isAdmin && !effectiveCompanyId) {
         global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          methodName: this.getCriticalDropoffData.name,
           userId: corporateUserId,
           endpoint: "/analytics/dropoff",
           query: req.query,
@@ -348,6 +351,7 @@ class AnalyticsController {
       // Warn about admin queries without companyId
       if (isAdmin && !effectiveCompanyId) {
         global.logger.warn("Admin analytics query without companyId - using limits [Controller]", {
+          methodName: this.getHiringTrend.name,
           userId: corporateUserId,
           endpoint: "/analytics/hiring-trend",
           query: req.query,

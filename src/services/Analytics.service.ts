@@ -8,12 +8,8 @@ import {
   HiringTrendResponse,
   HiringTrendPoint,
 } from "../dtos/Analytics.dto";
-import {
-  PaginatedResultsWithMatchingConditionsResponse,
-} from "../dtos/Common.dto";
-import {
-  UserJobApplicationListingFilterOptions,
-} from "../dtos/UserJobApplication.dto";
+import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
+import { UserJobApplicationListingFilterOptions } from "../dtos/UserJobApplication.dto";
 import { CompanyJobListingFilterOptions } from "../dtos/CompanyJob.dto";
 
 // Import enums
@@ -55,6 +51,12 @@ import {
  * across jobs and job applications.
  */
 class AnalyticsService {
+  // Private constants for analytics configuration
+  private readonly DEFAULT_DATE_RANGE_DAYS = 30;
+  private readonly DEFAULT_HIRING_TREND_RANGE_DAYS = 365;
+  private readonly ADMIN_JOB_LIMIT = 500;
+  private readonly ADMIN_APPLICATION_LIMIT = 2000;
+
   /**
    * getFunnelVelocityAggregate
    *
@@ -75,13 +77,22 @@ class AnalyticsService {
       params,
     });
 
-    const { fromDate, toDate } = resolveDateRange(params.dateRangeInDays);
+    const rangeInDays: number = params.dateRangeInDays ?? this.DEFAULT_DATE_RANGE_DAYS;
+    const { fromDate, toDate } = resolveDateRange(rangeInDays);
+
+    global.logger.info("Date range calculated [Service]", {
+      methodName: this.getFunnelVelocityAggregate.name,
+      rangeInDays,
+      fromDate: new Date(fromDate!).toISOString(),
+      toDate: new Date(toDate!).toISOString(),
+    });
 
     // Add admin query limits
     const isAdminQuery = !params.companyId;
-    const applicationLimit = isAdminQuery ? 2000 : undefined;
+    const applicationLimit = isAdminQuery ? this.ADMIN_APPLICATION_LIMIT : undefined;
 
     global.logger.info("Fetching funnel velocity data [Service]", {
+      methodName: this.getFunnelVelocityAggregate.name,
       isAdminQuery,
       applicationLimit,
       companyId: params.companyId,
@@ -94,12 +105,16 @@ class AnalyticsService {
       if (params.jobIds && params.jobIds.length) {
         // Sequential fetching for specific jobs
         global.logger.info("Fetching applications for specific jobs [Service]", {
+          methodName: this.getFunnelVelocityAggregate.name,
           jobCount: params.jobIds.length,
         });
         const startTime = Date.now();
 
         for (const jobId of params.jobIds) {
-          const appsForJob = await this.getAllApplicationsForJob(jobId);
+          const appsForJob = await this.getAllApplicationsForJob(jobId, {
+            fromDate: fromDate!,
+            toDate: toDate!,
+          });
           applications.push(...appsForJob);
 
           // Small delay between jobs for admin queries
@@ -109,32 +124,38 @@ class AnalyticsService {
         }
 
         global.logger.info("Applications for specific jobs fetched [Service]", {
+          methodName: this.getFunnelVelocityAggregate.name,
           count: applications.length,
           durationMs: Date.now() - startTime,
         });
       } else {
         // Fetch all applications for company with limit
-        global.logger.info("Fetching all applications for company [Service]");
+        global.logger.info("Fetching all applications for company [Service]", {
+          methodName: this.getFunnelVelocityAggregate.name,
+        });
         const startTime = Date.now();
 
         applications = await this.getAllApplicationsForCompany(
           {
             companyId: params.companyId,
             corporateRecruiterUserId: params.corporateRecruiterUserId,
-            fromDate,
-            toDate,
+            fromDate: fromDate!,
+            toDate: toDate!,
           },
-          applicationLimit // Pass the limit
+          applicationLimit
         );
 
         global.logger.info("Applications fetched [Service]", {
+          methodName: this.getFunnelVelocityAggregate.name,
           count: applications.length,
+          dateRange: params.dateRangeInDays,
           durationMs: Date.now() - startTime,
           limitReached: applicationLimit && applications.length >= applicationLimit,
         });
       }
     } catch (error) {
       global.logger.error("Error fetching funnel velocity data [Service]", {
+        methodName: this.getFunnelVelocityAggregate.name,
         error,
         applicationsFetched: applications.length,
       });
@@ -393,17 +414,22 @@ class AnalyticsService {
       params,
     });
 
-    const rangeInDays: number = params.dateRangeInDays ?? 365;
+    const rangeInDays: number = params.dateRangeInDays ?? this.DEFAULT_HIRING_TREND_RANGE_DAYS;
     const { fromDate, toDate } = resolveDateRange(rangeInDays);
-    const effectiveFrom: number = fromDate ?? Date.now() - rangeInDays * 24 * 60 * 60 * 1000;
-    const effectiveTo: number = toDate ?? Date.now();
 
     // Add admin query limits
     const isAdminQuery = !params.companyId;
-    const jobLimit = isAdminQuery ? 500 : undefined;
-    const applicationLimit = isAdminQuery ? 2000 : undefined;
+    const jobLimit = isAdminQuery ? this.ADMIN_JOB_LIMIT : undefined;
+    const applicationLimit = isAdminQuery ? this.ADMIN_APPLICATION_LIMIT : undefined;
+    global.logger.info("Date range calculated [Service]", {
+      methodName: this.getHiringTrend.name,
+      rangeInDays,
+      fromDate: new Date(fromDate!).toISOString(),
+      toDate: new Date(toDate!).toISOString(),
+    });
 
     global.logger.info("Fetching hiring trend data", {
+      methodName: this.getHiringTrend.name,
       isAdminQuery,
       jobLimit,
       applicationLimit,
@@ -417,21 +443,24 @@ class AnalyticsService {
 
     try {
       //OPTIMIZATION: Sequential fetching - Fetch jobs FIRST
-      global.logger.info("Fetching jobs for hiring trend [Service]");
+      global.logger.info("Fetching jobs for hiring trend [Service]", {
+        methodName: this.getHiringTrend.name,
+      });
       const jobsStartTime = Date.now();
 
       jobs = await this.getAllJobsForAnalytics(
         {
           companyId: params.companyId,
           corporateRecruiterUserId: params.corporateRecruiterUserId,
-          fromDate: effectiveFrom,
-          toDate: effectiveTo,
+          fromDate: fromDate!,
+          toDate: toDate!,
           jobStatusFilter: params.jobStatusFilter,
         },
         jobLimit //Pass the limit
       );
 
       global.logger.info("Jobs fetched [Service]", {
+        methodName: this.getHiringTrend.name,
         count: jobs.length,
         durationMs: Date.now() - jobsStartTime,
         limitReached: jobLimit && jobs.length >= jobLimit,
@@ -443,7 +472,9 @@ class AnalyticsService {
       }
 
       // OPTIMIZATION: Fetch applications SECOND
-      global.logger.info("Fetching applications for hiring trend [Service]");
+      global.logger.info("Fetching applications for hiring trend [Service]", {
+        methodName: this.getHiringTrend.name,
+      });
       const appsStartTime = Date.now();
 
       // Applications by createdAt for "applications" trend
@@ -451,39 +482,43 @@ class AnalyticsService {
         {
           companyId: params.companyId,
           corporateRecruiterUserId: params.corporateRecruiterUserId,
-          fromDate: effectiveFrom,
-          toDate: effectiveTo,
+          fromDate: fromDate!,
+          toDate: toDate!,
         },
         applicationLimit // Pass the limit
       );
 
       global.logger.info("Applications fetched [Service]", {
+        methodName: this.getHiringTrend.name,
         count: applications.length,
         durationMs: Date.now() - appsStartTime,
         limitReached: applicationLimit && applications.length >= applicationLimit,
       });
 
       // Applications by updatedAt for "hires/joined" trend
-      global.logger.info("Fetching applications for hires trend [Service]");
+      global.logger.info("Fetching applications for hires trend [Service]", {
+        methodName: this.getHiringTrend.name,
+      });
       const hiresAppsStartTime = Date.now();
 
       applicationsForHires = await this.getAllApplicationsForCompany(
         {
           companyId: params.companyId,
           corporateRecruiterUserId: params.corporateRecruiterUserId,
-          updatedAtFromDate: effectiveFrom,
-          updatedAtToDate: effectiveTo,
+          updatedAtFromDate: fromDate!,
+          updatedAtToDate: toDate!,
         },
         applicationLimit // Pass the limit
       );
 
       global.logger.info("Applications for hires fetched [Service]", {
+        methodName: this.getHiringTrend.name,
         count: applicationsForHires.length,
         durationMs: Date.now() - hiresAppsStartTime,
-        limitReached: applicationLimit && applicationsForHires.length >= applicationLimit,
       });
     } catch (error) {
       global.logger.error("Error fetching hiring trend data [Service]", {
+        methodName: this.getHiringTrend.name,
         error,
         jobsFetched: jobs.length,
         applicationsFetched: applications.length,
@@ -494,7 +529,7 @@ class AnalyticsService {
     const bucketMap: Map<string, HiringTrendPoint> = new Map();
 
     const addToBucket = (timestampMs: number, updater: (point: HiringTrendPoint) => void) => {
-      if (timestampMs < effectiveFrom || timestampMs > effectiveTo) {
+      if (timestampMs < fromDate! || timestampMs > toDate!) {
         return;
       }
 
@@ -545,10 +580,7 @@ class AnalyticsService {
         continue;
       }
 
-      if (
-        app.status === JobApplicationStatus.HIRED ||
-        app.status === JobApplicationStatus.JOINED
-      ) {
+      if (app.status === JobApplicationStatus.HIRED || app.status === JobApplicationStatus.JOINED) {
         addToBucket(updatedAtMs, (point) => {
           point.hires += 1;
         });
@@ -679,13 +711,25 @@ class AnalyticsService {
    *
    * Fetches all applications for a given job.
    */
-  private async getAllApplicationsForJob(jobId: string): Promise<DbUserJobApplicationDto[]> {
+  private async getAllApplicationsForJob(
+    jobId: string,
+    params?: {
+      fromDate?: number;
+      toDate?: number;
+      updatedAtFromDate?: number;
+      updatedAtToDate?: number;
+    }
+  ): Promise<DbUserJobApplicationDto[]> {
     return paginateThroughResults<DbUserJobApplicationDto>(async (lastKey) => {
       const filter: UserJobApplicationListingFilterOptions = {
         jobId,
         pageSize: APP_CONSTANTS.PAGE_LENGTH_DEFAULT,
         lastKey,
         sortOrder: SortOrderTypeEnum.DESCENDING,
+        fromDate: params?.fromDate,
+        toDate: params?.toDate,
+        updatedAtFromDate: params?.updatedAtFromDate,
+        updatedAtToDate: params?.updatedAtToDate,
       };
 
       return await userJobApplicationDao.getJobApplicationsByFilterOptions(filter);
@@ -717,7 +761,6 @@ class AnalyticsService {
           updatedAtFromDate: params.fromDate,
           updatedAtToDate: params.toDate,
         };
-        console.log(`Fetching applications for onboarding pipeline with filter: ${JSON.stringify(filter)}`);
         return await userJobApplicationDao.getJobApplicationsByFilterOptions(filter);
       }
     );
