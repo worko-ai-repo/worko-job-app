@@ -320,6 +320,7 @@ export interface UserJobApplicationCommonUpdateDto {
   offerLetterIssueRaisedDetails: UserJobApplicationDbOfferLetterIssueRaisedDetailDto[];
   joiningDateDetails: UserJobApplicationDbJoinedDateDetailDto[];
   rejectedForJobClose: UserJobApplicationDbRejectedForJobClose;
+  isFindMatchingScoreInProgress: boolean;
 }
 
 /**
@@ -504,3 +505,8 @@ export interface UserJobApplicationDbRejectedForJobClose {
   reason?: string;
   userComment?: string;
 };
+
+export interface UserJobApplicationFindMatchingScoreApiDto {
+  userJobApplicationId: string;
+  candidateParsedCvId: string;
+}

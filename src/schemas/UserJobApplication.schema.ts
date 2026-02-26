@@ -472,3 +472,15 @@ export const userJobApplicationApplicantUpdateValidation = Joi.object({
     "string.empty": "The Applicant name field should not be empty.",
   }),
 });
+
+export const userJobApplicationFindMatchingScoreApiValidationDto = Joi.object({
+  userJobApplicationId: Joi.string().required().messages({
+    "any.required": "User job application ID is required",
+    "string.empty": "User job application ID should not be empty",
+  }),
+
+  candidateParsedCvId: Joi.string().required().messages({
+    "any.required": "Candidate parsed CV ID is required",
+    "string.empty": "Candidate parsed CV ID should not be empty",
+  }),
+})

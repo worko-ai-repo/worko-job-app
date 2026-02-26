@@ -2,6 +2,8 @@
 // Import aws sdk
 import { DeleteScheduleCommandOutput } from "@aws-sdk/client-scheduler";
 
+import { APIGatewayProxyResult } from "aws-lambda";
+
 // import google cloud firestore
 import { DocumentData, QuerySnapshot } from "@google-cloud/firestore";
 
@@ -20,7 +22,7 @@ import { awsSchedulerClientLibrary } from "../configs/aws-sdk.config";
 import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 
 // import dtos
-import { UserJobApplicationApplicantUpdateApiDTO, UserJobApplicationBulkUpdateApiDTO, UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationDocumentMappingDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
+import { UserJobApplicationApplicantUpdateApiDTO, UserJobApplicationBulkUpdateApiDTO, UserJobApplicationBulkUploadDto, UserJobApplicationCommonUpdateDto, UserJobApplicationCreateApiDTO, UserJobApplicationCreateDto, UserJobApplicationDisplayToCorporateApiDTO, UserJobApplicationDocumentMappingDto, UserJobApplicationFindMatchingScoreApiDto, UserJobApplicationHiredFromOtherPortalDTO, UserJobApplicationInternalUpdateDto, UserJobApplicationListingFilterOptions, UserJobApplicationRequestFeedbackApiDTO, UserJobApplicationUpdateApiDTO } from "../dtos/UserJobApplication.dto";
 import { EntityBulkUpdateMetricDto, PaginatedResultsWithMatchingConditionsInternalResponse, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
 import { EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_ADDITIONAL_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_DOCUMENT_REVISION_REQUESTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_JOINED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_OFFER_SENT_STATUS_UPDATE, EmailTemplatePlaceholderCAND_JOB_APPLICATION_REVISED_OFFER_SENT, EmailTemplatePlaceholderCAND_JOB_CLOSED_UPDATE_STATUS, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_CV_DOWNLOADED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_HIRED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_REJECTED_STATUS_UPDATE, EmailTemplatePlaceholderCAND_RECEIVED_JOB_APPLICATION_UNDER_EVALUATION_STATUS_UPDATE, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_NOTIFICATION, EmailTemplatePlaceholderCORP_RECEIVED_JOB_APPLICATION_STATUS_UPDATE_NOTIFICATION, EmailTemplatePlaceholderCORP_REQUEST_FEEDBACK_NOTIFICATION } from "../dtos/EmailTemplatePlaceholder.dto";
 import { ScheduleBlacklistedUserJobApplicationStatusUpdateToRejecteInputDto, ScheduleJobCreateDto, ScheduleJobInternalUpdateDto, ScheduleUnderCoolingPeriodUpdateInputDto, ScheduleUserJobApplicationStatusUpdateToRejectedInputDto } from "../dtos/ScheduleJob.dto";
@@ -101,6 +103,7 @@ import { EmailPlaceholderDetailsToJobPosterType } from "../types/EmailTemplatePl
 // import utils
 import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
+import { SourceTypeMatchingScoreEntityEnum } from "../enums/InvokeLambda.enum";
 
 /**
  * UserJobApplicationService
@@ -134,27 +137,9 @@ class UserJobApplicationService {
     return userJobApplicationDao.updateJobApplicationByIdAndPrimaryEmail(id, email, updateData);
   }
 
-  /**
-   * scheduleUserJobApplicationStatusUpdateToRejected
-   *
-   * Schedules a delayed job to update the status of a user's job application.
-   *
-   * This function logs the attempt to schedule a job application status update
-   * and calculates the time delay based on predefined constants. It prepares
-   * the necessary input details and payload for the scheduled job, which will
-   * update the job application status to REJECTED after a specified number of
-   * hours. It then attempts to create the scheduled job and logs the outcome.
-   *
-   * @param {string} userJobApplicationId - The unique identifier of the user's job application.
-   * @param {string} userEmail - The email address of the user associated with the job application.
-   * @param {string} userId - The unique identifier of the user.
-   * @returns {Promise<boolean>} A promise that resolves to `true` if the scheduled job
-   *   was successfully created, or `false` if the creation failed.
-   */
   async scheduleUserJobApplicationStatusUpdateToRejected(
     userJobApplicationId: string,
     userEmail: string,
-    userId: string
   ): Promise<boolean> {
     // Log
     global.logger.info(
@@ -174,7 +159,6 @@ class UserJobApplicationService {
       {
         userJobApplicationId,
         userEmail,
-        userId,
       };
 
     // Prepare the payload for the scheduled job
@@ -231,7 +215,6 @@ class UserJobApplicationService {
   async scheduleBlacklistedUserJobApplicationStatusUpdate(
     userJobApplicationId: string,
     userEmail: string,
-    userId: string
   ): Promise<boolean> {
     // Log
     global.logger.info(
@@ -249,7 +232,6 @@ class UserJobApplicationService {
       {
         userJobApplicationId,
         userEmail,
-        userId,
       };
 
     // Prepare the payload for the scheduled job
@@ -444,12 +426,10 @@ class UserJobApplicationService {
   async validateUserJobApplicationMatchingScore(
     userJobApplicationId: string,
     userEmail: string,
-    userId: string
   ): Promise<boolean> {
     global.logger.debug(`Validated User matching score`, {
       userJobApplicationId,
       userEmail,
-      userId,
     });
 
     // Get the job application details
@@ -468,12 +448,11 @@ class UserJobApplicationService {
       await this.scheduleUserJobApplicationStatusUpdateToRejected(
         userJobApplicationId,
         userEmail,
-        userId
       );
     } else if (matchingScore >= MIN && matchingScore <= MAX) {
       // Fetch candidate details using user ID
       const candidateDetails: DbUserDetailDto =
-        await UserDetailService.getUserByIdOne(userId);
+        await UserDetailService.getUserDetailsByEmail(userEmail);
 
       // Send email notification to all corporate users who is currently working on that particular company about the new job application
       await this.sendEmailToCorporateUsersOnNewJobApplication(
@@ -1121,7 +1100,6 @@ class UserJobApplicationService {
       ? this.scheduleBlacklistedUserJobApplicationStatusUpdate(
         jobApplicationDetails.id,
         emailId,
-        candidateDetails.id
       )
       : InvokeLambdaService.triggerMatchingScoreCalculation(
         emailId,
@@ -1145,8 +1123,110 @@ class UserJobApplicationService {
     // Return created job application details
     return jobApplicationDetails;
   }
+  
+  async findMatchingScoreUserJobApplication(validatedReqBody: UserJobApplicationFindMatchingScoreApiDto): Promise<boolean> {
+    const {
+      actionByUserId,
+      actionByCorporateUserId,
+    } = getActionByUserId();
 
+    const existingUserJobApplication: DbUserJobApplicationDto | undefined =
+      await this.getJobApplicationById(validatedReqBody.userJobApplicationId);
+    if(!existingUserJobApplication) {
+      global.logger.error(`Failed to find matching score, User Job Application not found.`, {
+        methodName: this.findMatchingScoreUserJobApplication.name,
+        validatedReqBody,
+        existingUserJobApplication,
+      });
+      throw new BaseError("Failed to find matching score.", HttpStatusCode.INTERNAL_SERVER_ERROR_500);
+    }
 
+    const applicantEmail: string = getEmailFromPK(existingUserJobApplication.PK)
+
+    if(existingUserJobApplication.candidateParsedCvId !== validatedReqBody.candidateParsedCvId) {
+      global.logger.error(`Failed to find matching score, Candidate parsed cv not matched.`, {
+        methodName: this.findMatchingScoreUserJobApplication.name,
+        validatedReqBody,
+        existingUserJobApplication,
+      });
+      throw new BaseError("Failed to find matching score.", HttpStatusCode.INTERNAL_SERVER_ERROR_500);
+    }
+
+    if(existingUserJobApplication?.matchingScore) {
+      global.logger.error(`Matching score already calculated.`, {
+        methodName: this.findMatchingScoreUserJobApplication.name,
+        validatedReqBody,
+        userJobApplicationId: validatedReqBody.userJobApplicationId,
+        existingUserJobApplicationMatchingScore: existingUserJobApplication.matchingScore,
+      });
+      throw new BaseError("Matching score already calculated.", HttpStatusCode.CONFLICT_409);
+    }
+
+    const existingCandidateParsedCv: DbCandidateParsedCvDto | undefined = await candidateParsedCvServiceObj.getCandidateParsedCvById(validatedReqBody.candidateParsedCvId);
+    if(!existingCandidateParsedCv) {
+      global.logger.error(`Candidate parsed cv not found.`, {
+        methodName: this.findMatchingScoreUserJobApplication.name,
+        validatedReqBody,
+        existingCandidateParsedCv
+      });
+      throw new BaseError("Failed to find matching score.", HttpStatusCode.INTERNAL_SERVER_ERROR_500);
+    }
+
+    const updateLookupMatchScore = await this.updateJobApplicationByIdAndPrimaryEmail(
+      validatedReqBody.userJobApplicationId,
+      applicantEmail,
+      {
+        isFindMatchingScoreInProgress: true,
+      }
+    );
+
+    const {
+      cvAwsS3BucketName,
+      cvAwsS3FilePath,
+      cvAwsS3FileName,
+    } = existingCandidateParsedCv;
+
+    const invokedMatchingScoreDetails: APIGatewayProxyResult = await InvokeLambdaService.triggerSourceTypeJdResumeMatchingScore(
+      {
+        sourceTypeMatchingScoreEntity: SourceTypeMatchingScoreEntityEnum.USER_JOB_APPLICATION,
+        cvAwsS3ResourceType: existingCandidateParsedCv.cvAwsS3ResourceType,
+        applicantEmail, // This email will be used to find existingUserJobApplication
+        userJobApplicationId: validatedReqBody.userJobApplicationId,
+        actionByCorporateUserId,
+        actionByUserId,
+        jobId: existingUserJobApplication.jobId, 
+        cvAwsS3BucketName,
+        cvAwsS3FilePath,
+        cvAwsS3FileName,
+        USER_PK: existingCandidateParsedCv.cvAwsS3ResourceType === CandidateParsedCvAwsS3ResourceTypeEnum.USER_RESUME ? `USR#EML#${existingCandidateParsedCv.email}`: undefined
+      }
+    );
+    if(invokedMatchingScoreDetails.statusCode !== HttpStatusCode.ACCEPTED_202) {
+      global.logger.error(`Failed to find matching score`, {
+        methodName: this.findMatchingScoreUserJobApplication.name,
+        invokedMatchingScoreDetails,
+      });
+      throw new BaseError("Failed to find matching score", invokedMatchingScoreDetails.statusCode);
+    }
+
+    if(invokedMatchingScoreDetails.statusCode === HttpStatusCode.ACCEPTED_202) {
+      global.logger.info(`Matching score processing started`, {
+        methodName: this.findMatchingScoreUserJobApplication.name,
+        invokedMatchingScoreDetails,
+      });
+
+      return true;
+    } else {
+      const updateLookupMatchScore = await this.updateJobApplicationByIdAndPrimaryEmail(
+        validatedReqBody.userJobApplicationId,
+        applicantEmail,
+        {
+          isFindMatchingScoreInProgress: false,
+        }
+      );
+      return false;
+    }
+  }
 
   /**
    * getJobApplicationById
@@ -1254,14 +1334,12 @@ class UserJobApplicationService {
   async prepareUserJobApplicationUpdateDtoToRejectAfterXHours(
     userJobApplicationId: string,
     userEmail: string,
-    userId: string
   ): Promise<boolean> {
     // logger
     global.logger.info("Prepare User Job Application Update Dto [Service]", {
       methodName: this.prepareJobApplicationsWithUserDetails.name,
       userJobApplicationId,
       userEmail,
-      userId,
     });
 
     // Fetch job application details using job application ID and log error if not found
@@ -1431,7 +1509,6 @@ class UserJobApplicationService {
   async performBlacklistedUserJobApplicationStatusUpdate(
     userJobApplicationId: string,
     userEmail: string,
-    userId: string
   ): Promise<boolean> {
     const userJobApplicationDetailsQueryResponse: QueryResponse<DbUserJobApplicationDto> =
       await userJobApplicationDao.getJobApplicationById(userJobApplicationId);

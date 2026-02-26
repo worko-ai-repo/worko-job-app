@@ -48,4 +48,19 @@ export enum InvokeLambdaHandlerEventTypeEnum {
    * update `candidateJobRecommendations` and `candidateJobAlerts` collections in firestore.
    */
   JOB_STATUS_CAND_JOB_RECOMMEND_ALERT_UPDATE = "JOB_STATUS_CAND_JOB_RECOMMEND_ALERT_UPDATE",
+
+  /**
+   * @description Whenever `worko-admin` move the candidate(agency submitted candidate or sourcetype candidate) to applicant page
+   * then and matching score is already found then this lambda is triggerred to perform send email or reject job application activities.
+   */
+  JOB_APPLICATION_VALIDATE_MATCHING_SCORE = "JOB_APPLICATION_VALIDATE_MATCHING_SCORE",
+}
+
+export enum SourceTypeMatchingScoreEntityEnum {
+  /**
+   * @description
+   *  1. Whenever a candidate is moved to applicant page without calculating matching score then
+   *  in ui we are giving a button to find match score against particular job application, so this source type will be used
+   */
+  USER_JOB_APPLICATION = "USER_JOB_APPLICATION",
 }

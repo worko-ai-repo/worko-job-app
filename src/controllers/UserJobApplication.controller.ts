@@ -10,6 +10,7 @@ import {
   UserJobApplicationBulkUpdateApiDTO,
   UserJobApplicationCreateApiDTO,
   UserJobApplicationDisplayToCorporateApiDTO,
+  UserJobApplicationFindMatchingScoreApiDto,
   UserJobApplicationHiredFromOtherPortalApiDTO,
   UserJobApplicationHiredFromOtherPortalDTO,
   UserJobApplicationListingFilterOptions,
@@ -49,6 +50,7 @@ import {
   userJobApplicationDisplayToCorporateValidation,
   userJobApplicationBulkUpdateApiDtoValidation,
   userJobApplicationApplicantUpdateValidation,
+  userJobApplicationFindMatchingScoreApiValidationDto,
 } from "../schemas/UserJobApplication.schema";
 
 // import types
@@ -115,6 +117,38 @@ class UserJobApplicationController {
       next(error);
     }
   };
+
+  findMatchingScoreUserJobApplication = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const reqBody: UserJobApplicationFindMatchingScoreApiDto = req.body;
+      const { error: reqBodyError, value: validatedReqBody } =
+        userJobApplicationFindMatchingScoreApiValidationDto.validate(reqBody, {
+          abortEarly: false,
+        });
+
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+      const response: boolean = await userJobApplicationServiceObj.findMatchingScoreUserJobApplication(
+        validatedReqBody
+      );
+      if(!response) {
+        throw new BaseError("Failed to find matching score.", HttpStatusCode.INTERNAL_SERVER_ERROR_500);
+      }
+
+      res.status(HttpStatusCode.ACCEPTED_202).json({ message: "Matching score process initiated." });
+    } catch (error) {
+      global.logger.error(`Find Matching Score User Job Application [Controller]`, {
+        methodName: this.findMatchingScoreUserJobApplication.name,
+        error,
+      })
+      next(error);
+    }
+  }
 
   /**
    * getJobApplicationScore
