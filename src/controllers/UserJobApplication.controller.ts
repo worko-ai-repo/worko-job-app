@@ -269,6 +269,7 @@ class UserJobApplicationController {
         userJobApplicationFilterDtoValidation.validate(
           userJobApplicationRecordListingFilterRequest,
           {
+            convert: true, // This will allow Joi to convert the types (e.g., string to number i.e fromDate) which is passed as query params to the correct type defined in the schema
             abortEarly: false,
           }
         );

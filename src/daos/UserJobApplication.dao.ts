@@ -406,7 +406,7 @@ class UserJobApplicationDao implements BaseDao {
       query = query.where("referAndEarnId").eq(jobApplicationRequestBody.referAndEarnId);
     }
 
-    // Apply date range filter if provided
+    // Apply createdAt date range filter if provided
     if (
       jobApplicationRequestBody.fromDate ||
       jobApplicationRequestBody.toDate
@@ -417,6 +417,26 @@ class UserJobApplicationDao implements BaseDao {
         }
         if (jobApplicationRequestBody.toDate) {
           condition.where("createdAt").le(jobApplicationRequestBody.toDate);
+        }
+        return condition;
+      });
+    }
+
+    // Apply updatedAt date range filter if provided
+    if (
+      jobApplicationRequestBody.updatedAtFromDate ||
+      jobApplicationRequestBody.updatedAtToDate
+    ) {
+      query = query.and().parenthesis((condition) => {
+        if (jobApplicationRequestBody.updatedAtFromDate) {
+          condition
+            .where("updatedAt")
+            .ge(jobApplicationRequestBody.updatedAtFromDate);
+        }
+        if (jobApplicationRequestBody.updatedAtToDate) {
+          condition
+            .where("updatedAt")
+            .le(jobApplicationRequestBody.updatedAtToDate);
         }
         return condition;
       });

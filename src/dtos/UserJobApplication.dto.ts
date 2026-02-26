@@ -71,6 +71,22 @@ export interface UserJobApplicationListingFilterOptions extends RecordListingFil
    * Default: false - Existing entities are not affected
    */
   includeInterviewDetails?: boolean;
+
+  /**
+   * updatedAtFromDate
+   *
+   * When provided, filters applications whose `updatedAt` is greater than
+   * or equal to this timestamp (in milliseconds).
+   */
+  updatedAtFromDate?: number;
+
+  /**
+   * updatedAtToDate
+   *
+   * When provided, filters applications whose `updatedAt` is less than
+   * or equal to this timestamp (in milliseconds).
+   */
+  updatedAtToDate?: number;
 }
 
 /**
@@ -92,6 +108,22 @@ export interface UserJobApplicationListingFilterRequestDTO extends RecordListing
    * Default: false - Existing entities are not affected
    */
   includeInterviewDetails?: boolean;
+
+  /**
+   * updatedAtFromDate
+   *
+   * When provided, filters applications whose `updatedAt` is greater than
+   * or equal to this timestamp (in milliseconds).
+   */
+  updatedAtFromDate?: number;
+
+  /**
+   * updatedAtToDate
+   *
+   * When provided, filters applications whose `updatedAt` is less than
+   * or equal to this timestamp (in milliseconds).
+   */
+  updatedAtToDate?: number;
 }
 
 /**

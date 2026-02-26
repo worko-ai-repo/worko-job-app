@@ -413,6 +413,7 @@ class AnalyticsService {
 
     let jobs: DbCompanyJobDto[] = [];
     let applications: DbUserJobApplicationDto[] = [];
+    let applicationsForHires: DbUserJobApplicationDto[] = [];
 
     try {
       //OPTIMIZATION: Sequential fetching - Fetch jobs FIRST
@@ -445,6 +446,7 @@ class AnalyticsService {
       global.logger.info("Fetching applications for hiring trend [Service]");
       const appsStartTime = Date.now();
 
+      // Applications by createdAt for "applications" trend
       applications = await this.getAllApplicationsForCompany(
         {
           companyId: params.companyId,
@@ -459,6 +461,26 @@ class AnalyticsService {
         count: applications.length,
         durationMs: Date.now() - appsStartTime,
         limitReached: applicationLimit && applications.length >= applicationLimit,
+      });
+
+      // Applications by updatedAt for "hires/joined" trend
+      global.logger.info("Fetching applications for hires trend [Service]");
+      const hiresAppsStartTime = Date.now();
+
+      applicationsForHires = await this.getAllApplicationsForCompany(
+        {
+          companyId: params.companyId,
+          corporateRecruiterUserId: params.corporateRecruiterUserId,
+          updatedAtFromDate: effectiveFrom,
+          updatedAtToDate: effectiveTo,
+        },
+        applicationLimit // Pass the limit
+      );
+
+      global.logger.info("Applications for hires fetched [Service]", {
+        count: applicationsForHires.length,
+        durationMs: Date.now() - hiresAppsStartTime,
+        limitReached: applicationLimit && applicationsForHires.length >= applicationLimit,
       });
     } catch (error) {
       global.logger.error("Error fetching hiring trend data [Service]", {
@@ -502,21 +524,35 @@ class AnalyticsService {
       });
     }
 
-    // Applications and hires per period
+    // Applications per period (bucketed by createdAt)
     for (const app of applications) {
       const createdAtMs = getEntityCreatedAt(app);
       if (createdAtMs === undefined) continue;
 
       addToBucket(createdAtMs, (point) => {
         point.applications += 1;
-
-        if (
-          app.status === JobApplicationStatus.HIRED ||
-          app.status === JobApplicationStatus.JOINED
-        ) {
-          point.hires += 1;
-        }
       });
+    }
+
+    // Hires / joined per period (bucketed by updatedAt)
+    for (const app of applicationsForHires) {
+      const updatedAtRaw = (app as any).updatedAt;
+      if (!updatedAtRaw) {
+        continue;
+      }
+      const updatedAtMs = new Date(updatedAtRaw).getTime();
+      if (Number.isNaN(updatedAtMs)) {
+        continue;
+      }
+
+      if (
+        app.status === JobApplicationStatus.HIRED ||
+        app.status === JobApplicationStatus.JOINED
+      ) {
+        addToBucket(updatedAtMs, (point) => {
+          point.hires += 1;
+        });
+      }
     }
 
     const points: HiringTrendPoint[] = Array.from(bucketMap.entries())
@@ -608,6 +644,8 @@ class AnalyticsService {
       corporateRecruiterUserId?: string;
       fromDate?: number;
       toDate?: number;
+      updatedAtFromDate?: number;
+      updatedAtToDate?: number;
     },
     maxItems?: number // NEW: Optional limit
   ): Promise<DbUserJobApplicationDto[]> {
@@ -623,6 +661,8 @@ class AnalyticsService {
           sortOrder: SortOrderTypeEnum.DESCENDING,
           fromDate: params.fromDate,
           toDate: params.toDate,
+          updatedAtFromDate: params.updatedAtFromDate,
+          updatedAtToDate: params.updatedAtToDate,
         };
 
         // Note: corporateRecruiterUserId filtering is not directly supported by UserJobApplicationListingFilterOptions
@@ -670,14 +710,14 @@ class AnalyticsService {
         const filter: UserJobApplicationListingFilterOptions = {
           companyId: params.companyId,
           jobId: params.jobId,
-          status: params.status,
+          status: params.status ?? JobApplicationStatus.JOINED,
           pageSize: APP_CONSTANTS.PAGE_LENGTH_DEFAULT,
           lastKey,
           sortOrder: SortOrderTypeEnum.DESCENDING,
-          fromDate: params.fromDate,
-          toDate: params.toDate,
+          updatedAtFromDate: params.fromDate,
+          updatedAtToDate: params.toDate,
         };
-
+        console.log(`Fetching applications for onboarding pipeline with filter: ${JSON.stringify(filter)}`);
         return await userJobApplicationDao.getJobApplicationsByFilterOptions(filter);
       }
     );
