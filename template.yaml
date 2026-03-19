@@ -1,0 +1,546 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Worko Job App
+
+Parameters:
+  Stage:
+    Type: String
+  AppAwsAccountId:
+    Type: String
+  AppAwsVpc:
+    Type: String
+  AppAwsSecurityGroup:
+    Type: String
+  AppAwsSubnet1:
+    Type: String
+  AppAwsSubnet2:
+    Type: String
+  AppSlsRegion:
+    Type: String
+  AppAwsCognitoUserPoolId:
+    Type: String
+  AppAwsEventBridgeScheduleInvokeLambdaRole:
+    Type: String
+  AppAwsBedrockModelName:
+    Type: String
+  AppAwsBedrockServiceRole:
+    Type: String
+  AppAwsSecretsManagerGcpFirestoreArnSecret:
+    Type: String
+  AppAwsSecretsManagerGcpAiPlatformArnSecret:
+    Type: String
+  AppAwsS3BucketWorkoCorporate:
+    Type: String
+  AppAwsS3BucketWorkoApp:
+    Type: String
+  AppAwsS3BucketWorkoUiCompLogo:
+    Type: String
+  AppAwsS3BucketWorkoBatchInference:
+    Type: String
+  AppWorkoFrontendBaseUrl:
+    Type: String
+  AppOpensearchEndpoint:
+    Type: String
+  AppOpensearchService:
+    Type: String
+  AppAwsS3VectorIndexName:
+    Type: String
+  AppAwsS3VectorJobCrudLambdaName:
+    Type: String
+  AppAwsS3VectorJobSearchLambdaName:
+    Type: String
+  
+Conditions:
+  IsProd: !Equals [!Ref Stage, prod]
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    MemorySize: 512
+    Environment:
+      Variables:
+        # App/Stage Config
+        APP_STAGE: !Ref Stage
+        TZ: "GMT"
+        APP_SLS_STAGE: !Ref Stage
+        APP_SLS_REGION: !Ref AppSlsRegion
+        APP_AWS_REGION: !Ref AppSlsRegion
+        APP_AWS_ACCOUNT_ID: !Ref AppAwsAccountId
+        
+        # VPC/Networking
+        APP_AWS_VPC: !Ref AppAwsVpc
+        APP_AWS_SECURITY_GROUP: !Ref AppAwsSecurityGroup
+        APP_AWS_SUBNET1: !Ref AppAwsSubnet1
+        APP_AWS_SUBNET2: !Ref AppAwsSubnet2
+
+        # AWS S3 Configurations
+        APP_AWS_S3_BUCKET_WORKO_APP: !Ref AppAwsS3BucketWorkoApp
+        APP_AWS_S3_BUCKET_WORKO_CORPORATE: !Ref AppAwsS3BucketWorkoCorporate
+        APP_AWS_S3_BUCKET_WORKO_BATCH_INFERENCE: !Ref AppAwsS3BucketWorkoBatchInference
+        APP_AWS_S3_BUCKET_WORKO_UI_COMP_LOGO: !Ref AppAwsS3BucketWorkoUiCompLogo
+
+        # GCP STORAGE Configurations
+        APP_GCP_STORAGE_BUCKET_WORKO_BATCH_INFERENCE: !Sub "worko-batch-inference-file-${Stage}"
+
+        # AWS SQS Configurations
+        APP_AWS_SQS_QUEUE_NAME: "worko-job-app-event-queue"
+
+        # AWS EVENT BRIDGE Configurations
+        APP_AWS_EVENT_BRIDGE_SCHEDULE_INVOKE_LAMBDA_ROLE: !Ref AppAwsEventBridgeScheduleInvokeLambdaRole 
+
+        # WhatsApp Cloud Api and Webhook Credentials
+        APP_WHATSAPP_CLOUD_API_BASE_URL: "https://graph.facebook.com"
+        APP_WHATSAPP_CLOUD_API_BUSINESS_ACCOUNT_ID:  "497617343443104" # Previously "461597530360541"
+        APP_WHATSAPP_CLOUD_API_FROM_PHONE_NUMBER_ID: "496822040188825"
+        APP_WHATSAPP_CLOUD_API_FROM_PHONE_NUMBER: "919811929282"
+        APP_WHATSAPP_CLOUD_API_ACCESS_TOKEN: "REDACTED"
+        APP_WHATSAPP_WEBHOOK_VERIFY_TOKEN: "workoAuth" #@todo : Change the verify token 
+
+        # Application Logging Configurations
+        APP_LOGGER_LOG_FORMAT: "json"
+
+        # Worko Base URL
+        APP_WORKO_FRONTEND_BASE_URL: !Ref AppWorkoFrontendBaseUrl
+
+        # AWS COGNITO
+        APP_AWS_COGNITO_USER_POOL_ID: !Ref AppAwsCognitoUserPoolId
+
+        # WhatsAppBusinessPartner Cloud Api 
+        APP_WHATSAPP_BUSINESS_PARTNER_CLOUD_API_BASE_URL: "https://partnersv1.pinbot.ai/v3" # End point Url of Send Template Message API 
+        APP_WHATSAPP_BUSINESS_PARTNER_CLOUD_API_KEY: "REDACTED" # Api Key provided by WHATSAPP BUSINESS PARTNER team 
+        APP_WHATSAPP_BUSINESS_PARTNER_CLOUD_API_FROM_PHONE_NUMBER_ID: "496822040188825" # Phone number id for `+91 9811929282` 
+        APP_WHATSAPP_BUSINESS_PARTNER_CLOUD_API_FROM_PHONE_NUMBER: "919811929282" 
+
+        # AWS Opensearch 
+        APP_OPENSEARCH_ENDPOINT: !Ref AppOpensearchEndpoint
+        APP_OPENSEARCH_SERVICE: !Ref AppOpensearchService # 'aoss' for OpenSearch Serverless
+
+        # Fantastic External Job API
+        APP_FANTASTIC_JOB_API_BASE_URL: "https://active-jobs-db.p.rapidapi.com"
+        APP_FANTASTIC_JOB_API_HOST: "active-jobs-db.p.rapidapi.com"
+        APP_FANTASTIC_JOB_API_KEY: "REDACTED"
+
+        # BrightData External Job Api
+        APP_BRIGHT_DATA_JOB_API_BASE_URL: "https://api.brightdata.com/datasets/v3"
+        APP_BRIGHT_DATA_JOB_DATASET_ID: "gd_lpfll7v5hcqtkxl6l"
+        APP_BRIGHT_DATA_JOB_AUTH_TOKEN: "REDACTED"
+
+        # AWS Bedrock 
+        APP_AWS_BEDROCK_MODEL_NAME: !Ref AppAwsBedrockModelName 
+        APP_AWS_BEDROCK_SERVICE_ROLE: !Ref AppAwsBedrockServiceRole
+
+        # Worko Social Profile Details
+        APP_WORKO_SOCIAL_PROFILE_INSTAGRAM_URL: "https://instagram.com/worko_ai"
+        APP_WORKO_SOCIAL_PROFILE_INSTAGRAM_LOGO_URL: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/2048px-Instagram_icon.png"
+        APP_WORKO_SOCIAL_PROFILE_LINKEDIN_URL: "https://www.linkedin.com/company/worko"
+        APP_WORKO_SOCIAL_PROFILE_LINKEDIN_LOGO_URL: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/600px-LinkedIn_logo_initials.png"
+
+        # AWS S3 Vector Configurations
+        APP_AWS_S3_VECTOR_INDEX_NAME: !Ref AppAwsS3VectorIndexName
+        APP_AWS_S3_VECTOR_JOB_CRUD_LAMBDA_NAME: !Ref AppAwsS3VectorJobCrudLambdaName
+        APP_AWS_S3_VECTOR_JOB_SEARCH_LAMBDA_NAME: !Ref AppAwsS3VectorJobSearchLambdaName
+
+        # LOGOS
+        APP_WORKO_LOGO_URL: "https://worko.ai/assets/logo-text-Dfe5k43I.webp"
+
+        # Aws Secrets manager
+        APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM: !Sub "GCP-aiplatform-secrect-${Stage}"
+        APP_AWS_SECRETS_MANAGER_GCP_AI_PLATFORM_ARN_SECRET: !Ref AppAwsSecretsManagerGcpAiPlatformArnSecret
+        APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE: !Sub "GCP-firestore-secret-${Stage}"
+        APP_AWS_SECRETS_MANAGER_GCP_FIRESTORE_ARN_SECRET: !Ref AppAwsSecretsManagerGcpFirestoreArnSecret
+
+        # GCP Ai Platform Configuration
+        APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME: "text-embedding-004"
+        APP_GCP_AI_PLATFORM_EMBEDDING_LOCATION: "asia-south1"
+        APP_GCP_AI_PLATFORM_BATCH_INFERENCE_MODEL_NAME: "gemini-3-pro-preview"
+        APP_GCP_AI_PLATFORM_BATCH_INFERENCE_LOCATION: "global"
+
+        # GCP Project details
+        APP_GCP_PROJECT_ID: !Sub "worko-${Stage}"
+
+Resources:
+  ##########################################################################
+  #  IAM Role               
+  ##########################################################################
+  WorkoJobAppExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "worko-job-app-${Stage}-${AppSlsRegion}-lambdaRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "dynamodb:DescribeTable"
+                  - "dynamodb:Query"
+                  - "dynamodb:GetItem"
+                  - "dynamodb:PutItem"
+                  - "dynamodb:UpdateItem"
+                  - "dynamodb:DeleteItem"
+                  - "dynamodb:BatchGetItem"
+                  - "dynamodb:BatchWriteItem"
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${AppSlsRegion}:${AppAwsAccountId}:table/worko"
+                  - !Sub "arn:aws:dynamodb:${AppSlsRegion}:${AppAwsAccountId}:table/worko/index/*"
+                  - !Sub "arn:aws:dynamodb:${AppSlsRegion}:${AppAwsAccountId}:table/worko-job-app"
+                  - !Sub "arn:aws:dynamodb:${AppSlsRegion}:${AppAwsAccountId}:table/worko-job-app/index/*"
+                  - !Sub "arn:aws:dynamodb:${AppSlsRegion}:${AppAwsAccountId}:table/worko-count"
+                  - !Sub "arn:aws:dynamodb:${AppSlsRegion}:${AppAwsAccountId}:table/worko-count/index/*"
+
+        - PolicyName: SESAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - "ses:SendEmail"
+                  - "ses:GetContactList"
+                  - "ses:SendCustomVerificationEmail"
+                  - "ses:UpdateContactList"
+                  - "ses:UpdateEmailTemplate"
+                  - "ses:GetEmailIdentityPolicies"
+                  - "ses:GetEmailTemplate"
+                  - "ses:CreateEmailTemplate"
+                  - "ses:SendBulkEmail"
+                  - "ses:GetEmailIdentity"
+                  - "ses:CreateTemplate"
+                  - "ses:UpdateTemplate"
+                  - "ses:GetTemplate"
+                  - "ses:DeleteTemplate"
+                  - "ses:SendTemplatedEmail"
+                Resource: "*"
+
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ["s3:PutObject", "s3:GetObject", "s3:ListBucket"]
+                Resource:
+                  - "arn:aws:s3:::worko-app-*"
+                  - "arn:aws:s3:::worko-ui-comp-logo-*"
+                  - "arn:aws:s3:::*/*"
+
+        - PolicyName: LambdaInvokeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ["lambda:InvokeFunction", "lambda:InvokeAsync"]
+                Resource:
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:worko-jd-resume-matching-${Stage}"
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:worko-job-description-parser-${Stage}"
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:worko-user-matching-score-job"
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:worko-rag-feedback-ingestion"
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:${AppAwsS3VectorJobSearchLambdaName}"
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:${AppAwsS3VectorJobCrudLambdaName}"
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:worko-sourcetype-jd-resume-matching-${Stage}"
+                  - !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:worko-job-app-${Stage}-appInvokeLambda"
+
+        - PolicyName: SchedulerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                  - "scheduler:GetSchedule"
+                  - "scheduler:UpdateSchedule"
+                  - "scheduler:CreateSchedule"
+                  - "scheduler:DeleteSchedule"
+                Resource:
+                  - !Sub "arn:aws:iam::${AppAwsAccountId}:role/${AppAwsEventBridgeScheduleInvokeLambdaRole}" 
+                  - !Sub "arn:aws:scheduler:${AppSlsRegion}:${AppAwsAccountId}:schedule/*/*"
+              - Effect: Allow
+                Action:
+                  - "scheduler:GetScheduleGroup"
+                  - "scheduler:DeleteScheduleGroup"
+                  - "scheduler:CreateScheduleGroup"
+                Resource: !Sub "arn:aws:scheduler:${AppSlsRegion}:${AppAwsAccountId}:schedule-group/*"
+
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cognito-idp:AdminAddUserToGroup"
+                  - "cognito-idp:AdminGetUser"
+                  - "cognito-idp:AdminListGroupsForUser"
+                Resource: !Sub "arn:aws:cognito-idp:${AppSlsRegion}:${AppAwsAccountId}:userpool/${AppAwsCognitoUserPoolId}"
+
+        - PolicyName: OpenSearchAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "es:ESHttpGet"
+                  - "es:ESHttpPut"
+                  - "es:ESHttpPost"
+                  - "es:ESHttpDelete"
+                Resource: !Sub "arn:aws:${AppOpensearchService}:${AppSlsRegion}:${AppAwsAccountId}:domain/worko"
+
+        - PolicyName: SQSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "sqs:ReceiveMessage"
+                  - "sqs:DeleteMessage"
+                  - "sqs:GetQueueAttributes"
+                Resource: !Sub "arn:aws:sqs:${AppSlsRegion}:${AppAwsAccountId}:worko-job-app-event-queue"
+
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ["iam:PassRole", "bedrock:CreateModelInvocationJob"]
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AppSlsRegion}:${AppAwsAccountId}:model-invocation-job/*"
+                  - !Sub "arn:aws:bedrock:${AppSlsRegion}::foundation-model/${AppAwsBedrockModelName}"
+                  - !Sub "arn:aws:iam::${AppAwsAccountId}:role/service-role/${AppAwsBedrockServiceRole}"
+
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ["secretsmanager:GetSecretValue"]
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AppSlsRegion}:${AppAwsAccountId}:secret:${AppAwsSecretsManagerGcpFirestoreArnSecret}"
+                  - !Sub "arn:aws:secretsmanager:${AppSlsRegion}:${AppAwsAccountId}:secret:${AppAwsSecretsManagerGcpAiPlatformArnSecret}"
+
+  ##########################################################################
+  #  Functions with Esbuild configuration                                  #
+  ##########################################################################
+
+  # 1. Main API Function
+  WorkoJobAppFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "worko-job-app-${Stage}-workoJobApp"
+      Timeout: 900
+      CodeUri: ./
+      Handler: src/app.handler
+      Role: !GetAtt WorkoJobAppExecutionRole.Arn
+      Events:
+        # Explicit Preflight Root Route (NO Authorizer)
+        PreflightRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: OPTIONS
+            RestApiId: !Ref WorkoJobAppApi
+            Auth:
+              Authorizer: NONE
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref WorkoJobAppApi
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "node24"
+        Sourcemap: false
+        EntryPoints: ["src/app.ts"]
+        External: ["@aws-sdk/*"]
+
+  # 2. Scheduler Handler
+  AppSchedulerHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "worko-job-app-${Stage}-app-scheduler-handler"
+      Timeout: 900
+      CodeUri: ./
+      Handler: src/app-scheduler.handler
+      Role: !GetAtt WorkoJobAppExecutionRole.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "node24"
+        Sourcemap: false
+        EntryPoints: ["src/app-scheduler.ts"]
+        External: ["@aws-sdk/*"]
+
+  # 3. Bright Data External Jobs
+  AppSchedulerBrightDataExternalJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "worko-job-app-${Stage}-app-scheduler-bright-data-external-jobs"
+      Timeout: 900
+      CodeUri: ./
+      Handler: src/app-scheduler-bright-data-external-jobs.handler
+      Role: !GetAtt WorkoJobAppExecutionRole.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "node24"
+        Sourcemap: false
+        EntryPoints: ["src/app-scheduler-bright-data-external-jobs.ts"]
+        External: ["@aws-sdk/*"]
+
+  # 4. External Jobs (With Conditional Schedules)
+  AppSchedulerExternalJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "worko-job-app-${Stage}-app-scheduler-external-jobs"
+      Timeout: 900
+      CodeUri: ./
+      Handler: src/app-scheduler-external-jobs.handler
+      Role: !GetAtt WorkoJobAppExecutionRole.Arn
+      Events:
+        CleanupSchedule:  
+          Type: Schedule
+          Properties:
+            State: !If [IsProd, "ENABLED", "DISABLED"]
+            Schedule: "cron(30 14 ? * SUN *)"
+            Name: !Sub "cleanup-old-unapplied-jobs-schedule-${Stage}"
+            Input: '{"scheduleJob": {"type": "BRIGHT_DATA_JOB_HARD_DELETE_OLD_JOBS"}}'
+        SnapshotSchedule:
+          Type: Schedule
+          Properties:
+            State: !If [IsProd, "ENABLED", "DISABLED"]
+            Schedule: "rate(30 days)" # "rate(10 minutes)"
+            Name: !Sub "bright-data-external-job-schedule-${Stage}"
+            Input: '{"scheduleJob": {"type": "BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT"}}'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "node24"
+        Sourcemap: false
+        EntryPoints: ["src/app-scheduler-external-jobs.ts"]
+        External: ["@aws-sdk/*"]
+
+  # 5. Candidate Job Alert
+  AppSchedulerCandidateJobAlertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "worko-job-app-${Stage}-app-scheduler-candidate-job-alert"
+      Timeout: 900
+      CodeUri: ./
+      Handler: src/app-scheduler-candidate-job-alert.handler
+      Role: !GetAtt WorkoJobAppExecutionRole.Arn
+      Events:
+        AlertSchedule:
+          Type: Schedule
+          Properties:
+            State: !If [IsProd, "ENABLED", "DISABLED"]
+            Schedule: "cron(30 2 ? * SUN *)" 
+            Name: !Sub "candidate-job-alert-schedule-${Stage}"
+            Input: '{"scheduleJob": {"type": "SEND_CANDIDATE_JOB_ALERT"}}'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "node24"
+        Sourcemap: false
+        EntryPoints: ["src/app-scheduler-candidate-job-alert.ts"]
+        External: ["@aws-sdk/*"]
+
+  # 6. SQS Event Trigger
+  AppEventTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "worko-job-app-${Stage}-appeventtrigger"
+      Timeout: 900
+      CodeUri: ./
+      Handler: src/app-event-trigger.handler
+      Role: !GetAtt WorkoJobAppExecutionRole.Arn
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !Sub "arn:aws:sqs:${AppSlsRegion}:${AppAwsAccountId}:worko-job-app-event-queue"
+            BatchSize: 1
+            MaximumBatchingWindowInSeconds: 0
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "node24"
+        Sourcemap: false
+        EntryPoints: ["src/app-event-trigger.ts"]
+        External: ["@aws-sdk/*"]
+
+  # 7. App Invoke Lambda
+  AppInvokeLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "worko-job-app-${Stage}-appInvokeLambda"
+      Timeout: 900
+      CodeUri: ./
+      Handler: src/app-invoke-lambda.handler
+      Role: !GetAtt WorkoJobAppExecutionRole.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "node24"
+        Sourcemap: false
+        EntryPoints: ["src/app-invoke-lambda.ts"]
+        External: ["@aws-sdk/*"]
+
+  WorkoJobAppApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Stage}-worko-job-app"
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'"
+        AllowOrigin: "'*'"
+        AllowCredentials: false
+      Auth:
+        DefaultAuthorizer: WorkoAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false # Do NOT apply authorizer to OPTIONS.
+        Authorizers:
+          WorkoAuthorizer:
+            FunctionPayloadType: REQUEST
+            FunctionArn: !Sub "arn:aws:lambda:${AppSlsRegion}:${AppAwsAccountId}:function:worko-auth"
+            Identity:
+              Headers:
+                - Authorization
+              ReauthorizeEvery: 0
+
+Outputs:
+  WorkoJobAppApi:
+    Value: !Sub "https://${WorkoJobAppApi}.execute-api.${AppSlsRegion}.amazonaws.com/${Stage}/"
+  
+  AppInvokeLambdaFunctionArn:
+    Value: !GetAtt AppInvokeLambdaFunction.Arn
+  
+  AppEventTriggerFunctionArn:
+    Description: "App Event Trigger Lambda Function ARN"
+    Value: !GetAtt AppEventTriggerFunction.Arn
+  
+  AppSchedulerHandlerFunctionArn:
+    Value: !GetAtt AppSchedulerHandlerFunction.Arn
+  
+  AppSchedulerBrightDataExternalJobsFunctionArn:
+    Value: !GetAtt AppSchedulerBrightDataExternalJobsFunction.Arn
+  
+  AppSchedulerExternalJobsFunctionArn:
+    Value: !GetAtt AppSchedulerExternalJobsFunction.Arn
+  
+  AppSchedulerCandidateJobAlertFunctionArn:
+    Value: !GetAtt AppSchedulerCandidateJobAlertFunction.Arn

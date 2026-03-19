@@ -73,6 +73,7 @@ class GcpFirestoreJobDao implements BaseDao {
       corporateRecruiterUserId,
       companyId,
       searchText,
+      toDate
     } = jobListingFilterRequest;
 
     // 1. EQUALITY FILTERS FIRST
@@ -105,6 +106,11 @@ class GcpFirestoreJobDao implements BaseDao {
       baseQuery = baseQuery
         .where("companyId", "!=", "")
         .orderBy("companyId", GcpFirestoreSortOrderTypeEnum.DESCENDING);
+    }
+
+    if(toDate) {
+      baseQuery = baseQuery.where("createdAt", "<=", toDate)
+                         .orderBy("createdAt", GcpFirestoreSortOrderTypeEnum.DESCENDING);
     }
 
     // 3. FINAL SORTING

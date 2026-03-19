@@ -27,6 +27,7 @@ import {
   ScriptCompanyJobBulkUploadDto,
 } from "../dtos/CompanyJob.dto";
 import { UserJobApplicationBulkUploadDto } from "../dtos/UserJobApplication.dto";
+import { InvokeLambdaNewInternalJobCandMatchDto, InvokeLambdaScriptOldJobsCandAlertRecommendDto } from "../dtos/InvokeLambda.dto";
 import { JobLocationDto, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
 import { AwsOpensearchRecordListingPaginationResponseDTO, AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
 
@@ -38,7 +39,7 @@ import { candidateJobRecommendationDaoObj } from "../daos/CandidateJobRecommenda
 // Import enums
 import { JobSourcedFromEnum } from "../enums/Common.enum";
 import { GcpFirestoreSortOrderTypeEnum } from "../enums/Common.gcp-firestore.enum";
-import { JobStatusEnum } from "../enums/Job.enum";
+import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
 
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
@@ -68,6 +69,9 @@ import { BaseError } from "../utils/errors.util";
 import ErrorCodeName from "../utils/error-code-name.util";
 import { candidateJobAlertDaoObj } from "../daos/CandidateJobAlert.dao";
 import { candidateJobAlertServiceObj } from "./CandidateJobAlert.service";
+import InvokeLambdaService from "./InvokeLambda.service";
+import { InvocationTypeEnum, InvokeLambdaHandlerEventTypeEnum } from "../enums/InvokeLambda.enum";
+import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 
 /**
  * ScriptService
@@ -78,6 +82,19 @@ class ScriptService {
   async scriptSampleEntityTest(reqBody: any) {
     global.logger.info(
       `Script for sample entity test [Script Service]`
+    );
+
+    // return gcpFirestoreJobServiceObj.getAllJobsByFilterOptionsWithoutPagination({
+    //   dashboard: JobDashboardEnum.USER,
+    //   status: JobStatusEnum.PUBLISHED,
+    //   pageSize: 1000,
+    //   toDate: "2026-02-24T09:37:00.000Z" // "Feb 24th at 3:07 PM"
+    // });
+
+    return candidateJobAlertServiceObj.sendCandJobsMatchEmailCandidateJobAlert(
+      reqBody.toCandidateEmail,
+      reqBody.toCandidateName,
+      reqBody.jobs
     );
 
     // return candidateJobAlertDaoObj.getAllCandidateJobAlertByFilterOptions({
@@ -91,7 +108,7 @@ class ScriptService {
     //   pageSize: reqBody.pageSize,
     // });
 
-    return candidateJobAlertServiceObj.retrieveAndSendEmailCandidateJobAlert()
+    // return candidateJobAlertServiceObj.retrieveAndSendEmailCandidateJobAlert()
 
     // return candidateJobRecommendationDaoObj.getAllCandidateJobRecommendationByFilterOptions({
     //   pageSize: 3,
@@ -994,6 +1011,49 @@ class ScriptService {
     }
     
     return false;
+  }
+
+  async scriptOldJobsCandAlertRecommendAsync() {
+    const invokeDataPayload: InvokeLambdaScriptOldJobsCandAlertRecommendDto = {
+
+    };
+
+    return InvokeLambdaService.triggerWorkoJobAppInvokeLambdaTrigger(
+      InvocationTypeEnum.EventType,
+      {
+        eventType: InvokeLambdaHandlerEventTypeEnum.SCRIPT_OLD_JOBS_CAND_ALERT_RECOMMEND,
+        data: invokeDataPayload,
+      }
+    )
+  }
+
+  async scriptOldJobsCandAlertRecommend() {
+    const oldJobs: DbGcpFirestoreJobDto[] = await gcpFirestoreJobServiceObj.getAllJobsByFilterOptionsWithoutPagination({
+      dashboard: JobDashboardEnum.USER,
+      status: JobStatusEnum.PUBLISHED,
+      pageSize: 1000,
+      toDate: "2026-02-24T09:37:00.000Z" // "Feb 24th at 3:07 PM"
+    });
+    for (const jobOnGcpFirestore of oldJobs) {
+      const companyName: string = jobOnGcpFirestore?.companyName as string;
+      const invokeDataPayload: InvokeLambdaNewInternalJobCandMatchDto = {
+        jobId: jobOnGcpFirestore.id,
+        companyId: jobOnGcpFirestore.companyId as string,
+        jobDescription: jobOnGcpFirestore.jobDescription as string,
+        jobTitle: jobOnGcpFirestore.jobTitle.toLowerCase(),
+        companyName: companyName.toUpperCase(),
+      };
+
+      await InvokeLambdaService.triggerWorkoJobAppInvokeLambdaTrigger(
+        InvocationTypeEnum.EventType,
+        {
+          eventType: InvokeLambdaHandlerEventTypeEnum.NEW_INTERNAL_JOB_CAND_MATCH,
+          data: invokeDataPayload,
+        },
+      );
+
+      await new Promise((r) => setTimeout(r, 100)); // 100ms gap
+    }
   }
 }
 

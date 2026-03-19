@@ -95,7 +95,7 @@ class AwsClientLambdaLibrary {
        * Sample Output of the `command`:
        *  {
             "input": {
-              "FunctionName": "worko-job-description-parser",
+              "FunctionName": "worko-job-description-parser-dev",
               "InvocationType": "RequestResponse",
               "Payload": "{\"JOB_DESC\":\"Job Title: Backend Developer Location: Hyderabad, India / Remote Summary:......"}"
             },

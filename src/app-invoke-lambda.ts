@@ -11,7 +11,7 @@ import DBConfig from "./db/DB.config";
 import "./configs/gcp-sdk.config";
 
 // Import dtos
-import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaJobApplicationValidationMatchingScoreDto, InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto, InvokeLambdaNewInternalJobCandMatchDto } from "./dtos/InvokeLambda.dto";
+import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaJobApplicationValidationMatchingScoreDto, InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto, InvokeLambdaNewInternalJobCandMatchDto, InvokeLambdaScriptOldJobsCandAlertRecommendDto } from "./dtos/InvokeLambda.dto";
 
 // Import enums
 import { InvokeLambdaHandlerEventTypeEnum } from "./enums/InvokeLambda.enum";
@@ -24,6 +24,7 @@ import { userJobApplicationServiceObj } from "./services/UserJobApplication.serv
 // Import utils
 import { BaseError } from "./utils/errors.util";
 import HttpStatusCode from "./utils/http-codes.util";
+import { scriptServiceObj } from "./services/Script.service";
 
 /**
  * Initializes the database configuration.
@@ -143,6 +144,12 @@ export const handler = async (
             jobApplicationRequestId,
             userEmail,
           );
+        break;
+      }
+
+      case InvokeLambdaHandlerEventTypeEnum.SCRIPT_OLD_JOBS_CAND_ALERT_RECOMMEND: {
+        const {} = data as InvokeLambdaScriptOldJobsCandAlertRecommendDto;
+        const response = await scriptServiceObj.scriptOldJobsCandAlertRecommend();
         break;
       }
 

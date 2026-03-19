@@ -8,6 +8,7 @@ import { CentralCandidateProfileDbRefereeTypeEnum } from "../../enums/CentralCan
 import { BaseFirestoreModel } from "./Base.model";
 
 interface DbCentralCandidateProfileDto extends BaseFirestoreModel {
+  candidateName?: string;
   candidateEmail: string;
 
   phoneNumberDetails: CentralCandidateProfileDbPhoneNumberDto;
@@ -26,6 +27,7 @@ interface DbCentralCandidateProfileDto extends BaseFirestoreModel {
     jobIds?: string[];
     companyName: string;
   }[]; // Company names where profile exists, ex:- "Swiggy", "Zomato"
+  candidateProfileInCompaniesList?: string[];
 
   coolingPeriodCompanies?: {
     companyId: string;

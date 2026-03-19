@@ -84,4 +84,6 @@ ScriptRouter.post("/script-to-add-gsi3-to-job-applications", scriptController.sc
 
 ScriptRouter.post("/script-migrate-jobs-aws-opensearch-to-gcp-firestore", scriptController.scriptMigrateJobsAwsOpensearchToGcpFirestore);
 
+ScriptRouter.post("/script-old-jobs-cand-alert-recommend", scriptController.scriptOldJobsCandAlertRecommend);
+
 export default ScriptRouter;

@@ -38,6 +38,7 @@ import companyServiceObj  from "./Company.service";
 import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 import { candidateJobRecommendationServiceObj } from "./CandidateJobRecommendation.service";
+import sitemapServiceObj from "./Sitemap.service";
 
 // Import types
 import { JobsWithOrWithoutEntityDetails } from "../types/Job.type";
@@ -191,7 +192,6 @@ class JobService {
    */
   private async syncSitemapAfterJobCreate(job: DbGcpFirestoreJobDto): Promise<void> {
     try {
-      const sitemapServiceObj = (await import("./Sitemap.service")).default;
       await sitemapServiceObj.addOrUpdateJobInSitemap(job);
     } catch (sitemapError) {
       global.logger.error("Failed to update sitemap after job creation [Service]", {
@@ -687,7 +687,6 @@ class JobService {
     jobAfterUpdate: DbGcpFirestoreJobDto
   ): Promise<void> {
     try {
-      const sitemapServiceObj = (await import("./Sitemap.service")).default;
       await sitemapServiceObj.syncJobInSitemap(gcpFirestoreJobBeforeUpdate, jobAfterUpdate);
     } catch (sitemapError) {
       global.logger.error("Failed to sync sitemap after job update [Service]", {
@@ -820,7 +819,6 @@ class JobService {
    */
   private async removeJobFromSitemapAfterSoftDelete(jobId: string): Promise<void> {
     try {
-      const sitemapServiceObj = (await import("./Sitemap.service")).default;
       await sitemapServiceObj.removeJobFromSitemap(jobId);
     } catch (sitemapError) {
       global.logger.error("Failed to remove job from sitemap after soft delete [Service]", {
@@ -842,7 +840,6 @@ class JobService {
   ): Promise<void> {
     if (jobIdsToRemove.length === 0 && jobsToAddOrUpdate.length === 0) return;
     try {
-      const sitemapServiceObj = (await import("./Sitemap.service")).default;
       await sitemapServiceObj.syncBulkJobsInSitemap(jobIdsToRemove, jobsToAddOrUpdate);
     } catch (sitemapError) {
       global.logger.error("Failed to sync sitemap after bulk job update", {
@@ -1137,7 +1134,6 @@ class JobService {
   private async removeBulkJobsFromSitemapAfterBulkClose(jobIds: string[]): Promise<void> {
     if (jobIds.length === 0) return;
     try {
-      const sitemapServiceObj = (await import("./Sitemap.service")).default;
       await sitemapServiceObj.syncBulkJobsInSitemap(jobIds, []);
     } catch (sitemapError) {
       global.logger.error("Failed to remove jobs from sitemap after bulk close", {
