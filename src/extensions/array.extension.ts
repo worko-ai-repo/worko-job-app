@@ -1,6 +1,7 @@
 /**
  * Array extension
  */
+
 interface Array<T> {
   toLowerCaseArray(): string[]; // Method to converts an array of all strings to lowercase
 

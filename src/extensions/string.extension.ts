@@ -1,10 +1,3 @@
-// // Extend the String interface
-// declare global {
-//   interface String {
-//     strtr(replacePairs: Record<string, string>): string;
-//     toTitleCase(): string;
-//   }
-// }
 
 interface String {
   strtr(replacePairs: Record<string, string>): string;

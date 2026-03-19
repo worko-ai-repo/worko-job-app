@@ -21,6 +21,7 @@ interface DbCorporateCandidateProfileDto extends BaseFirestoreModel {
    */
   jobId?: string;
 
+  candidateName?: string;
   candidateEmail: string;
 
   phoneNumberDetails: CorporateCandidateProfileDbPhoneNumberDto;

@@ -23,12 +23,14 @@ Actions:
       # Required - Steps are sequential instructions that run shell commands
       Steps:
         - Run: npm install -g n
-        - Run: npm i -g serverless@3.40.0
+        - Run: pip install aws-sam-cli
         - Run: npm i
-        - Run: npm run build
+        - Run: npm run clean
         - Run: export AWS_REGION=ap-south-1
-        - Run: cp environments/.env.dev .env
-        - Run: sls deploy --stage=dev
+        # Clean build and deploy using the 'dev' environment from samconfig.toml
+        - Run: npm run build
+        # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-deploy.html
+        - Run: sam deploy --config-env dev --force-upload
       Container:
         Registry: CODECATALYST
         Image: CodeCatalystLinuxLambda_Arm64:2024_03

@@ -101,4 +101,6 @@ ScriptRouter.post(
   scriptController.scriptSeedCompanyJobStatusCounts
 );
 
+ScriptRouter.post("/script-old-jobs-cand-alert-recommend", scriptController.scriptOldJobsCandAlertRecommend);
+
 export default ScriptRouter;

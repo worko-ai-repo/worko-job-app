@@ -23,16 +23,15 @@ Actions:
       # Required - Steps are sequential instructions that run shell commands
       Steps:
         - Run: export NODE_OPTIONS="--max-old-space-size=8192"
-        - Run: export N_PREFIX=$HOME/.n
-        - Run: export PATH=$N_PREFIX/bin:$PATH
         - Run: npm install -g n
-        - Run: n 20
-        - Run: npm i -g serverless@3.40.0
+        - Run: pip install aws-sam-cli
         - Run: npm i
-        - Run: npm run build
+        - Run: npm run clean
         - Run: export AWS_REGION=ap-south-1
-        - Run: cp environments/.env.dev .env
-        - Run: sls deploy --stage=dev --verbose # Added "--verbose" flag to the serverless deploy command for better debugging visibility
+        # Use SAM build with esbuild
+        - Run: npm run build
+        # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-deploy.html
+        - Run: sam deploy --config-env dev --force-upload
       Container:
         Registry: CODECATALYST
         Image: CodeCatalystLinuxLambda_Arm64:2024_03

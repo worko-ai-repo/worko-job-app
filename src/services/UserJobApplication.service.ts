@@ -589,6 +589,7 @@ class UserJobApplicationService {
         updatedAt: currentDate,
         companyId: companyId,
         jobId: jobId,
+        candidateName: candidateName.toLowerCase(),
         candidateEmail: applicantEmail,
         refereeType: CorporateCandidateProfileDbRefereeTypeEnum.WORKO,
         phoneNumberDetails: {
@@ -668,6 +669,10 @@ class UserJobApplicationService {
                 jobIds: [jobId],
               }
             ],
+            candidateProfileInCompaniesList: [
+              ...(existingCentralCandidateProfile?.candidateProfileInCompaniesList ?? []),
+              companyName
+            ],
             corporateCandidateProfileIds: [
               ...(existingCentralCandidateProfile?.corporateCandidateProfileIds ?? []),
               corporateCandidateProfileCreateData.id
@@ -726,6 +731,7 @@ class UserJobApplicationService {
           id: applicantEmail,
           createdAt: currentDate,
           updatedAt: currentDate,
+          candidateName: candidateName.toLowerCase(),
           candidateEmail: applicantEmail,
           phoneNumberDetails: candidateParsedCvCreateData.phoneNumberDetails,
           refereeType: CentralCandidateProfileDbRefereeTypeEnum.WORKO,
@@ -737,6 +743,7 @@ class UserJobApplicationService {
               jobIds: [jobId],
             },
           ],
+          candidateProfileInCompaniesList: [companyName],
           corporateCandidateProfileIds: [corporateCandidateProfileCreateData.id],
           candidateParsedCvIds: [candidateParsedCvCreateData.id],
           latestCandidateParsedCvId: candidateParsedCvCreateData.id,
@@ -1763,10 +1770,10 @@ class UserJobApplicationService {
                 cvAwsS3FilePath?: string,
                 email: string,
                 education?: {
-                  collage: string;
-                  degree: string;
+                  collage?: string;
+                  degree?: string;
                   startedYear?: number | undefined;
-                  passingYear: number;
+                  passingYear?: number;
                   grade?: string | undefined;
                   field?: string | undefined;
                 }[]

@@ -1,0 +1,67 @@
+version = 0.1
+
+[dev.deploy.parameters]
+stack_name = "worko-job-app-dev"
+resolve_s3 = true
+s3_prefix = "worko-job-app-dev"
+region = "ap-south-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = [
+    "Stage=dev",
+    "AppAwsAccountId=211125353899",
+    "AppAwsVpc=vpc-0fc1b68f49b85a818",
+    "AppAwsSecurityGroup=sg-072a75d69a8f727fa",
+    "AppAwsSubnet1=subnet-053a378ed8764a609",
+    "AppAwsSubnet2=subnet-0a92c2704117d0bd8",
+    "AppSlsRegion=ap-south-1",
+    "AppAwsCognitoUserPoolId=ap-south-1_xGreJKkNc",
+    "AppAwsSecretsManagerGcpFirestoreArnSecret=GCP-firestore-secret-dev-1fEW4B",
+    "AppAwsSecretsManagerGcpAiPlatformArnSecret=GCP-aiplatform-secrect-dev-uNB85X",
+    "AppAwsS3BucketWorkoCorporate=worko-corporate-dev",
+    "AppAwsS3BucketWorkoApp=worko-app-dev",
+    "AppAwsS3BucketWorkoBatchInference=worko-batch-inference-dev",
+    "AppAwsS3BucketWorkoUiCompLogo=worko-ui-comp-logo-dev",
+    "AppWorkoFrontendBaseUrl=https://dev.worko.work",
+    "AppOpensearchEndpoint=https://vpc-worko-xj7suso2dgzou25l2lgpoymbk4.aos.ap-south-1.on.aws",
+    "AppOpensearchService=es",
+    "AppAwsS3VectorIndexName=worko-s3-jobs-index",
+    "AppAwsS3VectorJobCrudLambdaName=worko-s3-vector-job-ingestion",
+    "AppAwsS3VectorJobSearchLambdaName=worko-s3-vector-job-search",
+    "AppAwsEventBridgeScheduleInvokeLambdaRole=worko-schedule-invoke-lambda-role",
+    "AppAwsBedrockModelName=anthropic.claude-3-sonnet-20240229-v1:0",
+    "AppAwsBedrockServiceRole=worko-batch-inference-role"
+]
+
+[prod.deploy.parameters]
+stack_name = "worko-job-app-prod"
+s3_prefix = "worko-job-app-prod"
+resolve_s3 = true
+region = "ap-south-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = [
+    "Stage=prod",
+    "AppAwsAccountId=211125595046",
+    "AppAwsVpc=vpc-0ffe51db8ea05d9e5",
+    "AppAwsSecurityGroup=sg-0d92cdb1a32f3060c",
+    "AppAwsSubnet1=subnet-0fc02fbcf44b043b5",
+    "AppAwsSubnet2=subnet-08f96239f78d632ba",
+    "AppSlsRegion=ap-south-1",
+    "AppAwsCognitoUserPoolId=ap-south-1_1f9O34ojY",
+    "AppAwsSecretsManagerGcpFirestoreArnSecret=GCP-firestore-secret-prod-bqqnAI",
+    "AppAwsSecretsManagerGcpAiPlatformArnSecret=GCP-aiplatform-secrect-prod-4YH7c4",
+    "AppAwsS3BucketWorkoCorporate=worko-corporate-prod",
+    "AppAwsS3BucketWorkoApp=worko-app-prod",
+    "AppAwsS3BucketWorkoBatchInference=worko-batch-inference-prod",
+    "AppAwsS3BucketWorkoUiCompLogo=worko-ui-comp-logo-prod",
+    "AppWorkoFrontendBaseUrl=https://worko.ai",
+    "AppOpensearchEndpoint=https://vpc-worko-prod-opensearch-trjlt4abvga5apdr6jxb3cg74m.aos.ap-south-1.on.aws",
+    "AppOpensearchService=es",
+    "AppAwsS3VectorIndexName=worko-job-index-prod",
+    "AppAwsS3VectorJobCrudLambdaName=worko-vector-store-job-crud-prod",
+    "AppAwsS3VectorJobSearchLambdaName=worko-vector-store-job-search-prod",
+    "AppAwsEventBridgeScheduleInvokeLambdaRole=worko-schedule-invoke-lambda-role",
+    "AppAwsBedrockModelName=anthropic.claude-3-sonnet-20240229-v1:0",
+    "AppAwsBedrockServiceRole=worko-batch-inference-role"
+]

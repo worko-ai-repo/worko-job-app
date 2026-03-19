@@ -120,7 +120,7 @@ const APP_CONSTANTS = {
      * Lambda function name for "Job Description Parser"
      * AWS Lambada Configurations related to triggering "Job Description Parser"
      */
-    JOB_DESCRIPTION_PARSER_LAMBDA_NAME: "worko-job-description-parser",
+    JOB_DESCRIPTION_PARSER_LAMBDA_NAME: `worko-job-description-parser-${process.env.APP_STAGE}`,
 
     /**
      * USER_MATCHING_SCORE_JOB_LAMBDA_NAME
