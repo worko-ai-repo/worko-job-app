@@ -8,6 +8,7 @@ import { AgencyUserSubmissionDbMatchingScoreDetailDto } from "../../dtos/AgencyU
 import { AgencyUserSubmissionDbJobApplicationStatusEnum } from "../../enums/AgencyUserSubmission.enum";
 
 interface DbAgencyUserSubmissionDto extends BaseFirestoreModel {
+  companyName?: string;
   /**
    * @description For a "job" belongs to particular "company"
    * the "candidate profile" will be submitted by particular "agency"
@@ -15,6 +16,7 @@ interface DbAgencyUserSubmissionDto extends BaseFirestoreModel {
   companyId: string;
   jobId: string;
 
+  candidateName?: string;
   /**
    * @description Email of the candidate which was submitted by particular "agency"
    */

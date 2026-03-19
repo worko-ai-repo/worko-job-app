@@ -17,6 +17,7 @@ import { dateHelperObj } from "../helpers/date.helper";
 
 // Import models
 import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
+import { gcpFirestoreBase64EncodeStrToLastKey } from "../helpers/gcp-firestore.helper";
 
 class GcpFirestoreJobService {
    async createJob(
@@ -125,6 +126,62 @@ class GcpFirestoreJobService {
 
   async getAllOldExternalJobs(deleteOlderThanDays: number, sourcedFrom: JobSourcedFromEnum): Promise<string[]> {
     return gcpFirestoreJobDaoObj.getAllOldExternalJobs(deleteOlderThanDays, sourcedFrom);
+  }
+
+  async getAllJobsByFilterOptionsWithoutPagination(jobReqBody: JobListingFilterOptions): Promise<DbGcpFirestoreJobDto[]> {
+    let lastKeyInternal: string | undefined = undefined;
+    let pageSizeInternal: number = jobReqBody.pageSize ?? 50;
+    let allJobsWithoutPagination: DbGcpFirestoreJobDto[] = [];
+
+    // Continue fetching the data until all the data is fetched
+    do {
+      const filterOptions: JobListingFilterOptions = {
+        lastKey: lastKeyInternal ? {
+          gcpFirestoreDocumentId: lastKeyInternal,
+        } : undefined,
+        pageSize: pageSizeInternal,
+      };
+
+      const jobsResponse: GcpFirestoreRecordListingResponseDTO<DbGcpFirestoreJobDto[]> =
+        await this.getAllJobsByFilterOptions(
+          {
+            ...jobReqBody,
+            ...filterOptions,
+          }
+        );
+
+      const {
+        data: jobsArray, 
+        pagination
+      } = jobsResponse;
+      const {
+        lastKey
+      } = pagination;
+
+      allJobsWithoutPagination =
+        allJobsWithoutPagination.concat(
+          jobsArray
+        );
+
+      let lastKeyCheck = undefined;
+      if (lastKey && lastKey !== "undefined") {
+        let decodedLastKey:
+          | {
+              gcpFirestoreDocumentId: string;
+            }
+          | undefined = gcpFirestoreBase64EncodeStrToLastKey(
+            lastKey
+        ); // decoding base64 string to original value(possibly array of values)
+        global.logger.info(`Decoded Firestore LastKey: `, { decodedLastKey });
+        if (decodedLastKey) {
+          lastKeyCheck = decodedLastKey.gcpFirestoreDocumentId;
+        }
+      }
+
+      lastKeyInternal = lastKeyCheck;
+    } while (lastKeyInternal);
+
+    return allJobsWithoutPagination;
   }
 
   async deleteJobsByIds(

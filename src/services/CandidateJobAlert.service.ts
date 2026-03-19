@@ -12,6 +12,8 @@ import { candidateJobAlertDaoObj } from "../daos/CandidateJobAlert.dao";
 import { EmailTemplatePlaceholderCAND_JOBS_RECOMMENDATION } from "../dtos/EmailTemplatePlaceholder.dto";
 import { GcpFirestoreRecordListingResponseDTO } from "../dtos/Common.gcp-firestore.dto";
 import { CandidateJobAlertListingFilterOptions } from "../dtos/CandidateJobAlert.dto";
+import { JobLocationDto, MinMaxRange } from "../dtos/Common.dto";
+import { SalaryRangeDto } from "../dtos/Job.dto";
 
 // Import enums
 import { EmailTemplateEnum } from "../enums/EmailTemplate.enum";
@@ -168,6 +170,12 @@ class CandidateJobAlertService {
       jobTitle: string;
       companyName: string;
       jobUrl: string;
+
+      salaryRange?: SalaryRangeDto;
+
+      experienceRange?: MinMaxRange;
+
+      location?: JobLocationDto;
     }[],
   ) {
     if (!jobs || jobs.length < 1 || jobs.length > 3) {
@@ -186,29 +194,139 @@ class CandidateJobAlertService {
     }
 
     const jobsHtml: string = jobs
-      .map(
-        (job) => `
-    <p style="margin-bottom:15px;">
-      🔹 <a href="${job.jobUrl}" style="color:#0056b3; text-decoration:none; font-weight:bold;">
-        ${job.jobTitle.toTitleCase()}
-      </a><br/>
-      ${job.companyName.toTitleCase()}
-    </p>
-  `,
-      )
+      .map((job) => {
+        /* ---------------- EXPERIENCE ---------------- */
+
+        let experienceText = "";
+
+        if (
+          job.experienceRange?.min !== undefined &&
+          job.experienceRange?.max !== undefined
+        ) {
+          experienceText = `${job.experienceRange.min}-${job.experienceRange.max} Years`;
+        }
+
+        /* ---------------- SALARY ---------------- */
+
+        let salaryText = "";
+
+        if (
+          job.salaryRange?.min !== undefined &&
+          job.salaryRange?.max !== undefined
+        ) {
+          salaryText = `₹${job.salaryRange.min}–₹${job.salaryRange.max} LPA`;
+        }
+
+        /* ---------------- LOCATION ---------------- */
+
+        let locationText = "";
+
+        if (job.location?.fullLocation?.length) {
+          locationText = job.location.fullLocation.join(", ");
+        } else if (job.location?.city?.length) {
+          locationText = job.location.city.join(", ");
+        }
+
+        /* ---------------- DETAILS ---------------- */
+
+        const details: string[] = [];
+
+        if (experienceText) {
+          details.push(`<strong>Experience:</strong> ${experienceText}`);
+        }
+
+        if (salaryText) {
+          details.push(`<strong>CTC:</strong> ${salaryText}`);
+        }
+
+        if (locationText) {
+          details.push(`<strong>Location:</strong> ${locationText}`);
+        }
+
+        const detailsHtml =
+          details.length > 0
+            ? `<p style="margin:8px 0 12px 0; font-size:14px; color:#555; line-height:20px;">
+                ${details.join(" | ")}
+              </p>`
+            : "";
+
+        /* ---------------- JOB CARD ---------------- */
+
+        return `
+  <div style="margin-bottom:20px; padding:18px; border:1px solid #e6e6e6; border-radius:6px;">
+
+  <p style="margin:0; font-size:16px; font-weight:bold;">
+  <a href="${job.jobUrl}" style="text-decoration:none; color:#182b45;">
+  ${job.jobTitle.toTitleCase()}
+  </a>
+  </p>
+
+  <p style="margin:4px 0 0 0; font-size:14px; color:#777;">
+  ${job.companyName.toTitleCase()}
+  </p>
+
+  ${detailsHtml}
+
+  <a href="${job.jobUrl}"
+  style="display:inline-block;
+  padding:8px 18px;
+  background:#182b45;
+  color:#ffffff;
+  text-decoration:none;
+  font-size:14px;
+  border-radius:4px;">
+  Apply Now
+  </a>
+
+  </div>
+  `;
+      })
       .join("");
 
+    /* ---------------- TEXT VERSION ---------------- */
+
     const jobsText: string = jobs
-      .map(
-        (job) =>
-          `- ${job.jobTitle.toTitleCase()} | ${job.companyName.toTitleCase()} | ${job.jobUrl}`,
-      )
+      .map((job) => {
+        const details: string[] = [];
+
+        if (
+          job.experienceRange?.min !== undefined &&
+          job.experienceRange?.max !== undefined
+        ) {
+          details.push(
+            `Experience: ${job.experienceRange.min}-${job.experienceRange.max} Years`,
+          );
+        }
+
+        if (
+          job.salaryRange?.min !== undefined &&
+          job.salaryRange?.max !== undefined
+        ) {
+          details.push(
+            `CTC: ₹${job.salaryRange.min}-${job.salaryRange.max} LPA`,
+          );
+        }
+
+        if (job.location?.fullLocation?.length) {
+          details.push(`Location: ${job.location.fullLocation.join(", ")}`);
+        } else if (job.location?.city?.length) {
+          details.push(`Location: ${job.location.city.join(", ")}`);
+        }
+
+        const detailText = details.length ? ` | ${details.join(" | ")}` : "";
+
+        return `- ${job.jobTitle.toTitleCase()} | ${job.companyName.toTitleCase()}${detailText} | ${job.jobUrl}`;
+      })
       .join("\n");
+
+    /* ---------------- EMAIL ADDRESS ---------------- */
 
     const toAddress: EmailSourceDestinationAddress = {
       email: toCandidateEmail,
       fullName: toCandidateName.toTitleCase(),
     };
+
+    /* ---------------- PLACEHOLDERS ---------------- */
 
     const emailPlaceholders: EmailTemplatePlaceholderCAND_JOBS_RECOMMENDATION =
       {
@@ -217,6 +335,8 @@ class CandidateJobAlertService {
         jobsText,
         ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
+
+    /* ---------------- SEND EMAIL ---------------- */
 
     return emailLibrary.sendEmail(
       EmailTemplateEnum.CAND_JOBS_RECOMMENDATION,
@@ -321,10 +441,13 @@ class CandidateJobAlertService {
         jobTitle: string;
         companyName: string;
         jobUrl: string;
+        salaryRange?: SalaryRangeDto;
+        experienceRange?: MinMaxRange;
+        location?: JobLocationDto;
       }[] = [];
       if (candidateJobRecommendations.data.length) {
         candidateJobRecommendations.data.forEach(
-          (candidateJobRecommendation: DbCandidateJobRecommendationDto) => {
+          async (candidateJobRecommendation: DbCandidateJobRecommendationDto) => {
             recommendationsToUpdate.push({
               id: candidateJobRecommendation.id,
               updateData: {
@@ -332,6 +455,7 @@ class CandidateJobAlertService {
                 updatedAt,
               },
             });
+            const jobDetailsOnFireStore: DbGcpFirestoreJobDto | undefined = await gcpFirestoreJobServiceObj.getJobById(candidateJobRecommendation.jobId);
             jobsToNotify.push({
               jobTitle: candidateJobRecommendation.jobTitle,
               companyName: candidateJobRecommendation.companyName,
@@ -339,6 +463,9 @@ class CandidateJobAlertService {
                 "{companyName}": candidateJobRecommendation.companyName,
                 "{jobId}": candidateJobRecommendation.jobId,
               }),
+              salaryRange: jobDetailsOnFireStore?.salaryRange,
+              experienceRange: jobDetailsOnFireStore?.experienceRange,
+              location: jobDetailsOnFireStore?.location,
             });
           },
         );

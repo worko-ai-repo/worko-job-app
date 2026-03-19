@@ -133,3 +133,7 @@ export interface InvokeLambdaSourceTypeJdResumeMatchingScoreDto {
    */
   USER_PK?: string;
 }
+
+export interface InvokeLambdaScriptOldJobsCandAlertRecommendDto {
+  
+}

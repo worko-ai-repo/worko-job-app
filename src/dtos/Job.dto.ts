@@ -155,7 +155,7 @@ export interface ParsedJobDescriptionApiDto {
 /**
  * ParsedJobDescriptionResponseDto
  *
- * Whenever the job description is sent from the frontend it will be parsed by the lambda function(`worko-job-description-parser`)
+ * Whenever the job description is sent from the frontend it will be parsed by the lambda function(`worko-job-description-parser-dev`)
  * and the parsed job description will be returned to the frontend
  */
 export interface ParsedJobDescriptionResponseDto {

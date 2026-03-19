@@ -44,7 +44,7 @@ export enum InvokeLambdaHandlerEventTypeEnum {
   NEW_INTERNAL_JOB_CAND_MATCH = "NEW_INTERNAL_JOB_CAND_MATCH",
 
   /**
-   * @description Whenever the job status is updated to other than "PUBLISHED" then this event will be triggered to 
+   * @description Whenever the job status is updated to other than "PUBLISHED" then this event will be triggered to
    * update `candidateJobRecommendations` and `candidateJobAlerts` collections in firestore.
    */
   JOB_STATUS_CAND_JOB_RECOMMEND_ALERT_UPDATE = "JOB_STATUS_CAND_JOB_RECOMMEND_ALERT_UPDATE",
@@ -54,6 +54,8 @@ export enum InvokeLambdaHandlerEventTypeEnum {
    * then and matching score is already found then this lambda is triggerred to perform send email or reject job application activities.
    */
   JOB_APPLICATION_VALIDATE_MATCHING_SCORE = "JOB_APPLICATION_VALIDATE_MATCHING_SCORE",
+
+  SCRIPT_OLD_JOBS_CAND_ALERT_RECOMMEND = "SCRIPT_OLD_JOBS_CAND_ALERT_RECOMMEND",
 }
 
 export enum SourceTypeMatchingScoreEntityEnum {

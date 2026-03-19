@@ -34,7 +34,7 @@ class ScriptController {
   ) => {
     try {
       global.logger.info(
-        `Script for sample entity test [Script Controller]`,
+        `Script for sample entity test Script Controller`,
         {
           methodName: this.scriptSampleEntityTest.name,
         }
@@ -468,6 +468,25 @@ class ScriptController {
           error,
         }
       );
+      next(error);
+    }
+  };
+
+  scriptOldJobsCandAlertRecommend = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(`Script to old jobs cand alert recommend [Script Controller]`, {
+        methodName: this.scriptOldJobsCandAlertRecommend.name,
+      })
+      const result = await scriptServiceObj.scriptOldJobsCandAlertRecommendAsync();
+      res.status(HttpStatusCode.ACCEPTED_202).json(result);
+    } catch (error) {
+      global.logger.error(`Error at catch block in while old jobs cand alert recommend. [Script Controller]`, {
+        error,
+      })
       next(error);
     }
   };
