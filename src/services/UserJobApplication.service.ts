@@ -73,6 +73,7 @@ import { DbInterviewDto } from "../db/models/UserInterview.model";
 import { DbUserSkillDto } from "../db/models/UserSkill.model";
 import { DbUserPreferenceDto } from "../db/models/UserPreference.model";
 import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
+import { DbAgencyUserInviteDto } from "../db/gcp-firestore-models/AgencyUserInvite.model";
 
 // import services
 import scheduleJobService from "../services/ScheduleJob.service";
@@ -97,6 +98,7 @@ import { userSkillServiceObj } from "./UserSkill.service";
 import { userPreferenceServiceObj } from "./UserPreference.service";
 import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 import { agencyJobAssignmentServiceObj } from "./AgencyJobAssignment.service";
+import { agencyUserInviteServiceObj } from "./AgencyUserInvite.service";
 
 // import types
 import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationUserType, JobApplicationUserTypeWithAdmin, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
@@ -1398,6 +1400,11 @@ class UserJobApplicationService {
         return false;
       }
 
+      let agencyUserSubmissionBeforeUpdate: DbAgencyUserSubmissionDto | undefined;
+      if(updatedUserJobApplicationDetails.agencyUserSubmissionId) {
+        agencyUserSubmissionBeforeUpdate = await agencyUserSubmissionServiceObj.getAgencyUserSubmissionById(updatedUserJobApplicationDetails.agencyUserSubmissionId);
+      }
+
       await Promise.all([
         this.performCountUserActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
@@ -1422,12 +1429,20 @@ class UserJobApplicationService {
         this.performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
           currentActionDateTime,
+          agencyUserSubmissionBeforeUpdate
         ),
 
         this.performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
-          currentActionDateTime
-        )
+          currentActionDateTime,
+          agencyUserSubmissionBeforeUpdate
+        ),
+
+        this.performAgencyUserInviteActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          currentActionDateTime,
+          agencyUserSubmissionBeforeUpdate
+        ),
       ]);
 
       // Check if the job application is for a refer and earn id
@@ -1566,6 +1581,11 @@ class UserJobApplicationService {
         return false;
       }
 
+      let agencyUserSubmissionBeforeUpdate: DbAgencyUserSubmissionDto | undefined;
+      if(updatedUserJobApplicationDetails.agencyUserSubmissionId) {
+        agencyUserSubmissionBeforeUpdate = await agencyUserSubmissionServiceObj.getAgencyUserSubmissionById(updatedUserJobApplicationDetails.agencyUserSubmissionId);
+      }
+
       await Promise.all([
         this.performCountUserActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
@@ -1590,12 +1610,20 @@ class UserJobApplicationService {
         this.performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
           currentActionDateTime,
+          agencyUserSubmissionBeforeUpdate
         ),
 
         this.performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
-          currentActionDateTime
-        )
+          currentActionDateTime,
+          agencyUserSubmissionBeforeUpdate
+        ),
+
+        this.performAgencyUserInviteActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          currentActionDateTime,
+          agencyUserSubmissionBeforeUpdate
+        ),
       ]);
 
       // Check if the job application is for a refer and earn id
@@ -3063,7 +3091,8 @@ class UserJobApplicationService {
 
   private async performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
     updatedJobApplication: DbUserJobApplicationDto,
-    currentActionDateTime: string
+    currentActionDateTime: string,
+    agencyUserSubmissionBeforeUpdate: DbAgencyUserSubmissionDto | undefined
   ) {
     if (
       [
@@ -3074,20 +3103,15 @@ class UserJobApplicationService {
         JobApplicationStatus.JOINED,
       ].includes(updatedJobApplication.status)
     ) {
-      if (updatedJobApplication.agencyUserSubmissionId) {
-        const agencyUserSubmissionDetails: DbAgencyUserSubmissionDto | undefined = await agencyUserSubmissionServiceObj.getAgencyUserSubmissionById(
-          updatedJobApplication.agencyUserSubmissionId
-        );
-        if(agencyUserSubmissionDetails) {
-          if(agencyUserSubmissionDetails.userJobApplicationId === updatedJobApplication.id) {
-            await agencyUserSubmissionServiceObj.updateAgencyUserSubmissionById(
-              agencyUserSubmissionDetails.id,
-              {
-                updatedAt: currentActionDateTime,
-                jobApplicationStatus: updatedJobApplication.status as unknown as AgencyUserSubmissionDbJobApplicationStatusEnum
-              }
-            );
-          }
+      if (updatedJobApplication.agencyUserSubmissionId && agencyUserSubmissionBeforeUpdate) {
+        if(agencyUserSubmissionBeforeUpdate.userJobApplicationId === updatedJobApplication.id) {
+          await agencyUserSubmissionServiceObj.updateAgencyUserSubmissionById(
+            agencyUserSubmissionBeforeUpdate.id,
+            {
+              updatedAt: currentActionDateTime,
+              jobApplicationStatus: updatedJobApplication.status as unknown as AgencyUserSubmissionDbJobApplicationStatusEnum
+            }
+          );
         }
       }
     }
@@ -3095,25 +3119,73 @@ class UserJobApplicationService {
 
   private async performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
     updatedJobApplication: DbUserJobApplicationDto,
-    currentActionDateTime: string
+    currentActionDateTime: string,
+    agencyUserSubmissionBeforeUpdate: DbAgencyUserSubmissionDto | undefined
   ) {
     if(
       updatedJobApplication.status === JobApplicationStatus.REJECTED
     ) {
-      if(updatedJobApplication.agencyUserSubmissionId) {
-        const agencyUserSubmissionDetails: DbAgencyUserSubmissionDto | undefined = await agencyUserSubmissionServiceObj.getAgencyUserSubmissionById(
-          updatedJobApplication.agencyUserSubmissionId
-        );
-        if(agencyUserSubmissionDetails) {
-          if(agencyUserSubmissionDetails.agencyJobAssignmentId) {
-            const updateAgencyJobAssignmentDetails = await agencyJobAssignmentServiceObj.updateAgencyJobAssignmentById(
-              agencyUserSubmissionDetails.agencyJobAssignmentId,
-              {
+      if(updatedJobApplication.agencyUserSubmissionId && agencyUserSubmissionBeforeUpdate) {
+        if(agencyUserSubmissionBeforeUpdate.agencyJobAssignmentId) {
+          const updateAgencyJobAssignmentDetails = await agencyJobAssignmentServiceObj.updateAgencyJobAssignmentById(
+            agencyUserSubmissionBeforeUpdate.agencyJobAssignmentId,
+            {
+              updatedAt: currentActionDateTime,
+              candidatesRejectedCount: FieldValue.increment(1),
+              candidatesInProcessCount: FieldValue.increment(-1)
+            }
+          )
+        }
+      }
+    }
+  }
+
+  private async performAgencyUserInviteActivitiesAfterJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    currentActionDateTime: string,
+    agencyUserSubmissionBeforeUpdate: DbAgencyUserSubmissionDto | undefined
+  ) {
+    if(updatedJobApplication.agencyUserSubmissionId && agencyUserSubmissionBeforeUpdate) {
+      if(
+        [
+          JobApplicationStatus.REJECTED,
+          JobApplicationStatus.HIRED,
+        ].includes(updatedJobApplication.status)
+      ) {
+        if(agencyUserSubmissionBeforeUpdate.agencyUserInviteId) {
+          const existingAgencyUserInviteDetails: DbAgencyUserInviteDto | undefined = await agencyUserInviteServiceObj.getAgencyUserInviteById(
+            agencyUserSubmissionBeforeUpdate.agencyUserInviteId
+          )
+          if(existingAgencyUserInviteDetails) {
+            if(
+              updatedJobApplication.status === JobApplicationStatus.REJECTED
+            ) {
+              const updateDataToRejected: Partial<DbAgencyUserInviteDto> = {
                 updatedAt: currentActionDateTime,
-                candidatesRejectedCount: FieldValue.increment(1),
-                candidatesInProcessCount: FieldValue.increment(-1)
+                totalRejected: FieldValue.increment(1),
               }
-            )
+              if(
+                existingAgencyUserInviteDetails.totalHired
+                && agencyUserSubmissionBeforeUpdate.jobApplicationStatus === AgencyUserSubmissionDbJobApplicationStatusEnum.HIRED
+              ) {
+                updateDataToRejected.totalHired = FieldValue.increment(-1)
+              }
+              const updateAgencyUserInviteToRejected = await agencyUserInviteServiceObj.updateAgencyUserInviteById(
+                agencyUserSubmissionBeforeUpdate.agencyUserInviteId,
+                updateDataToRejected
+              )
+            } else if(
+              updatedJobApplication.status === JobApplicationStatus.HIRED
+            ) {
+              const updateDataToHired: Partial<DbAgencyUserInviteDto> = {
+                updatedAt: currentActionDateTime,
+                totalHired: FieldValue.increment(1),
+              }
+              const updateAgencyUserInviteToHired = await agencyUserInviteServiceObj.updateAgencyUserInviteById(
+                agencyUserSubmissionBeforeUpdate.agencyUserInviteId,
+                updateDataToHired
+              )
+            }
           }
         }
       }
@@ -3782,6 +3854,11 @@ class UserJobApplicationService {
     applicantName: string,
   ): Promise<void> {
 
+    let agencyUserSubmissionBeforeUpdate: DbAgencyUserSubmissionDto | undefined;
+    if(updatedJobApplication.agencyUserSubmissionId) {
+      agencyUserSubmissionBeforeUpdate = await agencyUserSubmissionServiceObj.getAgencyUserSubmissionById(updatedJobApplication.agencyUserSubmissionId);
+    }
+
     await Promise.all([
       updatedJobApplication.status === JobApplicationStatus.REJECTED && 
       this.validateAndPerformCoolingPeriodCompletion(updatedJobApplication),
@@ -3804,11 +3881,19 @@ class UserJobApplicationService {
       this.performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
         updatedJobApplication,
         currentActionDateTime,
+        agencyUserSubmissionBeforeUpdate
       ),
 
       this.performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
         updatedJobApplication,
-        currentActionDateTime
+        currentActionDateTime,
+        agencyUserSubmissionBeforeUpdate
+      ),
+
+      this.performAgencyUserInviteActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        currentActionDateTime,
+        agencyUserSubmissionBeforeUpdate
       ),
 
       this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
