@@ -5,7 +5,7 @@ import { DeleteScheduleCommandOutput } from "@aws-sdk/client-scheduler";
 import { APIGatewayProxyResult } from "aws-lambda";
 
 // import google cloud firestore
-import { DocumentData, QuerySnapshot } from "@google-cloud/firestore";
+import { DocumentData, FieldValue, QuerySnapshot } from "@google-cloud/firestore";
 
 // import dynamoose types
 import { QueryResponse } from "dynamoose/dist/ItemRetriever";
@@ -44,6 +44,7 @@ import { CorporateCandidateProfileDbRefereeTypeEnum } from "../enums/CorporateCa
 import { CentralCandidateProfileDbRefereeTypeEnum } from "../enums/CentralCandidateProfile.enum";
 import { CandidateParsedCvAwsS3ResourceTypeEnum } from "../enums/CandidateParsedCv.enum";
 import { AgencyUserSubmissionDbJobApplicationStatusEnum } from "../enums/AgencyUserSubmission.enum";
+import { SourceTypeMatchingScoreEntityEnum } from "../enums/InvokeLambda.enum";
 
 // import helpers
 import { injectCompanyJobDetails } from "../helpers/injectCompanyJobDetails.helper";
@@ -95,6 +96,7 @@ import { agencyUserSubmissionServiceObj } from "./AgencyUserSubmission.service";
 import { userSkillServiceObj } from "./UserSkill.service";
 import { userPreferenceServiceObj } from "./UserPreference.service";
 import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
+import { agencyJobAssignmentServiceObj } from "./AgencyJobAssignment.service";
 
 // import types
 import { JobApplicationStatusTrackerType, JobApplicationStatusType, JobApplicationUserType, JobApplicationUserTypeWithAdmin, JobApplicationWithUserDetailsType } from "../types/UserJobApplication.type";
@@ -103,7 +105,6 @@ import { EmailPlaceholderDetailsToJobPosterType } from "../types/EmailTemplatePl
 // import utils
 import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
-import { SourceTypeMatchingScoreEntityEnum } from "../enums/InvokeLambda.enum";
 
 /**
  * UserJobApplicationService
@@ -1416,6 +1417,16 @@ class UserJobApplicationService {
         this.performCountCompanyActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
           userJobApplicationDetails.status
+        ),
+
+        this.performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          currentActionDateTime,
+        ),
+
+        this.performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          currentActionDateTime
         )
       ]);
 
@@ -1574,6 +1585,16 @@ class UserJobApplicationService {
         this.performCountCompanyActivitiesAfterJobApplicationUpdate(
           updatedUserJobApplicationDetails,
           userJobApplicationDetails.status
+        ),
+
+        this.performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          currentActionDateTime,
+        ),
+
+        this.performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
+          updatedUserJobApplicationDetails,
+          currentActionDateTime
         )
       ]);
 
@@ -3072,6 +3093,33 @@ class UserJobApplicationService {
     }
   }
 
+  private async performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
+    updatedJobApplication: DbUserJobApplicationDto,
+    currentActionDateTime: string
+  ) {
+    if(
+      updatedJobApplication.status === JobApplicationStatus.REJECTED
+    ) {
+      if(updatedJobApplication.agencyUserSubmissionId) {
+        const agencyUserSubmissionDetails: DbAgencyUserSubmissionDto | undefined = await agencyUserSubmissionServiceObj.getAgencyUserSubmissionById(
+          updatedJobApplication.agencyUserSubmissionId
+        );
+        if(agencyUserSubmissionDetails) {
+          if(agencyUserSubmissionDetails.agencyJobAssignmentId) {
+            const updateAgencyJobAssignmentDetails = await agencyJobAssignmentServiceObj.updateAgencyJobAssignmentById(
+              agencyUserSubmissionDetails.agencyJobAssignmentId,
+              {
+                updatedAt: currentActionDateTime,
+                candidatesRejectedCount: FieldValue.increment(1),
+                candidatesInProcessCount: FieldValue.increment(-1)
+              }
+            )
+          }
+        }
+      }
+    }
+  }
+
   private async performCountUserActivitiesAfterJobApplicationUpdate(
     updatedJobApplication: DbUserJobApplicationDto,
     jobApplicationStatusBeforeUpdate: JobApplicationStatus
@@ -3756,6 +3804,11 @@ class UserJobApplicationService {
       this.performAgencyUserSubmissionActivitiesAfterJobApplicationUpdate(
         updatedJobApplication,
         currentActionDateTime,
+      ),
+
+      this.performAgencyJobAssignmentActivitiesAfterJobApplicationUpdate(
+        updatedJobApplication,
+        currentActionDateTime
       ),
 
       this.performCountCompanyJobActivitiesAfterJobApplicationUpdate(
