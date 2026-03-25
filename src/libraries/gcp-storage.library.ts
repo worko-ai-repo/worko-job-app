@@ -72,17 +72,25 @@ class GcpStorageLibrary {
     options?: SaveOptions
   ): Promise<boolean> {
     try {
+      /*
+      {
+        "bucketName": "worko-batch-inference-file-dev",
+        "fileName": "file-01KM0C85M9KBJ62PC1JJQ9E8Y0.jsonl",
+        "prefixPath": "input/bright-data-external-jobs/18-03-2026/01KM0C85M78M46S5PF0H5R7X4J"
+      }
+      */
       global.logger.info("Uploading file to GCP Storage", {
         bucketName,
         fileName,
         prefixPath,
         options,
+        dataToUploadType: typeof dataToUpload,
       });
 
       const storageClient: Storage = await this.getStorageClient();
       const bucket: Bucket = storageClient.bucket(bucketName);
       const file = await bucket.file(`${prefixPath}/${fileName}`);
-      const uploadResponse: void = await file.save(dataToUpload);
+      const uploadResponse: void = await file.save(dataToUpload, options);
 
       global.logger.info("File uploaded to GCP Storage", {
         uploadResponse,
@@ -97,6 +105,8 @@ class GcpStorageLibrary {
         error,
         bucketName,
         fileName,
+        dataToUploadType: typeof dataToUpload,
+        dataToUpload
       });
       return false;
     }

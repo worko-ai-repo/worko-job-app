@@ -56,7 +56,7 @@ Conditions:
 Globals:
   Function:
     Runtime: nodejs24.x
-    MemorySize: 512
+    MemorySize: 1024
     Environment:
       Variables:
         # App/Stage Config
@@ -152,11 +152,15 @@ Globals:
         # GCP Ai Platform Configuration
         APP_GCP_AI_PLATFORM_EMBEDDING_MODEL_NAME: "text-embedding-004"
         APP_GCP_AI_PLATFORM_EMBEDDING_LOCATION: "asia-south1"
-        APP_GCP_AI_PLATFORM_BATCH_INFERENCE_MODEL_NAME: "gemini-3-pro-preview"
+        APP_GCP_AI_PLATFORM_BATCH_INFERENCE_MODEL_NAME: "gemini-2.5-pro" # "gemini-3-pro-preview"
         APP_GCP_AI_PLATFORM_BATCH_INFERENCE_LOCATION: "global"
 
         # GCP Project details
         APP_GCP_PROJECT_ID: !Sub "worko-${Stage}"
+
+        # Local authorizer mock user (used when APP_STAGE=local)
+        APP_AWS_AUTH_MOCK_USER_ID: "REDACTED"
+        APP_AWS_AUTH_MOCK_USER_EMAIL: "rohithappala777+candidate3@gmail.com"
 
 Resources:
   ##########################################################################
@@ -419,7 +423,7 @@ Resources:
           Type: Schedule
           Properties:
             State: !If [IsProd, "ENABLED", "DISABLED"]
-            Schedule: "rate(30 days)" # "rate(10 minutes)"
+            Schedule: "cron(0 0 1 * ? *)"
             Name: !Sub "bright-data-external-job-schedule-${Stage}"
             Input: '{"scheduleJob": {"type": "BRIGHT_DATA_JOB_TO_CREATE_SNAPSHOT"}}'
     Metadata:

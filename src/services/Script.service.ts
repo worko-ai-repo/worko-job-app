@@ -103,11 +103,11 @@ class ScriptService {
     //   toDate: "2026-02-24T09:37:00.000Z" // "Feb 24th at 3:07 PM"
     // });
 
-    return candidateJobAlertServiceObj.sendCandJobsMatchEmailCandidateJobAlert(
-      reqBody.toCandidateEmail,
-      reqBody.toCandidateName,
-      reqBody.jobs
-    );
+    // return candidateJobAlertServiceObj.sendCandJobsMatchEmailCandidateJobAlert(
+    //   reqBody.toCandidateEmail,
+    //   reqBody.toCandidateName,
+    //   reqBody.jobs
+    // );
 
     // return candidateJobAlertDaoObj.getAllCandidateJobAlertByFilterOptions({
     //   pageSize: reqBody.pageSize,
@@ -128,6 +128,16 @@ class ScriptService {
     //   isIncludedInEmailCountLessThan: 3,
     //   candidateEmail: reqBody.candidateEmail,
     // });
+
+    return InvokeLambdaService.triggerWorkoJobAppInvokeLambdaTrigger(
+      InvocationTypeEnum.EventType,
+      {
+        eventType: InvokeLambdaHandlerEventTypeEnum.SCRIPT_BATCH_INFERENCE_TEST,
+        data: {
+          snapShotId: reqBody.snapShotId
+        }
+      }
+    )
 
     // return brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
     //   reqBody.snapShotId, 
