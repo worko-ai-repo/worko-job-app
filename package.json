@@ -8,7 +8,7 @@
     "build": "npm run type-check && sam build",
     "watch": "sam build --watch",
     "clean": "rimraf .aws-sam .vscode",
-    "local": "npm run clean && npm run build && sam local start-api",
+    "local": "npm run clean && npm run build && sam local start-api --config-env dev",
     "local-with-nodemon": "nodemon"
   },
   "repository": {
