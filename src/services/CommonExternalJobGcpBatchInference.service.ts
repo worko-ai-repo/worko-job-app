@@ -119,7 +119,10 @@ class CommonExternalJobGcpBatchInferenceService {
         bucketName,
         gcpStoragePathPrefix,
         fileName,
-        fileBuffer
+        fileBuffer,
+        {
+          resumable: false,
+        }
       );
     } catch (error) {
       global.logger.error(

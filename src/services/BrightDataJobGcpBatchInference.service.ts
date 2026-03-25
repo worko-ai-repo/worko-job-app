@@ -9,6 +9,9 @@ import { BrightDataJobApiResponse } from "../dtos/BrightDataJob.dto";
 import { JobLocationDto } from "../dtos/Common.dto";
 import { GcpBatchInferenceModelInput } from "../dtos/GcpBatchInference.dto";
 
+// Import enums
+import { GcpBatchInferenceResponseMimeTypeEnum } from "../enums/GcpBatchInference.enum";
+
 // Import helpers
 import { brightDataJobValidateHelperObj } from "../helpers/BrightDataJobValidate.helper";
 
@@ -75,6 +78,7 @@ class BrightDataJobGcpBatchInferenceService {
       MAX_OUTPUT_TOKENS,
       TEMPERATURE,
       TOP_P,
+      THINKING_CONFIG,
     } = GENERATION_CONFIG;
 
     const jsonLObj: GcpBatchInferenceModelInput = {
@@ -101,6 +105,10 @@ class BrightDataJobGcpBatchInferenceService {
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           temperature: TEMPERATURE,
           topP: TOP_P,
+          thinkingConfig: {
+            thinkingBudget: THINKING_CONFIG.THINKING_BUDGET,
+          },
+          responseMimeType: GcpBatchInferenceResponseMimeTypeEnum.JSON
         },
       },
     };

@@ -11,7 +11,7 @@ import DBConfig from "./db/DB.config";
 import "./configs/gcp-sdk.config";
 
 // Import dtos
-import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaJobApplicationValidationMatchingScoreDto, InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto, InvokeLambdaNewInternalJobCandMatchDto, InvokeLambdaScriptOldJobsCandAlertRecommendDto } from "./dtos/InvokeLambda.dto";
+import { InvokeLambdaHandlerEventPayloadDto, InvokeLambdaJobApplicationValidationMatchingScoreDto, InvokeLambdaJobStatusCandJobRecommendAlertUpdateDto, InvokeLambdaNewInternalJobCandMatchDto, InvokeLambdaScriptBatchInferenceTestDto, InvokeLambdaScriptOldJobsCandAlertRecommendDto } from "./dtos/InvokeLambda.dto";
 
 // Import enums
 import { InvokeLambdaHandlerEventTypeEnum } from "./enums/InvokeLambda.enum";
@@ -20,11 +20,12 @@ import { InvokeLambdaHandlerEventTypeEnum } from "./enums/InvokeLambda.enum";
 import { candidateParsedCvServiceObj } from "./services/CandidateParsedCv.service";
 import { candidateJobAlertServiceObj } from "./services/CandidateJobAlert.service";
 import { userJobApplicationServiceObj } from "./services/UserJobApplication.service";
+import { scriptServiceObj } from "./services/Script.service";
+import { brightDataJobServiceObj } from "./services/BrightDataJob.service";
 
 // Import utils
 import { BaseError } from "./utils/errors.util";
 import HttpStatusCode from "./utils/http-codes.util";
-import { scriptServiceObj } from "./services/Script.service";
 
 /**
  * Initializes the database configuration.
@@ -150,6 +151,16 @@ export const handler = async (
       case InvokeLambdaHandlerEventTypeEnum.SCRIPT_OLD_JOBS_CAND_ALERT_RECOMMEND: {
         const {} = data as InvokeLambdaScriptOldJobsCandAlertRecommendDto;
         const response = await scriptServiceObj.scriptOldJobsCandAlertRecommend();
+        break;
+      }
+
+      case InvokeLambdaHandlerEventTypeEnum.SCRIPT_BATCH_INFERENCE_TEST: {
+        const {
+          snapShotId
+        } = data as InvokeLambdaScriptBatchInferenceTestDto;
+        const response: boolean = await brightDataJobServiceObj.getAndProcessBatchInferenceForBrightDataJobs(
+          snapShotId
+        );
         break;
       }
 

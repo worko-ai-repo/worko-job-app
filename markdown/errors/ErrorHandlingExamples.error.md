@@ -939,3 +939,52 @@ Request must be smaller than 5120 bytes for the UpdateFunctionConfiguration oper
     }
 }
 ```
+
+49. 
+```sh
+2026-03-18T09:59:18.887Z	-	ERROR	(node:2) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+```
+```sh
+2026-03-18T09:59:19.098Z	820a0c72-67fc-4ca3-b9ee-7eba86fb2563	ERROR	(node:2) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+```
+```sh
+REPORT RequestId: 820a0c72-67fc-4ca3-b9ee-7eba86fb2563	Duration: 11975.86 ms	Billed Duration: 11976 ms	Memory Size: 512 MB	Max Memory Used: 512 MB	Status: error	Error Type: Runtime.OutOfMemory
+```
+
+59. 
+```json
+{
+    "bucketName": "worko-batch-inference-file-dev",
+    "error": {
+        "config": {
+            "body": {
+                "_events": {},
+                "_eventsCount": 1,
+                "_readableState": {
+                    "awaitDrainWriters": null,
+                    "buffer": [],
+                    "bufferIndex": 0,
+                    "highWaterMark": 65536,
+                    "length": 0,
+                    "pipes": []
+                }
+            },
+            "headers": {
+                "Authorization": "<<REDACTED> - See `errorRedactor` option in `gaxios` for configuration>.",
+                "Content-Range": "bytes 0-*/*",
+                "User-Agent": "gcloud-node-storage/7.18.0 google-api-nodejs-client/9.15.1",
+                "x-goog-api-client": "gl-node/24.13.0 gccl/7.18.0-ESM gccl-invocation-id/bb003987-a47a-40ba-847f-dda64fff2a0a"
+            },
+            "method": "PUT",
+            "responseType": "unknown",
+            "signal": {},
+            "url": "https://storage.googleapis.com/upload/storage/v1/b/worko-batch-inference-file-dev/o?name=input%2Fbright-data-external-jobs%2F18-03-2026%2F01KM0C85M78M46S5PF0H5R7X4J%2Ffile-01KM0C85M9KBJ62PC1JJQ9E8Y0.jsonl&uploadType=resumable&upload_id=AGQBYWyd2PjvOGfEoQL5fIFsUhiXkJ_Pq3h3uVAunvfrvbRCiOCxKzCSBqM8VSgXWFBXAliTSSzSm3KyWEnYGgJ-O8b5WnYZxkQ2OE8GvyYPHVk"
+        },
+        "error": {}
+    },
+    "fileName": "file-01KM0C85M9KBJ62PC1JJQ9E8Y0.jsonl",
+    "level": "error",
+    "message": "Failed to upload file to GCP Storage"
+}
+```

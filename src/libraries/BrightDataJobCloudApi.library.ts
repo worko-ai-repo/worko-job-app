@@ -140,6 +140,14 @@ class BrightDataJobCloudApiLibrary {
         const data = response.data;
 
         if (Array.isArray(data)) {
+          global.logger.info(
+            "Retrieved Bright Data jobs successfully.",
+            {
+              snapshotId,
+              methodName: this.getBrightDataJobBySnapshotId.name,
+              dataLength: data.length,
+            }
+          )
           return data as BrightDataJobApiResponse[];
         }
 

@@ -137,3 +137,7 @@ export interface InvokeLambdaSourceTypeJdResumeMatchingScoreDto {
 export interface InvokeLambdaScriptOldJobsCandAlertRecommendDto {
   
 }
+
+export interface InvokeLambdaScriptBatchInferenceTestDto {
+  snapShotId: string;
+}
