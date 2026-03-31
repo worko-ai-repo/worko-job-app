@@ -1,7 +1,8 @@
 
 // Import dtos
-import { CommonPhoneNumberDto } from "./Common.dto";
+import { CommonPhoneNumberDto, MinMaxRange } from "./Common.dto";
 import { GcpFirestoreRecordListingFilterOptions } from "./Common.gcp-firestore.dto";
+import { SalaryRangeDto } from "./Job.dto";
 
 // Import enums
 import { CandidateParsedCvAwsS3ResourceTypeEnum } from "../enums/CandidateParsedCv.enum";
@@ -41,6 +42,33 @@ export interface CandidateParsedCvAwsS3FileTrackerDto {
 };
 
 export interface CandidateParsedCvEmbeddingListingFilterOptions extends GcpFirestoreRecordListingFilterOptions {
-  searchByJobDescription: string,
   pageNumber: number,
+}
+
+export interface CandidateSearchPromptParsedResponseDto {
+  jobTitle: string;
+
+  salaryRange?: SalaryRangeDto;
+  experienceRange?: MinMaxRange;
+
+  numberOfOpenings?: number;
+  workMode?: string;
+  location?: string;
+  noticePeriod?: number;
+  typeOfEmployment?: string;
+
+  // readyToRelocate??: "Yes" | "No";
+
+  department?: string;
+  industry?: string;
+  role?: string;
+
+  coreSkills?: string[];
+  softSkills?: string[];
+  technicalSkills?: string[];
+  goodToHaveSkills?: string[];
+  mustHaveSkills?: string[];
+
+  mandatoryRequirements?: string[];
+  preferredRequirements?: string[];
 }
