@@ -7,7 +7,8 @@ import { gcpFirestoreLibrary } from "../configs/gcp-sdk.config";
 
 // Import dtos
 import { GcpFirestoreInteractionDto } from "../dtos/Common.dto";
-import { CandidateParsedCvEmbeddingListingFilterOptions } from "../dtos/CandidateParsedCv.dto";
+import { GcpFirestoreVectorPreFilterDto } from "../dtos/Common.gcp-firestore-vector.dto";
+import { CandidateParsedCvEmbeddingListingFilterOptions, CandidateSearchPromptParsedResponseDto } from "../dtos/CandidateParsedCv.dto";
 
 // Import daos
 import BaseDao from "./BaseGcpFirestore.dao";
@@ -72,9 +73,61 @@ class CandidateParsedCvDao implements BaseDao {
   async getAllCandidateParsedCvByEmbeddingByWithoutPagination(
     filterOptions: CandidateParsedCvEmbeddingListingFilterOptions,
     distanceThreshold: number,
-    searchByPrompt: string
+    searchByPrompt: string,
+    parsedPrompt: CandidateSearchPromptParsedResponseDto
   ) {
-    if(!searchByPrompt) throw new BaseError("Search by prompt is required.", HttpStatusCode.BAD_REQUEST_400);;
+    if(!searchByPrompt) throw new BaseError("Search by prompt is required.", HttpStatusCode.BAD_REQUEST_400);
+
+    let salaryRange = parsedPrompt.salaryRange;
+    let experienceRange = parsedPrompt.experienceRange;
+
+    let preFilters: GcpFirestoreVectorPreFilterDto[] = []
+
+    if(salaryRange) {
+      global.logger.info(`salaryRange`, salaryRange);
+      if(
+        salaryRange?.min
+      ) {
+        preFilters.push({
+          field: "currentCTC",
+          operator: ">=",
+          value: salaryRange.min
+        })
+      }
+
+      if(
+        salaryRange.max
+      ) {
+        preFilters.push({
+          field: "currentCTC",
+          operator: "<=",
+          value: salaryRange.max
+        })
+      }
+    }
+
+    if(experienceRange) {
+      global.logger.info(`experienceRange`, experienceRange);
+      if(
+        experienceRange.min
+      ) {
+        preFilters.push({
+          field: "relevantYOE",
+          operator: ">=",
+          value: experienceRange.min
+        })
+      }
+
+      if(
+        experienceRange.max
+      ) {
+        preFilters.push({
+          field: "relevantYOE",
+          operator: "<=",
+          value: experienceRange.max
+        })
+      }
+    }
 
     return gcpFirestoreVectorLibrary.getDocumentsByEmbeddingWithoutPagination(
       this.getCandidateParsedCvModelDetails(),
@@ -83,6 +136,7 @@ class CandidateParsedCvDao implements BaseDao {
         pageSize: filterOptions.pageSize,
         distanceThreshold,
         pageNumber: filterOptions.pageNumber,
+        preFilters
       },
     );
   }

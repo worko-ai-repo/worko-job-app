@@ -160,11 +160,7 @@ class GcpFirestoreVectorLibrary {
     // Apply additional filters if provided
     if (filterOptions?.preFilters && filterOptions.preFilters.length > 0) {
       filterOptions.preFilters.forEach(
-        (filter: {
-          field: string;
-          operator: WhereFilterOp;
-          value: string;
-        }) => {
+        (filter) => {
           query = query.where(filter.field, filter.operator, filter.value);
         }
       );
@@ -230,11 +226,7 @@ class GcpFirestoreVectorLibrary {
     // Apply additional filters if provided
     if (filterOptions?.preFilters && filterOptions.preFilters.length > 0) {
       filterOptions.preFilters.forEach(
-        (filter: {
-          field: string;
-          operator: WhereFilterOp;
-          value: string;
-        }) => {
+        (filter) => {
           query = query.where(filter.field, filter.operator, filter.value);
         }
       );
