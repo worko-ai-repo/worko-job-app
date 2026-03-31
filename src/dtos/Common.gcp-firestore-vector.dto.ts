@@ -12,6 +12,19 @@ export interface VectorQueryResult<T> {
   score?: number; // Higher is better (0-100, 100 = perfect match)
 }
 
+export interface GcpFirestoreVectorPreFilterDto {
+  field: string;
+  operator: WhereFilterOp;
+
+  /**
+   * @note As of now we are only allowing string, number data type for value attribute
+   * If use case requires other data types, we can extend this interface to support them
+   * @description
+   *  1. As of now "companyId" is being used in corporate dashboard this value should be a string
+   *  2. As of now salaryRange, experienceRange are being used, so this value should be a number
+   */
+  value: string | number;
+}
 
 export interface GcpFirestoreVectorRecordListingFilterOptions {
   /**
@@ -20,18 +33,7 @@ export interface GcpFirestoreVectorRecordListingFilterOptions {
    * Pre-filter documents
    * @see https://firebase.google.com/docs/firestore/vector-search#pre-filter-documents
    */
-  preFilters?: {
-    field: string;
-    operator: WhereFilterOp;
-
-    /**
-     * @note As of now we are only allowing string data type for value attribute
-     * If use case requires other data types, we can extend this interface to support them
-     * @description
-     *  1. As of now "companyId" is being used in corporate dashboard this value should be a string
-     */
-    value: string;
-  }[];
+  preFilters?: GcpFirestoreVectorPreFilterDto[];
 
   /**
    * pageSize (limit)

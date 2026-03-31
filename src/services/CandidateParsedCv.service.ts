@@ -7,15 +7,17 @@ import { candidateParsedCvDaoObj } from "../daos/CandidateParsedCv.dao";
 
 // Import dtos
 import { GcpFirestoreRecordListingResponseDTO } from "../dtos/Common.gcp-firestore.dto";
-import { CandidateParsedCvEmbeddingListingFilterOptions } from "../dtos/CandidateParsedCv.dto";
+import { CandidateParsedCvEmbeddingListingFilterOptions, CandidateSearchPromptParsedResponseDto } from "../dtos/CandidateParsedCv.dto";
 
 // Import models
 import { DbCandidateParsedCvDto } from "../db/gcp-firestore-models/CandidateParsedCv.model";
 import { DbCandidateJobAlertDto } from "../db/gcp-firestore-models/CandidateJobAlert.model";
+import { DbGcpFirestoreJobDto } from "../db/gcp-firestore-models/GcpFirestoreJob.model";
 
 // Import services
 import { candidateJobRecommendationServiceObj } from "./CandidateJobRecommendation.service";
 import { candidateJobAlertServiceObj } from "./CandidateJobAlert.service";
+import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 
 // Import utils
 import { BaseError } from "../utils/errors.util";
@@ -138,6 +140,10 @@ class CandidateParsedCvService {
       }
     }
 
+    if (createData.about) {
+      embeddingParts.push(`About: ${createData.about}`);
+    }
+
     return embeddingParts.join(" | ");
   }
 
@@ -171,13 +177,16 @@ class CandidateParsedCvService {
   async getAllCandidateParsedCvByEmbeddingByWithoutPagination(
     filterOptions: CandidateParsedCvEmbeddingListingFilterOptions,
     distanceThreshold: number,
+    searchPrompt: string,
+    parsedPrompt: CandidateSearchPromptParsedResponseDto
   ): Promise<
     GcpFirestoreRecordListingResponseDTO<QueryDocumentSnapshot<DocumentData, DocumentData>[]>
   > {
     return candidateParsedCvDaoObj.getAllCandidateParsedCvByEmbeddingByWithoutPagination(
       filterOptions,
       distanceThreshold,
-      filterOptions.searchByJobDescription
+      searchPrompt,
+      parsedPrompt
     );
   }
 
@@ -214,13 +223,36 @@ class CandidateParsedCvService {
     jobTitle: string,
     companyName: string
   ): Promise<(boolean | boolean[])[][]> {
+    // Get job description by job id
+    const jobDetails: DbGcpFirestoreJobDto | undefined = await gcpFirestoreJobServiceObj.getJobById(jobId);
+    if(!jobDetails) throw new BaseError("Job not found", HttpStatusCode.NOT_FOUND_404);
+    if(!jobDetails.jobDescription) throw new BaseError("Job description not found", HttpStatusCode.NOT_FOUND_404);
+    const parsedPrompt: CandidateSearchPromptParsedResponseDto = {
+      jobTitle: jobDetails.jobTitle,
+      salaryRange: jobDetails.salaryRange,
+      experienceRange: jobDetails.experienceRange,
+      numberOfOpenings: jobDetails.numOfOpenings,
+      workMode: jobDetails.workMode,
+      location: jobDetails.location?.fullLocation?.join(", "),
+      noticePeriod: jobDetails.noticePeriod,
+      typeOfEmployment: jobDetails.typeofEmployment,
+      department: jobDetails.department,
+      industry: jobDetails.industry,
+      coreSkills: jobDetails.coreSkills,
+      softSkills: jobDetails.softSkills,
+      technicalSkills: jobDetails.technicalSkills,
+      goodToHaveSkills: jobDetails.goodToHaveSkills
+    }
+
+    // Convert object → string
+    const parsedPromptString: string = JSON.stringify(parsedPrompt);
+
     // Find matching candidates (embedding 0-0.4)
     const matchedCandidates: GcpFirestoreRecordListingResponseDTO<QueryDocumentSnapshot<DocumentData, DocumentData>[]> = 
       await this.getAllCandidateParsedCvByEmbeddingByWithoutPagination({ 
-        searchByJobDescription: jobDescription,
         pageNumber: 1,
         pageSize: 1000,
-      }, 0.4);
+      }, 0.4, parsedPromptString, parsedPrompt);
     if(!matchedCandidates.data.length) return [
 
     ];
