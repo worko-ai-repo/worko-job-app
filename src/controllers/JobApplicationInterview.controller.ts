@@ -68,7 +68,7 @@ class JobApplicationInterviewController {
 
       const response =
         await jobApplicationInterviewServiceObj.scheduleUserApplicationInterview(
-        req.params.id,
+        req.params.applicationId,
         validatedRequestBody,
       );
 
@@ -110,7 +110,7 @@ class JobApplicationInterviewController {
 
       const response =
         await jobApplicationInterviewServiceObj.getScheduledUserApplicationInterviewsByApplicationId(
-          req.params.id,
+          req.params.applicationId,
           validatedFilterOptions,
         );
 
@@ -172,7 +172,7 @@ class JobApplicationInterviewController {
 
       const response =
         await jobApplicationInterviewServiceObj.rescheduleUserApplicationInterview(
-          req.params.id,
+          req.params.applicationId,
           req.params.interviewId,
           validatedRequestBody,
         );
@@ -210,7 +210,7 @@ class JobApplicationInterviewController {
 
       const response =
         await jobApplicationInterviewServiceObj.cancelUserApplicationInterview(
-          req.params.id,
+          req.params.applicationId,
           req.params.interviewId,
           validatedRequestBody,
         );
@@ -249,7 +249,7 @@ class JobApplicationInterviewController {
 
       const response =
         await jobApplicationInterviewServiceObj.completeUserApplicationInterview(
-          req.params.id,
+          req.params.applicationId,
           req.params.interviewId,
           validatedRequestBody,
         );
