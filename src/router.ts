@@ -17,6 +17,7 @@ import CountGlobalRouter from "./routers/CountGlobal.router";
 import CountCompanyJobRouter from "./routers/CountCompanyJob.router";
 import CountCompanyRouter from "./routers/CountCompany.router";
 import SitemapRouter from "./routers/Sitemap.router";
+import JobApplicationInterviewRouter from "./routers/JobApplicationInterview.router";
 
 // Router that contains all the routes/endpoints in the application
 const router = Router();
@@ -129,6 +130,14 @@ router.use("/external-job-application", UserExternalJobApplicationRouter);
  * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
  */
 router.use("/job-application", UserJobApplicationRouter);
+
+
+/**
+ * Interview scheduler APIs for a specific job application
+ * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
+ */
+UserJobApplicationRouter.use("/user-job-interview", JobApplicationInterviewRouter);
+
 
 /**
  * USER JOB APPLICATION AUTHOR NOTE ROUTERS
