@@ -11,6 +11,7 @@ import { GcpFirestoreSecretResponseDto } from "../dtos/Common.gcp-firestore.dto"
 // Import utils
 import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
+import APP_CONSTANTS from "../configs/constants.config";
 
 /**
  * GcpGoogleCalendarLibrary
@@ -57,18 +58,22 @@ class GcpGoogleCalendarLibrary {
       if (!credentials.client_email || !credentials.private_key) {
         throw new Error("Missing client_email or private_key");
       }
-
       const auth = new JWT({
         email: credentials.client_email,
         key: credentials.private_key.replace(/\\n/g, "\n"), // IMPORTANT FIX
-        scopes: ["https://www.googleapis.com/auth/calendar"],
+        scopes: [
+          APP_CONSTANTS.JOB_APPLICATION_INTERVIEW_CONSTANTS.GOOGLE_CALENDAR_SCOPES,
+        ],
+        subject: APP_CONSTANTS.JOB_APPLICATION_INTERVIEW_CONSTANTS.GOOGLE_CALENDAR_SUBJECT,
       });
 
       this.calendarClient = google.calendar({
         version: "v3",
         auth: auth as any,
       });
-
+      global.logger.info("Google Calendar client initialized successfully", {
+        methodName: "getCalendarClient",
+      });
       return this.calendarClient;
     } catch (error) {
       global.logger.error("Google Calendar initialization failed", {
@@ -95,6 +100,11 @@ class GcpGoogleCalendarLibrary {
     calendarId?: string; // optional override
   }) {
     try {
+      global.logger.info("Creating calendar event with params [Xfe]", {
+        methodName: "createEvent",
+        params,
+      });
+
       const calendar = await this.getCalendarClient();
 
       const event = await calendar.events.insert({

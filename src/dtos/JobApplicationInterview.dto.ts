@@ -5,7 +5,10 @@ import {
 } from "./Common.gcp-firestore.dto";
 
 // Import enums
-import { JobApplicationInterviewAttendeeTypeEnum, JobApplicationInterviewStatusEnum } from "../enums/JobApplicationInterview.enum";
+import {
+  JobApplicationInterviewAttendeeTypeEnum,
+  JobApplicationInterviewStatusEnum,
+} from "../enums/JobApplicationInterview.enum";
 
 /**
  * JobApplicationInterviewAttendeeApiDto
@@ -47,22 +50,18 @@ export interface JobApplicationInterviewScheduleApiDto {
   companyName: string;
 
   /**
-   * title
-   *
-   * Backward compatible field (if any older client still sends it).
-   * Not used for email title generation.
-   */
-  title: string;
-  description?: string;
-  /**
-   * Recruiter note shown to the evalueators in dashboard (provided by organizer).
+   * Recruiter note shown to evaluator dashboard (organizer).
    */
   recruiterNote?: string;
 
   /**
-   * Rule of the candidate shown to the recruiter in emails (provided by organizer).
+   * Rule for the candidate (included in candidate emails).
    */
   ruleForCandidate?: string;
+
+  /**
+   * Interview start (ISO date-time); shown in emails. Not tied to Meet space creation.
+   */
   startTime: string;
   endTime: string;
   attendees?: JobApplicationInterviewAttendeeApiDto[];
@@ -74,8 +73,9 @@ export interface JobApplicationInterviewScheduleApiDto {
  * Payload for rescheduling an existing interview round.
  */
 export interface JobApplicationInterviewRescheduleApiDto {
-  title: string;
-  description?: string;
+  /**
+   * New start time (ISO date-time); shown in emails only.
+   */
   startTime: string;
   endTime: string;
 }
@@ -130,4 +130,3 @@ export interface JobApplicationInterviewListFilterOptions
   status?: JobApplicationInterviewStatusEnum;
   applicationId?: string;
 }
-

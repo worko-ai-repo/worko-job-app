@@ -111,12 +111,12 @@ class JobApplicationInterviewService {
     const eventResponse = await calendarClient.events.insert({
       calendarId: jobApplicationInterviewHelperObj.getJobApplicationInterviewDefaultCalendarId(),
       conferenceDataVersion: 1,
-      sendUpdates: "none",
+      sendUpdates: "all",
       requestBody: {
-        summary: requestBody.title,
+        summary: `Interview: ${requestBody.jobTitle} at ${requestBody.companyName}`,
         description: `Interview for ${requestBody.jobTitle} at ${requestBody.companyName}.`,
         start: {
-          dateTime: requestBody.startTime,
+          dateTime: requestBody.startTime, // eg "2024-07-01T10:00:00Z" and 
           timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE,
         },
         end: {
@@ -127,16 +127,22 @@ class JobApplicationInterviewService {
         conferenceData: {
           createRequest: {
             requestId: UlidService.getUlidId(),
-            conferenceSolutionKey: {
-              type: jobApplicationInterviewHelperObj.getJobApplicationInterviewGoogleMeetConferenceType(),
-            },
+            /* conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            }, */
           },
         },
       },
     });
-
+ 
     const meetLink: string | undefined = eventResponse?.data?.hangoutLink ?? undefined;
     const eventId: string | undefined = eventResponse?.data?.id ?? undefined;
+    global.logger.info("Google Meet event created [XsE]", {
+      methodName: this.scheduleUserApplicationInterview.name,
+      applicationId,
+      eventId,
+      eventResponse: eventResponse?.data,
+    });
 
     if (!meetLink || !eventId) {
       global.logger.error(
@@ -203,7 +209,7 @@ class JobApplicationInterviewService {
 
     await jobApplicationInterviewHelperObj.sendJobApplicationInterviewInviteEmails(
       createdInterview,
-      requestBody.title
+      `You have been invited to an interview for the position of ${createdInterview.jobTitle} at ${createdInterview.companyName}.`
     );
     return createdInterview;
   }
@@ -277,7 +283,7 @@ class JobApplicationInterviewService {
         "Only scheduled/rescheduled interviews can be rescheduled.",
         HttpStatusCode.BAD_REQUEST_400
       );
-    }
+    } 
 
     const calendarClient = await gcpGoogleCalendarLibrary.getCalendarClient();
     await calendarClient.events.patch({
@@ -285,7 +291,7 @@ class JobApplicationInterviewService {
       eventId: interview.providerEventId,
       sendUpdates: "none",
       requestBody: {
-        summary: requestBody.title,
+        summary: `Interview: ${interview.jobTitle} at ${interview.companyName}`,
         description: `Interview for ${interview.jobTitle} at ${interview.companyName}.`,
         start: { dateTime: requestBody.startTime, timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE },
         end: { dateTime: requestBody.endTime, timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE },

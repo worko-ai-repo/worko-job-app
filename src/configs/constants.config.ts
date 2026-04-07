@@ -619,7 +619,8 @@ const APP_CONSTANTS = {
    */
   JOB_APPLICATION_INTERVIEW_CONSTANTS: {
     COLLECTION_NAME: "jobApplicationInterviews",
-    DEFAULT_CALENDAR_ID: "primary",
+    GOOGLE_CALENDAR_SUBJECT: "pankaj@worko.ai",
+    GOOGLE_CALENDAR_SCOPES: "https://www.googleapis.com/auth/calendar",
     GOOGLE_MEET_CONFERENCE_TYPE: "hangoutsMeet",
     MAX_COMPLETED_ROUNDS: 5,
     TIMEZONE: "UTC",

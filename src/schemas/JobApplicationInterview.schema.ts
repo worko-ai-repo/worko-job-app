@@ -26,7 +26,7 @@ const attendeeValidation = Joi.object({
     "string.email": "Attendee email must be a valid email address",
     "string.empty": "Attendee email should not be empty",
   }),
-  name: Joi.string().optional().allow("", null),
+  name: Joi.string().optional().allow(""),
   userId: Joi.alternatives()
     .conditional("type", {
       is: JobApplicationInterviewAttendeeTypeEnum.EVALUATOR,
@@ -34,7 +34,7 @@ const attendeeValidation = Joi.object({
         "any.required": "Evaluator userId is required for evaluator attendees",
         "string.empty": "Evaluator userId should not be empty",
       }),
-      otherwise: Joi.string().optional().allow("", null),
+      otherwise: Joi.string().optional().allow(""),
     })
     .messages({}),
 });
@@ -57,12 +57,8 @@ export const jobApplicationInterviewScheduleValidation = Joi.object({
     "any.required": "Company name is required",
     "string.empty": "Company name should not be empty",
   }),
-  title: Joi.string().required().messages({
-    "any.required": "Title is required",
-    "string.empty": "Title should not be empty",
-  }),
-  recruiterNote: Joi.string().optional().allow("", null),
-  ruleForCandidate: Joi.string().optional().allow("", null),
+  recruiterNote: Joi.string().optional().allow(""),
+  ruleForCandidate: Joi.string().optional().allow(""),
   startTime: Joi.string().isoDate().required().messages({
     "any.required": "Start time is required",
     "string.isoDate": "Start time must be a valid ISO date",
@@ -104,7 +100,7 @@ export const jobApplicationInterviewCancelValidation = Joi.object({
     "any.required": "Cancellation reason is required",
     "string.empty": "Cancellation reason should not be empty",
   }),
-  cancellationFeedback: Joi.string().optional().allow("", null),
+  cancellationFeedback: Joi.string().optional().allow(""),
 });
 
 /**
@@ -141,8 +137,8 @@ export const jobApplicationInterviewFilterValidation = gcpFirestoreCommonSchema.
     status: Joi.string()
       .valid(...Object.values(JobApplicationInterviewStatusEnum))
       .optional()
-      .allow("", null),
-    applicationId: Joi.string().optional().allow("", null),
+      .allow(""),
+    applicationId: Joi.string().optional().allow(""),
   })
 );
 

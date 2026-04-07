@@ -55,6 +55,7 @@
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
     "luxon": "^3.5.0",
+    "nodemon": "^3.1.14",
     "serverless": "^3.40.0",
     "serverless-http": "^3.2.0",
     "ulidx": "^2.4.1",

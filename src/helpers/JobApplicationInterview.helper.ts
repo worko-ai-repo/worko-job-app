@@ -285,7 +285,8 @@ class JobApplicationInterviewHelper {
    * @returns {string}
    */
   getJobApplicationInterviewDefaultCalendarId(): string {
-    return APP_CONSTANTS.JOB_APPLICATION_INTERVIEW_CONSTANTS.DEFAULT_CALENDAR_ID;
+    console.log("Google Calendar ID from env:", process.env.APP_GCP_GOOGLE_CALENDAR_ID);
+    return process.env.APP_GCP_GOOGLE_CALENDAR_ID!
   }
 
   /**
@@ -300,6 +301,4 @@ class JobApplicationInterviewHelper {
   }
 }
 
-const jobApplicationInterviewHelperObj = new JobApplicationInterviewHelper();
-
-export { jobApplicationInterviewHelperObj, JobApplicationInterviewHelper };
+export const jobApplicationInterviewHelperObj = new JobApplicationInterviewHelper();

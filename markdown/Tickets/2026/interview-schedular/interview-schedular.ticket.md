@@ -189,12 +189,12 @@ Attendee:
 ## API Surface (proposed)
 
 Base path under job application:
-- `POST /user-job-applications/:id/interviews` -> schedule round
-- `PATCH /user-job-applications/:id/interviews/:interviewId/reschedule`
-- `PATCH /user-job-applications/:id/interviews/:interviewId/cancel`
-- `PATCH /user-job-applications/:id/interviews/:interviewId/complete` -> organizer completes; can request evaluator feedback
-- `GET /user-job-applications/:id/interviews`
-- `GET /user-job-applications/:id/interviews/:interviewId`
+- `POST /user-job-interview/:id/interviews` -> schedule round
+- `PATCH /user-job-interview/:id/interviews/:interviewId/reschedule`
+- `PATCH /user-job-interview/:id/interviews/:interviewId/cancel`
+- `PATCH /user-job-interview/:id/interviews/:interviewId/complete` -> organizer completes; can request evaluator feedback
+- `GET /user-job-interview/:id/interviews`
+- `GET /user-job-interview/:id/interviews/:interviewId`
 
 Evaluator dashboard:
 - `GET /evaluator/interviews`
@@ -632,23 +632,35 @@ AWS_SECRET_ACCESS_KEY=your_secret
 
 ---
 
+
 ### 1) Schedule interview round (organizer)
 **Method**: `POST`  
-**Path**: `/user-job-applications/:applicationId/interviews`  
+**Path**: `/user-job-interview/:applicationId/interviews`  
 **Query params**: none  
 **Request body**:
 ```json
-{
-  "title": "Technical Interview",
-  "description": "Backend round",
-  "startTime": "2026-04-02T10:00:00Z",
-  "endTime": "2026-04-02T10:30:00Z",
-  "timezone": "UTC",
+  {
+  "interviewType": "Technical Interview",
+  "jobTitle": "category manager – f&v",
+  "companyName": "FIRST FLIGHT COURIERS (FFCL)",
+  "startTime": "2026-04-10T10:00:00.000Z",
+  "endTime": "2026-04-10T11:00:00.000Z",
   "attendees": [
-    { "type": "EVALUATOR", "userId": "01JEVAL...ULID", "email": "eval@worko.ai", "name": "Eva L" },
-    { "type": "EXTERNAL", "email": "observer@company.com", "name": "Observer" }
-  ]
+    {
+      "type": "EXTERNAL",
+      "email": "ashutosh.sharma@worko.ai",
+      "name": "Ashutosh Sharma"
+    },
+    {
+      "type": "EXTERNAL",
+      "email": "wetblanket1748@gmail.com",
+      "name": "Wet Blanket"
+    }
+  ],
+  "recruiterNote": "Optional note for the recruiter",
+  "ruleForCandidate": "Optional rules for the candidate"
 }
+
 ```
 **Response (200)**:
 ```json
@@ -669,7 +681,7 @@ AWS_SECRET_ACCESS_KEY=your_secret
 
 ### 2) List interviews for a job application (organizer/corp/admin)
 **Method**: `GET`  
-**Path**: `/user-job-applications/:applicationId/interviews`  
+**Path**: `/user-job-interview/:applicationId/interviews`  
 **Query params**:
 - `limit` (number, optional)
 - `cursor` (string, optional)
@@ -699,7 +711,7 @@ AWS_SECRET_ACCESS_KEY=your_secret
 
 ### 3) Get interview details (organizer/corp/admin)
 **Method**: `GET`  
-**Path**: `/user-job-applications/:applicationId/interviews/:interviewId`  
+**Path**: `/user-job-interview/:applicationId/interviews/:interviewId`  
 **Query params**: none  
 **Request body**: none  
 **Response (200)**:
@@ -724,16 +736,16 @@ AWS_SECRET_ACCESS_KEY=your_secret
 
 ### 4) Reschedule interview (organizer)
 **Method**: `PATCH`  
-**Path**: `/user-job-applications/:applicationId/interviews/:interviewId/reschedule`  
+**Path**: `/user-job-interview/:applicationId/interviews/:interviewId/reschedule`  
 **Query params**: none  
 **Request body**:
 ```json
 {
-  "title": "Technical Interview (Rescheduled)",
-  "description": "Backend round",
-  "startTime": "2026-04-03T10:00:00Z",
-  "endTime": "2026-04-03T10:30:00Z",
-  "timezone": "UTC"
+  /**
+   * New start time (ISO date-time); shown in emails only.
+   */
+  startTime: "2026-04-02T10:00:00Z",
+  endTime: "2026-04-02T10:00:00Z",
 }
 ```
 **Response (200)**:
@@ -751,7 +763,7 @@ AWS_SECRET_ACCESS_KEY=your_secret
 
 ### 5) Cancel interview (organizer)
 **Method**: `PATCH`  
-**Path**: `/user-job-applications/:applicationId/interviews/:interviewId/cancel`  
+**Path**: `/user-job-interview/:applicationId/interviews/:interviewId/cancel`  
 **Query params**: none  
 **Request body**:
 ```json
@@ -772,14 +784,16 @@ AWS_SECRET_ACCESS_KEY=your_secret
 
 ### 6) Complete interview + request evaluator feedback (organizer)
 **Method**: `PATCH`  
-**Path**: `/user-job-applications/:applicationId/interviews/:interviewId/complete`  
+**Path**: `/user-job-interview/:applicationId/interviews/:interviewId/complete`  
 **Query params**: none  
 **Request body**:
 ```json
 {
   "organizer": { "rating": 4, "feedback": "Strong fundamentals" },
-  "requestEvaluatorFeedback": true,
-  "allowedEvaluatorIds": ["01JEVAL...ULID"]
+  "evaluator": {
+    rating: 5,
+    feedback: "Excellent communication and system design",
+  },
 }
 ```
 **Response (200)**:
@@ -796,82 +810,6 @@ AWS_SECRET_ACCESS_KEY=your_secret
     "allowedEvaluatorIds": ["01JEVAL...ULID"]
   }
 }
-```
-
----
-
-### 7) Evaluator dashboard — list interviews requiring feedback (evaluator)
-**Method**: `GET`  
-**Path**: `/evaluator/interviews`  
-**Query params**:
-- `status` (optional; default: `REQUESTED`)  
-- `limit` (number, optional)
-- `cursor` (string, optional)
-**Request body**: none  
-**Response (200)**:
-```json
-{
-  "items": [
-    {
-      "interviewId": "01JINT...ULID",
-      "applicationId": "01JAPP...ULID",
-      "roundNumber": 1,
-      "scheduledAt": "2026-04-02T10:00:00Z",
-      "status": "COMPLETED",
-      "feedbackRequest": { "status": "REQUESTED" }
-    }
-  ],
-  "nextCursor": null
-}
-```
-
----
-
-### 8) Evaluator dashboard — get interview detail (evaluator)
-**Method**: `GET`  
-**Path**: `/evaluator/interviews/:interviewId`  
-**Query params**: none  
-**Request body**: none  
-**Response (200)**:
-```json
-{
-  "interviewId": "01JINT...ULID",
-  "applicationId": "01JAPP...ULID",
-  "roundNumber": 1,
-  "scheduledAt": "2026-04-02T10:00:00Z",
-  "meetLink": "https://meet.google.com/xxx-xxxx-xxx",
-  "completion": {
-    "organizer": { "rating": 4, "feedback": "Strong fundamentals" },
-    "evaluator": null
-  },
-  "feedbackRequest": { "status": "REQUESTED" }
-}
-```
-
----
-
-### 9) Evaluator dashboard — submit feedback (evaluator)
-**Method**: `POST`  
-**Path**: `/evaluator/interviews/:interviewId/feedback`  
-**Query params**: none  
-**Request body**:
-```json
-{
-  "rating": 5,
-  "feedback": "Excellent communication and system design"
-}
-```
-**Response (200)**:
-```json
-{
-  "interviewId": "01JINT...ULID",
-  "feedbackRequest": { "status": "SUBMITTED" },
-  "completion": {
-    "organizer": { "rating": 4, "feedback": "Strong fundamentals" },
-    "evaluator": { "rating": 5, "feedback": "Excellent communication and system design" }
-  }
-}
-```
 
 
 Implemented the interview scheduler APIs end-to-end in project convention style (JSDoc, controller/service/dao/dto/schema/model layering, router wiring, Firestore usage, existing email flow).

@@ -63,5 +63,6 @@ parameter_overrides = [
     "AppAwsS3VectorJobSearchLambdaName=worko-vector-store-job-search-prod",
     "AppAwsEventBridgeScheduleInvokeLambdaRole=worko-schedule-invoke-lambda-role",
     "AppAwsBedrockModelName=anthropic.claude-3-sonnet-20240229-v1:0",
-    "AppAwsBedrockServiceRole=worko-batch-inference-role"
+    "AppAwsBedrockServiceRole=worko-batch-inference-role",
+    "AppGcpGoogleCalendarId=78ef32abd5bc7789e2efcec9b572f8a4184f9124f329d69a0a6fe5afa67f5112@group.calendar.google.com"
 ]

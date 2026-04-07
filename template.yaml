@@ -49,6 +49,8 @@ Parameters:
     Type: String
   AppAwsS3VectorJobSearchLambdaName:
     Type: String
+  AppGcpGoogleCalendarId:
+    Type: String
   
 Conditions:
   IsProd: !Equals [!Ref Stage, prod]
@@ -157,6 +159,9 @@ Globals:
 
         # GCP Project details
         APP_GCP_PROJECT_ID: !Sub "worko-${Stage}"
+
+        # GCP Calendar Configuration
+        APP_GCP_GOOGLE_CALENDAR_ID: !Ref AppGcpGoogleCalendarId
 
         # Local authorizer mock user (used when APP_STAGE=local)
         APP_AWS_AUTH_MOCK_USER_ID: "REDACTED"
