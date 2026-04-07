@@ -36,7 +36,7 @@ class JobApplicationInterviewFirestoreDao implements BaseDao {
    *
    * Firestore database name for corporate data.
    */
-  databaseName: string = `worko-corp-db-${process.env.APP_SLS_STAGE}`;
+  databaseName: string = `worko-jobs-db-${process.env.APP_SLS_STAGE}`;
   /**
    * collectionName
    *

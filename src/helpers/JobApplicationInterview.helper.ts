@@ -34,6 +34,24 @@ import HttpStatusCode from "../utils/http-codes.util";
 import { JobApplicationInterviewStatusEnum } from "../enums/JobApplicationInterview.enum";
 
 class JobApplicationInterviewHelper {
+  private getDisplayNameFromEmail(email: string): string {
+    const localPart = email.split("@")[0] ?? "";
+    if (!localPart) return email;
+    return localPart.replace(/[._-]+/g, " ").toTitleCase();
+  }
+
+  private getReadableInterviewStatus(status: string): string {
+    return status.replace(/_/g, " ").toTitleCase();
+  }
+
+  private getCandidateRecipientName(interview: DbJobApplicationInterviewDto): string {
+    const candidateName = interview.applicantName?.trim();
+    if (candidateName) {
+      return candidateName.toTitleCase();
+    }
+    return this.getDisplayNameFromEmail(interview.applicantEmail);
+  }
+
   /**
    * getJobApplicationInterviewRoundText
    *
@@ -114,7 +132,7 @@ class JobApplicationInterviewHelper {
     // Candidate template
     const candidatePlaceholders: EmailTemplatePlaceholderJOB_APPLICATION_INTERVIEW_SCHEDULER_CANDIDATE_INVITE =
       {
-        recipientName: interview.applicantEmail,
+        recipientName: this.getCandidateRecipientName(interview),
         companyName: interview.companyName,
         jobTitle: interview.jobTitle,
         interviewType: interview.interviewType,
@@ -123,7 +141,7 @@ class JobApplicationInterviewHelper {
           interview.scheduledAt
         ),
         interviewMeetLink: interview.meetingLink,
-        interviewStatus: interview.status,
+        interviewStatus: this.getReadableInterviewStatus(interview.status),
         interviewTitle: interviewTitleForEmail,
         ruleForCandidate: interview.ruleForCandidate ?? "",
         ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
@@ -164,7 +182,7 @@ class JobApplicationInterviewHelper {
               interview.scheduledAt
             ),
             interviewMeetLink: interview.meetingLink,
-            interviewStatus: interview.status,
+            interviewStatus: this.getReadableInterviewStatus(interview.status),
             interviewTitle: interviewTitleForEmail,
             ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
@@ -199,7 +217,7 @@ class JobApplicationInterviewHelper {
     // Candidate template
     const candidatePlaceholders: EmailTemplatePlaceholderJOB_APPLICATION_INTERVIEW_SCHEDULER_CANDIDATE_STATUS_UPDATE =
       {
-        recipientName: interview.applicantEmail,
+        recipientName: this.getCandidateRecipientName(interview),
         companyName: interview.companyName,
         jobTitle: interview.jobTitle,
         interviewType: interview.interviewType,
@@ -209,7 +227,7 @@ class JobApplicationInterviewHelper {
           interview.scheduledAt
         ),
         interviewMeetLink: interview.meetingLink,
-        interviewStatus: statusLabel,
+        interviewStatus: this.getReadableInterviewStatus(statusLabel),
         ruleForCandidate: interview.ruleForCandidate ?? "",
         ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
@@ -250,7 +268,7 @@ class JobApplicationInterviewHelper {
               interview.scheduledAt
             ),
             interviewMeetLink: interview.meetingLink,
-            interviewStatus: statusLabel,
+            interviewStatus: this.getReadableInterviewStatus(statusLabel),
             ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 

@@ -13,6 +13,7 @@ import {
   JobApplicationInterviewRescheduleApiDto,
   JobApplicationInterviewScheduleApiDto,
 } from "../dtos/JobApplicationInterview.dto";
+import { UserJobApplicationCommonUpdateDto } from "../dtos/UserJobApplication.dto";
 
 // Import enums
 import {
@@ -31,6 +32,8 @@ import { DbJobApplicationInterviewDto } from "../db/gcp-firestore-models/JobAppl
 
 // Import services
 import UlidService from "./Ulid.service";
+import { userJobApplicationServiceObj } from "./UserJobApplication.service";
+import userDetailService from "./UserDetail.service";
 
 // Import utils
 import { dateHelperObj } from "../helpers/date.helper";
@@ -38,6 +41,28 @@ import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
 
 class JobApplicationInterviewService {
+  private async syncInterviewMetaOnApplication(
+    applicationId: string,
+    interviewMeta: Pick<
+      UserJobApplicationCommonUpdateDto,
+      "latestInterviewRoundId" | "interviewRoundCount" | "activeInterviewRoundId"
+    >,
+  ): Promise<void> {
+    const jobApplication = await userJobApplicationServiceObj.getJobApplicationById(
+      applicationId,
+    );
+    const applicantEmail =
+      jobApplicationInterviewHelperObj.getJobApplicationInterviewApplicantEmailFromApplication(
+        jobApplication,
+      );
+
+    await userJobApplicationServiceObj.updateJobApplicationByIdAndPrimaryEmail(
+      applicationId,
+      applicantEmail,
+      interviewMeta,
+    );
+  }
+
   /**
    * scheduleUserApplicationInterview
    *
@@ -95,6 +120,8 @@ class JobApplicationInterviewService {
       jobApplicationInterviewHelperObj.getJobApplicationInterviewApplicantEmailFromApplication(
         jobApplication
       );
+    const applicantDetails = await userDetailService.getUserDetailsByEmail(applicantEmail);
+    const applicantName = applicantDetails.name;
     const organizerEmail: string = global.requestLocalContext.userEmail;
 
     const attendeesForCalendar: { email: string }[] = [];
@@ -173,6 +200,7 @@ class JobApplicationInterviewService {
         jobId: jobApplication.jobId,
         companyId: jobApplication.companyId,
         applicantEmail,
+        applicantName,
         applicantId: jobApplication.id,
         organizerId: actionByCorporateUserId ?? actionByUserId ?? "unknown", //@Todo: Throw error in case of unknown and log the error
         organizerEmail,
@@ -211,6 +239,11 @@ class JobApplicationInterviewService {
       createdInterview,
       `You have been invited to an interview for the position of ${createdInterview.jobTitle} at ${createdInterview.companyName}.`
     );
+    await this.syncInterviewMetaOnApplication(applicationId, {
+      latestInterviewRoundId: createdInterview.id,
+      interviewRoundCount: createdInterview.roundNumber,
+      activeInterviewRoundId: createdInterview.id,
+    });
     return createdInterview;
   }
 
@@ -321,6 +354,11 @@ class JobApplicationInterviewService {
       updated,
       "RESCHEDULED"
     );
+    await this.syncInterviewMetaOnApplication(applicationId, {
+      latestInterviewRoundId: updated.id,
+      interviewRoundCount: updated.roundNumber,
+      activeInterviewRoundId: updated.id,
+    });
     return updated;
   }
 
@@ -370,6 +408,11 @@ class JobApplicationInterviewService {
       updated,
       "CANCELLED"
     );
+    await this.syncInterviewMetaOnApplication(applicationId, {
+      latestInterviewRoundId: updated.id,
+      interviewRoundCount: updated.roundNumber,
+      activeInterviewRoundId: undefined,
+    });
     return updated;
   }
 
@@ -501,6 +544,13 @@ class JobApplicationInterviewService {
       updated,
       "COMPLETED"
     );
+    if (updated.status === JobApplicationInterviewStatusEnum.COMPLETED) {
+      await this.syncInterviewMetaOnApplication(applicationId, {
+        latestInterviewRoundId: updated.id,
+        interviewRoundCount: updated.roundNumber,
+        activeInterviewRoundId: undefined,
+      });
+    }
 
     return updated;
   }

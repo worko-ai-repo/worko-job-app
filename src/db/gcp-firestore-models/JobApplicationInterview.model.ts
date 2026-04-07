@@ -32,6 +32,7 @@ export interface DbJobApplicationInterviewDto extends BaseFirestoreModel {
 
   applicantEmail: string;
   applicantId?: string;
+  applicantName?: string;
 
   organizerId: string;
   organizerEmail: string;
