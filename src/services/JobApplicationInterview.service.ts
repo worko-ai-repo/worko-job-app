@@ -115,14 +115,14 @@ class JobApplicationInterviewService {
         HttpStatusCode.CONFLICT_409
       );
     }
-
+    
     const applicantEmail: string =
       jobApplicationInterviewHelperObj.getJobApplicationInterviewApplicantEmailFromApplication(
         jobApplication
       );
     const applicantDetails = await userDetailService.getUserDetailsByEmail(applicantEmail);
     const applicantName = applicantDetails.name;
-    const organizerEmail: string = global.requestLocalContext.userEmail;
+    const organizerEmail: string = requestBody.organizerEmail;
 
     const attendeesForCalendar: { email: string }[] = [];
     attendeesForCalendar.push({ email: applicantEmail });

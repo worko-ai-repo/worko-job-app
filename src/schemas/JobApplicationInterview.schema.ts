@@ -45,6 +45,11 @@ const attendeeValidation = Joi.object({
  * Validation schema for scheduling interview round.
  */
 export const jobApplicationInterviewScheduleValidation = Joi.object({
+  organizerEmail: Joi.string().email().required().lowercase().messages({
+    "any.required": "Organizer email is required",
+    "string.email": "Organizer email must be a valid email address",
+    "string.empty": "Organizer email should not be empty",
+  }),
   interviewType: Joi.string().required().messages({
     "any.required": "Interview type is required",
     "string.empty": "Interview type should not be empty",

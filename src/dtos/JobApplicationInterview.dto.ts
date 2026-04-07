@@ -29,6 +29,13 @@ export interface JobApplicationInterviewAttendeeApiDto {
  */
 export interface JobApplicationInterviewScheduleApiDto {
   /**
+   * organizerEmail
+   *
+   * Used only for email subject/body/title text. Not tied to Meet space creation.
+   */
+  organizerEmail: string;
+  
+  /**
    * interviewType
    *
    * Example: "Technical Interview", "HR Round", "System Design Round"
