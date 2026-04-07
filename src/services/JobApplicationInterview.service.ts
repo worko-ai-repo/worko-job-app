@@ -128,38 +128,64 @@ class JobApplicationInterviewService {
     attendeesForCalendar.push({ email: applicantEmail });
     attendeesForCalendar.push({ email: organizerEmail });
 
-    (requestBody.attendees ?? []).forEach((a) => {
+    if (requestBody.attendees) {
+      requestBody.attendees.forEach((a) => {
       attendeesForCalendar.push({ email: a.email });
     });
+    }else{
+      global.logger.info("No additional attendees provided for calendar event. [Service]", {
+        methodName: this.scheduleUserApplicationInterview.name,
+        applicationId,
+      });
+    }
 
     const calendarClient = await gcpGoogleCalendarLibrary.getCalendarClient();
     const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
+
+    if (!requestBody.startTime || !requestBody.endTime) {
+      throw new BaseError(
+      "Start time and end time are required to schedule an interview.",
+      HttpStatusCode.BAD_REQUEST_400
+      );
+    }
+
+    if (!requestBody.jobTitle || !requestBody.companyName) {
+      throw new BaseError(
+      "Job title and company name are required to schedule an interview.",
+      HttpStatusCode.BAD_REQUEST_400
+      );
+    }
+
+    const eventRequestBody = {
+      summary: `Interview: ${requestBody.jobTitle} at ${requestBody.companyName}`,
+      description: `Interview for ${requestBody.jobTitle} at ${requestBody.companyName}.`,
+      start: {
+      dateTime: requestBody.startTime,
+      timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE,
+      },
+      end: {
+      dateTime: requestBody.endTime,
+      timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE,
+      },
+      ...(attendeesForCalendar.length > 0 && { attendees: attendeesForCalendar }),
+      conferenceData: {
+      createRequest: {
+        requestId: UlidService.getUlidId(),
+      },
+      },
+    };
+
+    global.logger.info("Creating Google Meet event for interview [Service]", {
+      methodName: this.scheduleUserApplicationInterview.name,
+      applicationId,
+      eventRequestBody,
+    });
 
     const eventResponse = await calendarClient.events.insert({
       calendarId: jobApplicationInterviewHelperObj.getJobApplicationInterviewDefaultCalendarId(),
       conferenceDataVersion: 1,
       sendUpdates: "all",
-      requestBody: {
-        summary: `Interview: ${requestBody.jobTitle} at ${requestBody.companyName}`,
-        description: `Interview for ${requestBody.jobTitle} at ${requestBody.companyName}.`,
-        start: {
-          dateTime: requestBody.startTime, // eg "2024-07-01T10:00:00Z" and 
-          timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE,
-        },
-        end: {
-          dateTime: requestBody.endTime,
-          timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE,
-        },
-        attendees: attendeesForCalendar,
-        conferenceData: {
-          createRequest: {
-            requestId: UlidService.getUlidId(),
-            /* conferenceSolutionKey: {
-              type: "hangoutsMeet",
-            }, */
-          },
-        },
-      },
+      requestBody: eventRequestBody,
     });
  
     const meetLink: string | undefined = eventResponse?.data?.hangoutLink ?? undefined;
