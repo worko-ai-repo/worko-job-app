@@ -136,9 +136,10 @@ class JobApplicationInterviewFirestoreDao implements BaseDao {
       baseQuery = baseQuery.where("status", "==", filterOptions.status);
     }
 
+    // List rounds in natural sequence by default (round 1 -> round 2 -> ...)
     baseQuery = baseQuery.orderBy(
-      "scheduledAt",
-      filterOptions.sortOrder ?? GcpFirestoreSortOrderTypeEnum.DESCENDING,
+      "roundNumber",
+      filterOptions.sortOrder ?? GcpFirestoreSortOrderTypeEnum.ASCENDING,
     );
 
     return gcpFirestoreUtilObj.paginateGcpFirestore<
