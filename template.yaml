@@ -228,6 +228,7 @@ Resources:
                   - "ses:GetTemplate"
                   - "ses:DeleteTemplate"
                   - "ses:SendTemplatedEmail"
+                  - "ses:SendRawEmail"
                 Resource: "*"
 
         - PolicyName: S3Access
