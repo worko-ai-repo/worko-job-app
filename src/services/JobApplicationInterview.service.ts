@@ -478,6 +478,14 @@ class JobApplicationInterviewService {
       APP_CONSTANTS.COGNITO_IDENTITY_POOL_GROUPS.EVALUATOR
     );
 
+    global.logger.info("Completing interview with feedback [Service]", {
+      methodName: this.completeUserApplicationInterview.name,
+      applicationId,
+      interviewId,
+      isEvaluator,
+      cognitoUserGroupsXSA:cognitoUserGroups,
+    });
+
     const nowIso = dateHelperObj.getISODate();
     let updated: DbJobApplicationInterviewDto | undefined;
 
