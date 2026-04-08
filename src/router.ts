@@ -134,7 +134,7 @@ router.use("/job-application", UserJobApplicationRouter);
 
 /**
  * Interview scheduler APIs for a specific job application
- * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
+ * @authorisedRoles ["evaluator","loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
  */
 router.use("/user-job-interview", JobApplicationInterviewRouter);
 

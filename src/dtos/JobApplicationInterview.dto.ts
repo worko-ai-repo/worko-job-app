@@ -113,7 +113,8 @@ export interface JobApplicationInterviewCompleteOrganizerFeedbackApiDto {
  * Payload for marking interview as completed.
  */
 export interface JobApplicationInterviewCompleteApiDto {
-  organizer: JobApplicationInterviewCompleteOrganizerFeedbackApiDto;
+  organizer?: JobApplicationInterviewCompleteOrganizerFeedbackApiDto;
+  evaluator?: JobApplicationInterviewCompleteOrganizerFeedbackApiDto;
 }
 
 /**

@@ -34,16 +34,147 @@ import HttpStatusCode from "../utils/http-codes.util";
 import { JobApplicationInterviewStatusEnum } from "../enums/JobApplicationInterview.enum";
 
 class JobApplicationInterviewHelper {
+  /**
+   * Escapes special characters in ICS text.
+   * 
+   * ICS format requires certain characters to be escaped with a backslash.
+   * 
+   * @param value The text to escape.
+   * @returns The escaped text.
+   */ 
+  private escapeIcsText(value: string): string {
+    return (value ?? "")
+      .replace(/\\/g, "\\\\")
+      .replace(/\n/g, "\\n")
+      .replace(/,/g, "\\,")
+      .replace(/;/g, "\\;");
+  }
+
+  /**
+   * foldIcsLine
+   * 
+   * Folds a line of ICS content if it exceeds the specified maximum length.
+   * 
+   * @param line A single line of ICS content to fold if it exceeds the max length.
+   * @param maxLen The maximum length of a line before it is folded.
+   * @returns The folded line.
+   */
+  private foldIcsLine(line: string, maxLen = 73): string {
+    // RFC 5545: lines should be <= 75 octets; we keep a conservative char limit.
+    if (line.length <= maxLen) return line;
+    const chunks: string[] = [];
+    let i = 0;
+    while (i < line.length) {
+      const chunk = line.slice(i, i + maxLen);
+      chunks.push(i === 0 ? chunk : ` ${chunk}`);
+      i += maxLen;
+    }
+    return chunks.join("\r\n");
+  }
+
+  /**
+   * generateInterviewIcsContent
+   *
+   * Generates ICS calendar content for interview scheduling emails.
+   *
+   * @param {DbJobApplicationInterviewDto} interview - Interview details.
+   * @param {Object} attendee - Attendee details (email and optional name).
+   * @param {"REQUEST" | "CANCEL"} [method="REQUEST"] - ICS method type for scheduling or cancellation.
+   * @returns {string} ICS file content as a string.
+   */
+  generateInterviewIcsContent(params: {
+    interview: DbJobApplicationInterviewDto;
+    attendee: { email: string; name?: string };
+    method?: "REQUEST" | "CANCEL";
+  }): string {
+    const { interview, attendee } = params;
+    const method = params.method ?? "REQUEST";
+
+    const tz = interview.timezone || APP_CONSTANTS.APP_DEFAULT_TIMEZONE;
+    const startUtc = DateTime.fromISO(interview.scheduledAt, { zone: tz })
+      .toUTC()
+      .toFormat("yyyyMMdd'T'HHmmss'Z'");
+    const endUtc = DateTime.fromISO(interview.endAt, { zone: tz })
+      .toUTC()
+      .toFormat("yyyyMMdd'T'HHmmss'Z'");
+    const dtStampUtc = DateTime.utc().toFormat("yyyyMMdd'T'HHmmss'Z'");
+
+    const summary = this.escapeIcsText(
+      `Interview: ${interview.jobTitle} at ${interview.companyName}`
+    );
+
+    const descriptionParts: string[] = [
+      `Interview for ${interview.jobTitle} at ${interview.companyName}.`,
+      `Round: ${this.getJobApplicationInterviewRoundText(interview.roundNumber)} — ${interview.interviewType}`,
+    ];
+    if (interview.meetingLink) {
+      descriptionParts.push(`Join link: ${interview.meetingLink}`);
+    }
+    const description = this.escapeIcsText(descriptionParts.join("\n"));
+
+    const uid = this.escapeIcsText(`${interview.id}@worko`);
+    const organizer = this.escapeIcsText(interview.organizerEmail);
+    const attendeeEmail = this.escapeIcsText(attendee.email);
+    const attendeeCn = this.escapeIcsText(
+      attendee.name?.trim() ? attendee.name.trim() : this.getDisplayNameFromEmail(attendee.email)
+    );
+
+    const lines: string[] = [
+      "BEGIN:VCALENDAR",
+      "PRODID:-//Worko//Interview Scheduler//EN",
+      "VERSION:2.0",
+      "CALSCALE:GREGORIAN",
+      `METHOD:${method}`,
+      "BEGIN:VEVENT",
+      `UID:${uid}`,
+      `DTSTAMP:${dtStampUtc}`,
+      `DTSTART:${startUtc}`,
+      `DTEND:${endUtc}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${description}`,
+      `ORGANIZER:MAILTO:${organizer}`,
+      `ATTENDEE;CN=${attendeeCn};ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:${attendeeEmail}`,
+      ...(interview.meetingLink
+        ? [`URL:${this.escapeIcsText(interview.meetingLink)}`, "LOCATION:Online meeting"]
+        : []),
+      `STATUS:${method === "CANCEL" ? "CANCELLED" : "CONFIRMED"}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ];
+
+    return lines.map((l) => this.foldIcsLine(l)).join("\r\n") + "\r\n";
+  }
+
+  /**
+   * Gets the display name from an email address.
+   * @param email The email address to extract the display name from.
+   * @returns The display name.
+   */
   private getDisplayNameFromEmail(email: string): string {
     const localPart = email.split("@")[0] ?? "";
     if (!localPart) return email;
     return localPart.replace(/[._-]+/g, " ").toTitleCase();
   }
 
+  /**
+   * Gets a human-readable interview status string.
+   * @example "SCHEDULED" => "Scheduled"
+   * @param status The interview status to convert.
+   * @returns The human-readable status.
+   */
   private getReadableInterviewStatus(status: string): string {
     return status.replace(/_/g, " ").toTitleCase();
   }
 
+  /**
+   * getCandidateRecipientName
+   *
+   * Determines the recipient name for the candidate in interview emails.
+   * Priority: applicantName (if available and non-empty) > derived name from applicantEmail.
+   *
+   * @param {DbJobApplicationInterviewDto} interview - Interview details containing applicant info.
+   * @returns {string} Recipient name for the candidate.
+   */
   private getCandidateRecipientName(interview: DbJobApplicationInterviewDto): string {
     const candidateName = interview.applicantName?.trim();
     if (candidateName) {
@@ -55,10 +186,9 @@ class JobApplicationInterviewHelper {
   /**
    * getJobApplicationInterviewRoundText
    *
-   * @example 1 => "1st round"
-   * @example 2 => "2nd round"
-   * @example 3 => "3rd round"
-   * @example 4 => "4th round"
+   * @example 1 => "1st round" everything else => "next round"
+   * @param {number} roundNumber - The interview round number.
+   * @returns {string} Human-readable text for the interview round.
    */
   getJobApplicationInterviewRoundText(roundNumber: number): string {
     if (roundNumber === 1) return "1st round";
@@ -84,7 +214,7 @@ class JobApplicationInterviewHelper {
    * @returns {string}
    */
   getJobApplicationInterviewFormattedDateTime(isoDateTime: string): string {
-    return DateTime.fromISO(isoDateTime).toFormat("dd LLL yyyy, HH:mm ZZZZ");
+    return DateTime.fromISO(isoDateTime).toFormat("cccc, dd LLL yyyy 'at' h:mm a ZZZZ");
   }
 
   /**
@@ -124,10 +254,10 @@ class JobApplicationInterviewHelper {
    */
   async sendJobApplicationInterviewInviteEmails(
     interview: DbJobApplicationInterviewDto,
-    title: string
   ): Promise<void> {
     const interviewTitleForEmail: string = this.getJobApplicationInterviewEmailTitle(interview);
     const interviewRoundText: string = this.getJobApplicationInterviewRoundText(interview.roundNumber);
+    const icsFilename = `interview-${interview.id}.ics`;
 
     // Candidate template
     const candidatePlaceholders: EmailTemplatePlaceholderJOB_APPLICATION_INTERVIEW_SCHEDULER_CANDIDATE_INVITE =
@@ -147,10 +277,21 @@ class JobApplicationInterviewHelper {
         ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
       };
 
-    await emailLibrary.sendEmail(
+    await emailLibrary.sendEmailWithAttachments(
       EmailTemplateEnum.JOB_APPLICATION_INTERVIEW_SCHEDULER_CANDIDATE_INVITE,
       { email: interview.applicantEmail },
-      candidatePlaceholders
+      candidatePlaceholders,
+      [
+        {
+          filename: icsFilename,
+          contentType: 'text/calendar; charset="utf-8"; method=REQUEST',
+          content: this.generateInterviewIcsContent({
+            interview,
+            attendee: { email: interview.applicantEmail, name: candidatePlaceholders.recipientName },
+            method: "REQUEST",
+          }),
+        },
+      ]
     );
 
     // Attendee template (exclude organizer and candidate)
@@ -187,10 +328,21 @@ class JobApplicationInterviewHelper {
             ...APP_CONSTANTS.GET_WORKO_SOCIAL_PROFILES_TO_SEND_EMAIL,
           };
 
-        await emailLibrary.sendEmail(
+        await emailLibrary.sendEmailWithAttachments(
           EmailTemplateEnum.JOB_APPLICATION_INTERVIEW_SCHEDULER_ATTENDEE_INVITE,
           recipient,
-          placeholders
+          placeholders,
+          [
+            {
+              filename: icsFilename,
+              contentType: 'text/calendar; charset="utf-8"; method=REQUEST',
+              content: this.generateInterviewIcsContent({
+                interview,
+                attendee: { email: recipient.email, name: placeholders.recipientName },
+                method: "REQUEST",
+              }),
+            },
+          ]
         );
       })
     );

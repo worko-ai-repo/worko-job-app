@@ -36,6 +36,116 @@ interface EmailSourceDestinationAddress {
  * Mostly it takes care of everything required to send email to the user.
  */
 class EmailLibrary {
+  private renderTemplateString(template: string, placeholders: Record<string, any>): string {
+    let rendered = template ?? "";
+
+    // Handle basic conditional blocks: {{#key}} ... {{/key}}
+    rendered = rendered.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_m, key: string, content: string) => {
+      const val = placeholders?.[key];
+      return val ? content : "";
+    });
+
+    // Handle scalar replacements: {{key}}
+    rendered = rendered.replace(/\{\{(\w+)\}\}/g, (_m, key: string) => {
+      const val = placeholders?.[key];
+      if (val === null || val === undefined) return "";
+      return String(val);
+    });
+
+    return rendered;
+  }
+
+  private toBase64Lines(content: string, lineLength = 76): string {
+    const b64 = Buffer.from(content, "utf8").toString("base64");
+    const lines: string[] = [];
+    for (let i = 0; i < b64.length; i += lineLength) {
+      lines.push(b64.slice(i, i + lineLength));
+    }
+    return lines.join("\r\n");
+  }
+
+  private buildRawMimeEmail(params: {
+    from: string;
+    to: string;
+    subject: string;
+    textBody?: string;
+    htmlBody?: string;
+    attachments?: Array<{
+      filename: string;
+      contentType: string;
+      content: string; // utf8 content
+    }>;
+  }): string {
+    const boundaryMixed = `=_worko_mixed_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const boundaryAlt = `=_worko_alt_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    const headers = [
+      `From: ${params.from}`,
+      `To: ${params.to}`,
+      `Subject: ${params.subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/mixed; boundary="${boundaryMixed}"`,
+    ].join("\r\n");
+
+    const parts: string[] = [];
+
+    // multipart/alternative part for text+html
+    const altParts: string[] = [];
+    if (params.textBody) {
+      altParts.push(
+        [
+          `--${boundaryAlt}`,
+          `Content-Type: text/plain; charset="UTF-8"`,
+          `Content-Transfer-Encoding: 7bit`,
+          ``,
+          params.textBody,
+          ``,
+        ].join("\r\n")
+      );
+    }
+    if (params.htmlBody) {
+      altParts.push(
+        [
+          `--${boundaryAlt}`,
+          `Content-Type: text/html; charset="UTF-8"`,
+          `Content-Transfer-Encoding: 7bit`,
+          ``,
+          params.htmlBody,
+          ``,
+        ].join("\r\n")
+      );
+    }
+    altParts.push(`--${boundaryAlt}--\r\n`);
+
+    parts.push(
+      [
+        `--${boundaryMixed}`,
+        `Content-Type: multipart/alternative; boundary="${boundaryAlt}"`,
+        ``,
+        altParts.join("\r\n"),
+      ].join("\r\n")
+    );
+
+    // attachments
+    for (const att of params.attachments ?? []) {
+      parts.push(
+        [
+          `--${boundaryMixed}`,
+          `Content-Type: ${att.contentType}; name="${att.filename}"`,
+          `Content-Disposition: attachment; filename="${att.filename}"`,
+          `Content-Transfer-Encoding: base64`,
+          ``,
+          this.toBase64Lines(att.content),
+          ``,
+        ].join("\r\n")
+      );
+    }
+
+    parts.push(`--${boundaryMixed}--\r\n`);
+
+    return `${headers}\r\n\r\n${parts.join("\r\n")}`;
+  }
+
   /**
    * constructor
    */
@@ -252,6 +362,135 @@ class EmailLibrary {
     // Return the AWS SES response
     return {
       awsMessageId: sendTemplatedEmailAwsSesResponse.MessageId,
+      systemLogId: emailLogCreateResponse.id,
+    };
+  }
+
+  /**
+   * sendEmailWithAttachments
+   *
+   * Sends an email using local template rendering + AWS SES raw email,
+   * supporting MIME attachments (e.g. calendar invite .ics).
+   */
+  async sendEmailWithAttachments(
+    templateName: string,
+    toAddress: EmailSourceDestinationAddress,
+    placeholders: { [key: string]: any },
+    attachments: Array<{
+      filename: string;
+      contentType: string;
+      content: string;
+    }>,
+    replyToAddresses?: EmailSourceDestinationAddress[],
+    ccAddresses?: EmailSourceDestinationAddress[],
+    bccAddresses?: EmailSourceDestinationAddress[],
+    fromAddress?: EmailSourceDestinationAddress
+  ): Promise<{
+    awsMessageId: string | null;
+    systemLogId: string | null;
+  }> {
+    // Convert fullName to title case for all address fields before usage
+    if (toAddress.fullName) toAddress.fullName = toAddress.fullName.toTitleCase();
+    if (fromAddress?.fullName) fromAddress.fullName = fromAddress.fullName.toTitleCase();
+    replyToAddresses?.forEach((it) => (it.fullName = it.fullName?.toTitleCase()));
+    ccAddresses?.forEach((it) => (it.fullName = it.fullName?.toTitleCase()));
+    bccAddresses?.forEach((it) => (it.fullName = it.fullName?.toTitleCase()));
+
+    let templateDetails =
+      await emailTemplateService.getEmailTemplateByTemplateName(templateName);
+
+    if (!templateDetails) {
+      global.logger.warn(
+        `Unable to send the "${templateName}" because unable to find the email template in local db."`,
+        { filePath: __filename, methodName: this.sendEmailWithAttachments.name }
+      );
+      return { awsMessageId: null, systemLogId: null };
+    }
+
+    if (templateDetails.status !== EmailTemplateStatusEnum.ENABLED) {
+      global.logger.warn(
+        `Unable to send the "${templateName}" because email template is disabled or soft deleted in local db."`,
+        {
+          filePath: __filename,
+          methodName: this.sendEmailWithAttachments.name,
+          templateStatus: templateDetails.status,
+        }
+      );
+      return { awsMessageId: null, systemLogId: null };
+    }
+
+    fromAddress = fromAddress ?? {
+      email: APP_CONSTANTS.SOURCE_EMAIL_ADDRESS.WORKO_DEFAULT.email,
+      fullName: APP_CONSTANTS.SOURCE_EMAIL_ADDRESS.WORKO_DEFAULT.fullName.toTitleCase(),
+    };
+
+    const fromAddressStr: string = fromAddress.fullName
+      ? `${fromAddress.fullName} <${fromAddress.email}>`
+      : fromAddress.email;
+    const toAddressStr: string = toAddress.fullName
+      ? `${toAddress.fullName} <${toAddress.email}>`
+      : toAddress.email;
+
+    const subject = this.renderTemplateString(templateDetails.subject ?? "", placeholders);
+    const textBody = this.renderTemplateString(templateDetails.bodyText ?? "", placeholders);
+    const htmlBody = this.renderTemplateString(templateDetails.bodyHtml ?? "", placeholders);
+
+    const rawMime = this.buildRawMimeEmail({
+      from: fromAddressStr,
+      to: toAddressStr,
+      subject,
+      textBody,
+      htmlBody,
+      attachments,
+    });
+
+    const sendRawEmailResponse = await awsSesClientLibrary.sendRawEmail({
+      Source: fromAddressStr,
+      Destinations: [toAddressStr],
+      RawMessage: { Data: Buffer.from(rawMime) },
+    });
+
+    if (!sendRawEmailResponse.MessageId) {
+      global.logger.info(`Sending raw email "${templateName}" failed.`, {
+        filePath: __filename,
+        methodName: this.sendEmailWithAttachments.name,
+        to: toAddressStr,
+      });
+      return { awsMessageId: null, systemLogId: null };
+    }
+
+    // Keep logging behavior consistent with sendEmail (but subject/body are not available post-render in SES templated path either)
+    let emailLogCreateRequest: EmailLogCreateDto = {
+      templateName: templateName,
+      awsMessageId: sendRawEmailResponse.MessageId,
+      createdByUserId: "1",
+      status: EmailLogStatusEnum.SENT,
+      fromEmail: fromAddress.email,
+      fromName: fromAddress?.fullName?.toLowerCase(),
+      toEmail: toAddress.email,
+      toName: toAddress?.fullName?.toLowerCase(),
+      replyToEmails: replyToAddresses?.map((item: EmailSourceDestinationAddress) => ({
+        ...item,
+        fullName: item.fullName?.toLowerCase(),
+      })),
+      ccEmails: ccAddresses?.map((item: EmailSourceDestinationAddress) => ({
+        ...item,
+        fullName: item.fullName?.toLowerCase(),
+      })),
+      bccEmails: bccAddresses?.map((item: EmailSourceDestinationAddress) => ({
+        ...item,
+        fullName: item.fullName?.toLowerCase(),
+      })),
+      emailPlaceholders: placeholders,
+      emailSubject: "emailSubject",
+      emailTitle: "emailTitle",
+      emailBody: "emailBody",
+    };
+
+    let emailLogCreateResponse = await emailLogService.createEmailLog(emailLogCreateRequest);
+
+    return {
+      awsMessageId: sendRawEmailResponse.MessageId,
       systemLogId: emailLogCreateResponse.id,
     };
   }

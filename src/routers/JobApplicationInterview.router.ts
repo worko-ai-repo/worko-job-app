@@ -12,7 +12,7 @@ const JobApplicationInterviewRouter: Router = Router({ mergeParams: true });
 /**
  * Schedule interview round 
  * -applicationId refers to the job application for which the interview round is being scheduled 
- * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin","evaluator"]
  */
 JobApplicationInterviewRouter.post(
   "/:applicationId/interviews",
@@ -22,7 +22,7 @@ JobApplicationInterviewRouter.post(
 /**
  * List interviews for a job application
  * -applicationId refers to the job application for which the interviews are being listed
- * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
+ * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin","evaluator"]
  */
 JobApplicationInterviewRouter.get(
   "/:applicationId/interviews",
@@ -32,7 +32,7 @@ JobApplicationInterviewRouter.get(
 /**
  * Get interview details by id
  * -applicationId refers to the job application for which the interview round is being scheduled
- * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin"]
+ * @authorisedRoles ["loggedInUser", "admin", "corporate-recruiter", "corporate-admin","evaluator"]
  */
 JobApplicationInterviewRouter.get(
   "/:applicationId/interviews/:interviewId",
@@ -42,7 +42,7 @@ JobApplicationInterviewRouter.get(
 /**
  * Reschedule interview round
  * -applicationId refers to the job application for which the interview round is being rescheduled
- * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin","evaluator"]
  */
 JobApplicationInterviewRouter.patch(
   "/:applicationId/interviews/:interviewId/reschedule",
@@ -52,7 +52,7 @@ JobApplicationInterviewRouter.patch(
 /**
  * Cancel interview round
  * -applicationId refers to the job application for which the interview round is being cancelled
- * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin","evaluator"]
  */
 JobApplicationInterviewRouter.patch(
   "/:applicationId/interviews/:interviewId/cancel",
@@ -62,7 +62,7 @@ JobApplicationInterviewRouter.patch(
 /**
  * Complete interview round
  * -applicationId refers to the job application for which the interview round is being completed
- * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin","evaluator"]
  */
 JobApplicationInterviewRouter.patch(
   "/:applicationId/interviews/:interviewId/complete",

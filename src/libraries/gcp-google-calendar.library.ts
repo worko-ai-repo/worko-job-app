@@ -60,7 +60,7 @@ class GcpGoogleCalendarLibrary {
       }
       const auth = new JWT({
         email: credentials.client_email,
-        key: credentials.private_key.replace(/\\n/g, "\n"), // IMPORTANT FIX
+        key: credentials.private_key.replace(/\\n/g, "\n"), // IMPORTANT FIX for multiline private keys stored in AWS Secrets Manager
         scopes: [
           APP_CONSTANTS.JOB_APPLICATION_INTERVIEW_CONSTANTS.GOOGLE_CALENDAR_SCOPES,
         ],
@@ -71,12 +71,12 @@ class GcpGoogleCalendarLibrary {
         version: "v3",
         auth: auth as any,
       });
-      global.logger.info("Google Calendar client initialized successfully", {
+      global.logger.info("Google Calendar client initialized successfully [Library]", {
         methodName: "getCalendarClient",
       });
       return this.calendarClient;
     } catch (error) {
-      global.logger.error("Google Calendar initialization failed", {
+      global.logger.error("Google Calendar initialization failed [Library]", {
         methodName: "getCalendarClient",
         error,
       });
@@ -100,7 +100,7 @@ class GcpGoogleCalendarLibrary {
     calendarId?: string; // optional override
   }) {
     try {
-      global.logger.info("Creating calendar event with params [Xfe]", {
+      global.logger.info("Creating calendar event with params [Library]", {
         methodName: "createEvent",
         params,
       });
@@ -131,7 +131,7 @@ class GcpGoogleCalendarLibrary {
 
       return event.data;
     } catch (error) {
-      global.logger.error("Google Calendar createEvent failed", {
+      global.logger.error("Google Calendar createEvent failed [Library]", {
         methodName: "createEvent",
         error,
       });

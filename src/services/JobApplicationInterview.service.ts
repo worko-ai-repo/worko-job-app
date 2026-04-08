@@ -41,6 +41,12 @@ import { BaseError } from "../utils/errors.util";
 import HttpStatusCode from "../utils/http-codes.util";
 
 class JobApplicationInterviewService {
+
+  /**
+   * Synchronizes interview metadata on the job application.
+   * @param applicationId - The ID of the job application.
+   * @param interviewMeta - The interview metadata to sync.
+   */
   private async syncInterviewMetaOnApplication(
     applicationId: string,
     interviewMeta: Pick<
@@ -81,16 +87,19 @@ class JobApplicationInterviewService {
       applicationId,
     });
 
+    // Ensure job application exists and is in a valid status to schedule interview
     const jobApplication =
       await jobApplicationInterviewHelperObj.assertJobApplicationInProcessingInterviewStatus(
         applicationId
       );
 
+    // Fetch existing interviews for the application to determine round number and check for active rounds
     const existingInterviews: DbJobApplicationInterviewDto[] =
       await jobApplicationInterviewFirestoreDaoObj.getAllUserApplicationInterviewsByApplicationId(
         applicationId
       );
 
+    // Check if there's an active interview round (SCHEDULED or RESCHEDULED)
     const activeRound = existingInterviews.find((it) =>
       [
         JobApplicationInterviewStatusEnum.SCHEDULED,
@@ -98,6 +107,7 @@ class JobApplicationInterviewService {
       ].includes(it.status)
     );
 
+    // Count completed rounds to enforce maximum round limit
     const completedRounds = existingInterviews.filter(
       (it) => it.status === JobApplicationInterviewStatusEnum.COMPLETED
     ).length;
@@ -139,7 +149,10 @@ class JobApplicationInterviewService {
       });
     }
 
+    // Initialize Google Calendar client
     const calendarClient = await gcpGoogleCalendarLibrary.getCalendarClient();
+
+    // Get user context for audit fields
     const { actionByUserId, actionByCorporateUserId } = getActionByUserId();
 
     if (!requestBody.startTime || !requestBody.endTime) {
@@ -156,6 +169,7 @@ class JobApplicationInterviewService {
       );
     }
 
+    // Prepare calendar event request body
     const eventRequestBody = {
       summary: `Interview: ${requestBody.jobTitle} at ${requestBody.companyName}`,
       description: `Interview for ${requestBody.jobTitle} at ${requestBody.companyName}.`,
@@ -184,13 +198,14 @@ class JobApplicationInterviewService {
     const eventResponse = await calendarClient.events.insert({
       calendarId: jobApplicationInterviewHelperObj.getJobApplicationInterviewDefaultCalendarId(),
       conferenceDataVersion: 1,
-      sendUpdates: "all",
+      sendUpdates: "none",
       requestBody: eventRequestBody,
     });
  
     const meetLink: string | undefined = eventResponse?.data?.hangoutLink ?? undefined;
     const eventId: string | undefined = eventResponse?.data?.id ?? undefined;
-    global.logger.info("Google Meet event created [XsE]", {
+
+    global.logger.info("Google Meet event created [Service]", {
       methodName: this.scheduleUserApplicationInterview.name,
       applicationId,
       eventId,
@@ -248,8 +263,8 @@ class JobApplicationInterviewService {
           userId: a.userId,
         })),
         completion: {},
-        recruiterNote: requestBody.recruiterNote ?? undefined,
-        ruleForCandidate: requestBody.ruleForCandidate ?? undefined,
+        recruiterNote: requestBody.recruiterNote ?? "No recruiter note provided.",
+        ruleForCandidate: requestBody.ruleForCandidate ?? "No specific rules provided.",
         updatedByUserId: actionByUserId,
         updatedByCorporateUserId: actionByCorporateUserId,
       });
@@ -261,10 +276,7 @@ class JobApplicationInterviewService {
       );
     }
 
-    await jobApplicationInterviewHelperObj.sendJobApplicationInterviewInviteEmails(
-      createdInterview,
-      `You have been invited to an interview for the position of ${createdInterview.jobTitle} at ${createdInterview.companyName}.`
-    );
+    await jobApplicationInterviewHelperObj.sendJobApplicationInterviewInviteEmails(createdInterview);
     await this.syncInterviewMetaOnApplication(applicationId, {
       latestInterviewRoundId: createdInterview.id,
       interviewRoundCount: createdInterview.roundNumber,
@@ -462,9 +474,6 @@ class JobApplicationInterviewService {
     interviewId: string,
     requestBody: JobApplicationInterviewCompleteApiDto
   ): Promise<DbJobApplicationInterviewDto> {
-    await jobApplicationInterviewHelperObj.assertJobApplicationInProcessingInterviewStatus(
-      applicationId
-    );
 
     // Ensure interview exists
     const interview = await this.getScheduledUserApplicationInterviewById(interviewId);
@@ -488,8 +497,12 @@ class JobApplicationInterviewService {
 
     const nowIso = dateHelperObj.getISODate();
     let updated: DbJobApplicationInterviewDto | undefined;
+    const user = requestBody.evaluator || requestBody.organizer;
+    if (!user) {
+      throw new BaseError("Evaluator or Organizer feedback is required.", HttpStatusCode.BAD_REQUEST_400);
+    }
 
-    if (!isEvaluator) {
+    if (!isEvaluator && ('organizer' in requestBody)) {
       /**
        * Organizer / admin / corporate completion.
        * Once organizer feedback is set, it cannot be submitted again.
@@ -510,8 +523,8 @@ class JobApplicationInterviewService {
           status: JobApplicationInterviewStatusEnum.COMPLETED,
           completion: {
             organizer: {
-              rating: requestBody.organizer.rating,
-              feedback: requestBody.organizer.feedback,
+              rating: user.rating,
+              feedback: user.feedback,
               submittedAt: nowIso,
             },
             evaluators: existingEvaluators,
@@ -555,8 +568,8 @@ class JobApplicationInterviewService {
             evaluators: {
               ...existingEvaluators,
               [cognitoUserId]: {
-                rating: requestBody.organizer.rating,
-                feedback: requestBody.organizer.feedback,
+                rating: user.rating,
+                feedback: user.feedback,
                 submittedAt: nowIso,
                 submittedById: cognitoUserId,
               },
@@ -573,11 +586,7 @@ class JobApplicationInterviewService {
         HttpStatusCode.INTERNAL_SERVER_ERROR_500
       );
     }
-
-    await jobApplicationInterviewHelperObj.sendJobApplicationInterviewStatusEmails(
-      updated,
-      "COMPLETED"
-    );
+    
     if (updated.status === JobApplicationInterviewStatusEnum.COMPLETED) {
       await this.syncInterviewMetaOnApplication(applicationId, {
         latestInterviewRoundId: updated.id,

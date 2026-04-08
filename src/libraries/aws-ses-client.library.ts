@@ -7,6 +7,7 @@ import {
   GetTemplateCommand,
   SendEmailCommand,
   SendTemplatedEmailCommand,
+  SendRawEmailCommand,
   type SESClientConfig,
   type CreateTemplateCommandInput,
   type CreateTemplateCommandOutput,
@@ -18,6 +19,8 @@ import {
   type SendEmailCommandOutput,
   type SendTemplatedEmailCommandInput,
   type SendTemplatedEmailCommandOutput,
+  type SendRawEmailCommandInput,
+  type SendRawEmailCommandOutput,
 } from "@aws-sdk/client-ses";
 
 /**
@@ -194,6 +197,24 @@ class AwsSesClientLibrary {
 
     // Send the email and return the response
     return this.ses.send(new SendTemplatedEmailCommand(emailDetails));
+  }
+
+  /**
+   * sendRawEmail
+   *
+   * Send raw MIME email using AWS SES (attachments supported).
+   */
+  async sendRawEmail(
+    emailDetails: SendRawEmailCommandInput
+  ): Promise<SendRawEmailCommandOutput> {
+    global.logger.info("Sending raw email using AWS SES (data).", {
+      filePath: __filename,
+      methodName: this.sendRawEmail.name,
+      to: emailDetails.Destinations,
+      from: emailDetails.Source,
+    });
+
+    return this.ses.send(new SendRawEmailCommand(emailDetails));
   }
 }
 

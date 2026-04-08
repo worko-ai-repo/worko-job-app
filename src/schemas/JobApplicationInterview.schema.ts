@@ -115,8 +115,7 @@ export const jobApplicationInterviewCancelValidation = Joi.object({
  */
 export const jobApplicationInterviewCompleteValidation = Joi.object({
   organizer: Joi.object({
-    rating: Joi.number().min(1).max(5).required().messages({
-      "any.required": "Rating is required",
+    rating: Joi.number().min(1).max(5).optional().messages({
       "number.base": "Rating must be a number",
       "number.min": "Rating must be at least 1",
       "number.max": "Rating must be at most 5",
@@ -125,11 +124,20 @@ export const jobApplicationInterviewCompleteValidation = Joi.object({
       "any.required": "Feedback is required",
       "string.empty": "Feedback should not be empty",
     }),
-  })
-    .required()
-    .messages({
-      "any.required": "Organizer completion is required",
+  }).optional(),
+  evaluator: Joi.object({
+    rating: Joi.number().min(1).max(5).optional().messages({
+      "number.base": "Rating must be a number",
+      "number.min": "Rating must be at least 1",
+      "number.max": "Rating must be at most 5",
     }),
+    feedback: Joi.string().required().messages({
+      "any.required": "Feedback is required",
+      "string.empty": "Feedback should not be empty",
+    }),
+  }).optional(),
+}).or("organizer", "evaluator").messages({
+  "object.missing": "At least one of organizer or evaluator completion is required",
 });
 
 /**
