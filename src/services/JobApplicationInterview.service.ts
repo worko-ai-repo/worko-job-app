@@ -502,7 +502,7 @@ class JobApplicationInterviewService {
       throw new BaseError("Evaluator or Organizer feedback is required.", HttpStatusCode.BAD_REQUEST_400);
     }
 
-    if (!isEvaluator && ('organizer' in requestBody)) {
+    if ('organizer' in requestBody) { // If organizer feedback is present, treat as organizer completion
       /**
        * Organizer / admin / corporate completion.
        * Once organizer feedback is set, it cannot be submitted again.
