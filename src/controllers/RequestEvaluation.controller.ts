@@ -232,6 +232,30 @@ class RequestEvaluationController {
       next(error);
     }
   };
+
+  getEvaluationsByCompanyId = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      global.logger.info("Get Evaluations By CompanyId [Controller]", {
+        methodName: this.getEvaluationsByCompanyId.name,
+      });
+
+      const { companyId } = req.params;
+
+      const data =
+        await requestEvaluationServiceObj.getEvaluationsByCompanyId(companyId);
+
+      res.status(200).json(data);
+    } catch (error) {
+      global.logger.error(
+        "Error in Get Evaluations By CompanyId [Controller]",
+        {
+          error,
+          methodName: this.getEvaluationsByCompanyId.name,
+        }
+      );
+      next(error);
+    }
+  };
 }
 
 export default RequestEvaluationController;

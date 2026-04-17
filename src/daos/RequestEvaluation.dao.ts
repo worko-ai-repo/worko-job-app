@@ -386,6 +386,11 @@ class RequestEvaluationDao implements BaseDao {
       updateData
     );
   }
+  async getEvaluationsByCompanyId(companyId: string) {
+    return await RequestEvaluationModel.scan("companyId")
+      .eq(companyId)
+      .exec();
+  }
 }
 
 // Create an instance of RequestEvaluationDao and export

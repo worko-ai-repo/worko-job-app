@@ -38,5 +38,6 @@ RequestEvaluationRouter.get("/", requestEvaluationController.getRequestEvaluatio
  */
 RequestEvaluationRouter.get("/:jobApplicationId/:evaluationRequestId", requestEvaluationController.getRequestEvaluationByJobApplIdAndEvaluationReqId);
 
+RequestEvaluationRouter.get("/company/:companyId",requestEvaluationController.getEvaluationsByCompanyId);
 // Export the "RequestEvaluationRouter" router
 export default RequestEvaluationRouter;
