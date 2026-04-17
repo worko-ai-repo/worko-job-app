@@ -146,6 +146,7 @@ export const requestEvaluationFilterValidation = commonSchema.concat(
     }),
     companyId: Joi.string().optional().allow("", null).messages({
       "string.base": "Company ID must be a string",
-    })
+    }),
+    includeAllStatuses: Joi.boolean().optional().default(false)
   })
 );

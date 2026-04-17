@@ -293,17 +293,28 @@ class RequestEvaluationDao implements BaseDao {
       query = query.where("createdByCorporateUserId").eq(filterOptions.evaluationRequesterCorporateUserId)
     }
 
-    if (filterOptions.dashboardType === RequestEvaluationDashboardTypeEnum.EVALUATOR) {
-      query = query.and().parenthesis((condition: Condition) => {
-        return condition
-          .where("evaluationResponseStatus")
-          .eq(ResponseEvaluationStatusEnum.INTERVIEW_SCHEDULED)
-          .or()
-          .where("evaluationResponseStatus")
-          .not()
-          .exists()
-      });
-    }
+if (filterOptions.dashboardType === RequestEvaluationDashboardTypeEnum.EVALUATOR) {
+  if (filterOptions.includeAllStatuses) {
+    query = query.and().parenthesis((condition: Condition) => {
+      return condition
+        .where("evaluationResponseStatus").eq(ResponseEvaluationStatusEnum.INTERVIEW_SCHEDULED)
+        .or()
+        .where("evaluationResponseStatus").eq(ResponseEvaluationStatusEnum.ON_HOLD)
+        .or()
+        .where("evaluationResponseStatus").eq(ResponseEvaluationStatusEnum.REJECTED)
+        .or()
+        .where("evaluationResponseStatus").not().exists();
+    });
+  } else {
+    query = query.and().parenthesis((condition: Condition) => {
+      return condition
+        .where("evaluationResponseStatus").eq(ResponseEvaluationStatusEnum.INTERVIEW_SCHEDULED)
+        .or()
+        .where("evaluationResponseStatus").not().exists();
+    });
+  }
+
+}
 
     if (companyId) {
       query = query.where("companyId").eq(companyId);
