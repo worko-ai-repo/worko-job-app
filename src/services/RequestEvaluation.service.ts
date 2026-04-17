@@ -388,32 +388,6 @@ class RequestEvaluationService {
       updateData
     );
   }
-
-  async getEvaluationsByCompanyId(companyId: string) {
-    global.logger.info("Get Evaluations By CompanyId [Service]", {
-      companyId,
-      methodName: this.getEvaluationsByCompanyId.name,
-    });
-
-    const evaluations =
-      await requestEvaluationDao.getEvaluationsByCompanyId(companyId);
-
-    // Extract unique evaluators
-    const evaluatorMap = new Map();
-
-    evaluations.forEach((item) => {
-      const evaluator = item.evaluatorDetails;
-
-      if (evaluator?.email && !evaluatorMap.has(evaluator.email)) {
-        evaluatorMap.set(evaluator.email, evaluator);
-      }
-    });
-
-    return {
-      evaluations,
-      evaluators: Array.from(evaluatorMap.values()),
-    };
-  }
 }
 
 // Create an instance of the RequestEvaluationService class and export it

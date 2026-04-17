@@ -36,9 +36,6 @@ RequestEvaluationRouter.get("/", requestEvaluationController.getRequestEvaluatio
  * Get request evaluation by id
  * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin", "evaluator"]
  */
-
-RequestEvaluationRouter.get("/company/:companyId",requestEvaluationController.getEvaluationsByCompanyId);
-
 RequestEvaluationRouter.get("/:jobApplicationId/:evaluationRequestId", requestEvaluationController.getRequestEvaluationByJobApplIdAndEvaluationReqId);
 
 // Export the "RequestEvaluationRouter" router

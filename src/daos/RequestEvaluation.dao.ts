@@ -241,7 +241,7 @@ class RequestEvaluationDao implements BaseDao {
       filterOptions,
     });
 
-    const { evaluatorEmail, jobApplicationId } = filterOptions;
+    const { evaluatorEmail, jobApplicationId, companyId } = filterOptions;
 
     let query: Query<DbRequestEvaluationDto>;
 
@@ -305,6 +305,9 @@ class RequestEvaluationDao implements BaseDao {
       });
     }
 
+    if (companyId) {
+      query = query.where("companyId").eq(companyId);
+    }
     // Execute the query with pagination
     return getPaginatedResultsWithMatchingConditions<
       DbRequestEvaluationDto,
@@ -385,11 +388,6 @@ class RequestEvaluationDao implements BaseDao {
       },
       updateData
     );
-  }
-  async getEvaluationsByCompanyId(companyId: string) {
-    return await RequestEvaluationModel.scan("companyId")
-      .eq(companyId)
-      .exec();
   }
 }
 

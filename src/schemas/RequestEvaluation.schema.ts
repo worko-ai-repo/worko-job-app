@@ -144,5 +144,8 @@ export const requestEvaluationFilterValidation = commonSchema.concat(
     dashboardType: Joi.string().valid(...Object.values(RequestEvaluationDashboardTypeEnum)).optional().allow("", null).messages({
       "any.only": `Dashboard type must be one of: ${Object.values(RequestEvaluationDashboardTypeEnum).join(", ")}`,
     }),
+    companyId: Joi.string().optional().allow("", null).messages({
+      "string.base": "Company ID must be a string",
+    })
   })
 );
