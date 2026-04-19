@@ -144,9 +144,15 @@ export const requestEvaluationFilterValidation = commonSchema.concat(
     dashboardType: Joi.string().valid(...Object.values(RequestEvaluationDashboardTypeEnum)).optional().allow("", null).messages({
       "any.only": `Dashboard type must be one of: ${Object.values(RequestEvaluationDashboardTypeEnum).join(", ")}`,
     }),
-    companyId: Joi.string().optional().allow("", null).messages({
-      "string.base": "Company ID must be a string",
-    }),
-    includeAllStatuses: Joi.boolean().optional().default(false)
   })
 );
+
+export const requestEvaluationCompanyFilterValidation =
+  requestEvaluationFilterValidation.concat(
+    Joi.object({
+      companyId: Joi.string().required().messages({
+        "any.required": "Company ID is required",
+        "string.empty": "Company ID should not be empty",
+      }),
+    })
+  );

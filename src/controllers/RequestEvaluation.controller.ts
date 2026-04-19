@@ -29,6 +29,7 @@ import {
   requestEvaluationCreateValidation,
   requestEvaluationBulkCreateValidation,
   requestEvaluationFilterValidation,
+  requestEvaluationCompanyFilterValidation,
 } from "../schemas/RequestEvaluation.schema";
 
 // import utils
@@ -167,6 +168,54 @@ class RequestEvaluationController {
 
       const requestEvaluationDetails: PaginatedResultsWithMatchingConditionsInternalResponse<DbRequestEvaluationDto[]> =
         await requestEvaluationServiceObj.getRequestEvaluationsByFilterOptions(
+          validatedFilterOptions
+        );
+
+      const { lastKey, count, timesQueried, queriedCount, data } =
+        requestEvaluationDetails;
+
+      const response: RecordListingResponseDTO<DbRequestEvaluationDto[]> =
+        paginationResponseHelperObj.customizedPaginationRecordListingResponse<
+          DbRequestEvaluationDto[],
+          RequestEvaluationListingFilterOptions
+        >(data, filterOptions, count, timesQueried, lastKey, queriedCount);
+
+      res.status(HttpStatusCode.OK_200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getRequestEvaluationsByFilterOptionsForCompany = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(
+        `Get Request Evaluations By Filter Options [Controller]`,
+        {
+          methodName: this.getRequestEvaluationsByFilterOptionsForCompany.name,
+        }
+      );
+
+      const filterOptions: RequestEvaluationListingFilterOptions =
+        RequestHelper.parseFilterOptions<
+          RequestEvaluationListingFilterRequestDTO,
+          RequestEvaluationListingFilterOptions
+        >(req.query as unknown as RequestEvaluationListingFilterRequestDTO);
+
+      const { error: reqBodyError, value: validatedFilterOptions } =
+        requestEvaluationCompanyFilterValidation.validate(filterOptions, {
+          abortEarly: false,
+        });
+
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+
+      const requestEvaluationDetails: PaginatedResultsWithMatchingConditionsInternalResponse<DbRequestEvaluationDto[]> =
+        await requestEvaluationServiceObj.getRequestEvaluationsByFilterOptionsForCompany(
           validatedFilterOptions
         );
 

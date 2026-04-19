@@ -76,7 +76,6 @@ export interface RequestEvaluationListingFilterOptions extends RecordListingFilt
   evaluationRequesterCorporateUserId?: string;
   dashboardType?: RequestEvaluationDashboardTypeEnum;
   companyId?: string;
-  includeAllStatuses?: boolean;
 }
 
 /**
@@ -89,7 +88,6 @@ export interface RequestEvaluationListingFilterRequestDTO extends RecordListingF
   evaluationRequesterCorporateUserId?: string;
   dashboardType?: RequestEvaluationDashboardTypeEnum;
   companyId?: string;
-  includeAllStatuses?: boolean;
 }
 
 /**
