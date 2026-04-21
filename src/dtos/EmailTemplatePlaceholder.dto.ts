@@ -381,3 +381,53 @@ export interface EmailTemplatePlaceholderCAND_JOBS_RECOMMENDATION extends EmailT
   jobsHtml: string;
   jobsText: string;
 }
+
+export interface EmailTemplatePlaceholderJOB_APPLICATION_INTERVIEW_SCHEDULER_CANDIDATE_INVITE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  recipientName: string;
+  companyName: string;
+  jobTitle: string;
+  interviewType: string;
+  interviewRoundText: string;
+  interviewTitle: string;
+  interviewDateTime: string;
+  interviewMeetLink: string;
+  interviewStatus: string;
+  ruleForCandidate: string;
+}
+
+export interface EmailTemplatePlaceholderJOB_APPLICATION_INTERVIEW_SCHEDULER_ATTENDEE_INVITE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  recipientName: string;
+  companyName: string;
+  jobTitle: string;
+  interviewType: string;
+  interviewRoundText: string;
+  interviewTitle: string;
+  interviewDateTime: string;
+  interviewMeetLink: string;
+  interviewStatus: string;
+}
+
+export interface EmailTemplatePlaceholderJOB_APPLICATION_INTERVIEW_SCHEDULER_CANDIDATE_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  recipientName: string;
+  companyName: string;
+  jobTitle: string;
+  interviewType: string;
+  interviewRoundText: string;
+  interviewTitle: string;
+  interviewStatus: string;
+  interviewDateTime: string;
+  interviewMeetLink: string;
+  ruleForCandidate: string;
+}
+
+export interface EmailTemplatePlaceholderJOB_APPLICATION_INTERVIEW_SCHEDULER_ATTENDEE_STATUS_UPDATE extends EmailTemplatePlaceholderSOCIAL_PROFILE_DETAILS {
+  recipientName: string;
+  companyName: string;
+  jobTitle: string;
+  interviewType: string;
+  interviewRoundText: string;
+  interviewTitle: string;
+  interviewStatus: string;
+  interviewDateTime: string;
+  interviewMeetLink: string;
+}

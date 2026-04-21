@@ -321,6 +321,9 @@ export interface UserJobApplicationCommonUpdateDto {
   joiningDateDetails: UserJobApplicationDbJoinedDateDetailDto[];
   rejectedForJobClose: UserJobApplicationDbRejectedForJobClose;
   isFindMatchingScoreInProgress: boolean;
+  latestInterviewRoundId?: string;
+  interviewRoundCount?: number;
+  activeInterviewRoundId?: string;
 }
 
 /**
