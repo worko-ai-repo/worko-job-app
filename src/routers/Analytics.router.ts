@@ -50,6 +50,16 @@ AnalyticsRouter.get(
   analyticsController.getHiringTrend
 );
 
+/**
+ * Get Evaluator Trend
+ *
+ * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin"]
+ */
+AnalyticsRouter.get(
+  "/evaluator-trend",
+  analyticsController.getRequestEvaluationsByFilterOptionsForCompany
+);
+
 // Export the "AnalyticsRouter" router
 export default AnalyticsRouter;
 

@@ -328,50 +328,6 @@ class RequestEvaluationService {
     return paginatedRequestEvaluations;
   }
 
-  async getRequestEvaluationsByFilterOptionsForCompany(
-    filterOptions: RequestEvaluationListingFilterOptions
-  ): Promise<
-    PaginatedResultsWithMatchingConditionsInternalResponse<
-      DbRequestEvaluationDto[]
-    >
-  > {
-    global.logger.info("Get Request Evaluations By Filter Options [Service]", {
-      filePath: __filename,
-      methodName: this.getRequestEvaluationsByFilterOptionsForCompany.name,
-    });
-
-    // Fetch request evaluations using filter options
-    const requestEvaluationDetails: PaginatedResultsWithMatchingConditionsResponse<DbRequestEvaluationDto> =
-      await requestEvaluationDao.getRequestEvaluationsByFilterOptionsForCompany(
-        filterOptions
-      );
-
-    // Extract data from the response
-    const {
-      lastKey,
-      count,
-      timesQueried,
-      queriedCount,
-      ...requestEvaluationData
-    } = requestEvaluationDetails;
-
-    // Convert to array
-    const requestEvaluationArray: DbRequestEvaluationDto[] = Object.values(
-      requestEvaluationData
-    );
-
-    const paginatedRequestEvaluations: PaginatedResultsWithMatchingConditionsInternalResponse<
-      DbRequestEvaluationDto[]
-    > = {
-      data: requestEvaluationArray,
-      lastKey,
-      count,
-      timesQueried,
-      queriedCount,
-    };
-
-    return paginatedRequestEvaluations;
-  }
   /**
    * getRequestEvaluationByJobApplIdAndEvaluationReqId
    *

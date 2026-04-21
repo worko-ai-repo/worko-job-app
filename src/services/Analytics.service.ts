@@ -8,9 +8,13 @@ import {
   HiringTrendResponse,
   HiringTrendPoint,
 } from "../dtos/Analytics.dto";
-import { PaginatedResultsWithMatchingConditionsResponse } from "../dtos/Common.dto";
+import {
+  PaginatedResultsWithMatchingConditionsInternalResponse,
+  PaginatedResultsWithMatchingConditionsResponse,
+} from "../dtos/Common.dto";
 import { UserJobApplicationListingFilterOptions } from "../dtos/UserJobApplication.dto";
 import { CompanyJobListingFilterOptions } from "../dtos/CompanyJob.dto";
+import { RequestEvaluationListingFilterOptions } from "../dtos/RequestEvaluation.dto";
 
 // Import enums
 import { JobStatusEnum } from "../enums/Job.enum";
@@ -21,6 +25,7 @@ import { SortOrderTypeEnum } from "../enums/Common.enum";
 // Import daos
 import { companyJobDaoObj } from "../daos/CompanyJob.dao";
 import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
+import { requestEvaluationDao } from "../daos/RequestEvaluation.dao";
 
 // Import services
 import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
@@ -28,6 +33,7 @@ import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
 // Import models
 import { DbCompanyJobDto } from "../db/models/CompanyJob.model";
 import { DbUserJobApplicationDto } from "../db/models/UserJobApplication.model";
+import { DbRequestEvaluationDto } from "../db/models/RequestEvaluation.model";
 
 // Import utils
 import APP_CONSTANTS from "../configs/constants.config";
@@ -56,6 +62,31 @@ class AnalyticsService {
   private readonly DEFAULT_HIRING_TREND_RANGE_DAYS = 365;
   private readonly ADMIN_JOB_LIMIT = 500;
   private readonly ADMIN_APPLICATION_LIMIT = 2000;
+
+  async getRequestEvaluationsByFilterOptionsForCompany(
+    filterOptions: RequestEvaluationListingFilterOptions
+  ): Promise<PaginatedResultsWithMatchingConditionsInternalResponse<DbRequestEvaluationDto[]>> {
+    global.logger.info("Get Request Evaluations By Filter Options [Service]", {
+      filePath: __filename,
+      methodName: this.getRequestEvaluationsByFilterOptionsForCompany.name,
+    });
+
+    const requestEvaluationDetails: PaginatedResultsWithMatchingConditionsResponse<DbRequestEvaluationDto> =
+      await requestEvaluationDao.getRequestEvaluationsByFilterOptionsForCompany(filterOptions);
+
+    const { lastKey, count, timesQueried, queriedCount, ...requestEvaluationData } =
+      requestEvaluationDetails;
+
+    const requestEvaluationArray: DbRequestEvaluationDto[] = Object.values(requestEvaluationData);
+
+    return {
+      data: requestEvaluationArray,
+      lastKey,
+      count,
+      timesQueried,
+      queriedCount,
+    };
+  }
 
   /**
    * getFunnelVelocityAggregate

@@ -146,13 +146,3 @@ export const requestEvaluationFilterValidation = commonSchema.concat(
     }),
   })
 );
-
-export const requestEvaluationCompanyFilterValidation =
-  requestEvaluationFilterValidation.concat(
-    Joi.object({
-      companyId: Joi.string().required().messages({
-        "any.required": "Company ID is required",
-        "string.empty": "Company ID should not be empty",
-      }),
-    })
-  );

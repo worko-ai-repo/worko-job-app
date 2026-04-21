@@ -10,6 +10,14 @@ import {
   OnboardingPipelineResponse,
   CriticalDropoffResponse,
 } from "../dtos/Analytics.dto";
+import {
+  RequestEvaluationListingFilterOptions,
+  RequestEvaluationListingFilterRequestDTO,
+} from "../dtos/RequestEvaluation.dto";
+import {
+  PaginatedResultsWithMatchingConditionsInternalResponse,
+  RecordListingResponseDTO,
+} from "../dtos/Common.dto";
 
 // Import schemas
 import {
@@ -17,6 +25,7 @@ import {
   analyticsOnboardingPipelineQueryValidation,
   analyticsDropoffQueryValidation,
   analyticsHiringTrendQueryValidation,
+  analyticsRequestEvaluationCompanyFilterValidation,
 } from "../schemas/Analytics.schema";
 
 // Import services
@@ -27,9 +36,12 @@ import APP_CONSTANTS from "../configs/constants.config";
 import HttpStatusCode from "../utils/http-codes.util";
 import { BaseError, RequestValidationError } from "../utils/errors.util";
 import { CorporateUserTypeEnum } from "../enums/CorporateUser.enum";
+import { DbRequestEvaluationDto } from "../db/models/RequestEvaluation.model";
 
 // Import helpers
 import { resolveUserContext, mapDateRangeToDays } from "../helpers/Analytics.helper";
+import { RequestHelper } from "../helpers/request.helper";
+import { paginationResponseHelperObj } from "../helpers/pagination-response.helper";
 
 /**
  * AnalyticsController
@@ -37,6 +49,58 @@ import { resolveUserContext, mapDateRangeToDays } from "../helpers/Analytics.hel
  * Controller for handling analytics related endpoints.
  */
 class AnalyticsController {
+  getRequestEvaluationsByFilterOptionsForCompany = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      global.logger.info(`Get Request Evaluations By Filter Options [Controller]`, {
+        methodName: this.getRequestEvaluationsByFilterOptionsForCompany.name,
+      });
+
+      const {isAdmin, isCorporateUser, corporateCompanyId, corporateUserId, corporateUserType,} = await resolveUserContext();
+
+      if (!isAdmin && !isCorporateUser) {
+        throw new BaseError(
+          "You are not allowed to access analytics.",
+          HttpStatusCode.FORBIDDEN_403
+        );
+      }
+      const filterOptions: RequestEvaluationListingFilterOptions = RequestHelper.parseFilterOptions<
+        RequestEvaluationListingFilterRequestDTO,
+        RequestEvaluationListingFilterOptions
+      >(req.query as unknown as RequestEvaluationListingFilterRequestDTO);
+
+      const { error: reqBodyError, value: validatedFilterOptions } =
+        analyticsRequestEvaluationCompanyFilterValidation.validate(filterOptions, {
+          abortEarly: false,
+        });
+
+      if (reqBodyError) {
+        throw new RequestValidationError(reqBodyError);
+      }
+
+      const requestEvaluationDetails: PaginatedResultsWithMatchingConditionsInternalResponse<
+        DbRequestEvaluationDto[]
+      > = await analyticsServiceObj.getRequestEvaluationsByFilterOptionsForCompany(
+        validatedFilterOptions
+      );
+
+      const { lastKey, count, timesQueried, queriedCount, data } = requestEvaluationDetails;
+
+      const response: RecordListingResponseDTO<DbRequestEvaluationDto[]> =
+        paginationResponseHelperObj.customizedPaginationRecordListingResponse<
+          DbRequestEvaluationDto[],
+          RequestEvaluationListingFilterOptions
+        >(data, filterOptions, count, timesQueried, lastKey, queriedCount);
+
+      res.status(HttpStatusCode.OK_200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   /**
    * getFunnelVelocityAggregate
    *

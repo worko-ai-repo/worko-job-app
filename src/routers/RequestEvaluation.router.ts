@@ -26,7 +26,6 @@ RequestEvaluationRouter.post("/",requestEvaluationController.createRequestEvalua
  */
 RequestEvaluationRouter.post("/bulk",requestEvaluationController.createBulkRequestEvaluation);
 
-RequestEvaluationRouter.get("/company", requestEvaluationController.getRequestEvaluationsByFilterOptionsForCompany);
 /**
  * Get request evaluations by filter options
  * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin", "evaluator"]
@@ -38,8 +37,6 @@ RequestEvaluationRouter.get("/", requestEvaluationController.getRequestEvaluatio
  * @authorisedRoles ["admin", "corporate-recruiter", "corporate-admin", "evaluator"]
  */
 RequestEvaluationRouter.get("/:jobApplicationId/:evaluationRequestId", requestEvaluationController.getRequestEvaluationByJobApplIdAndEvaluationReqId);
-
-
 
 // Export the "RequestEvaluationRouter" router
 export default RequestEvaluationRouter;
