@@ -612,7 +612,20 @@ const APP_CONSTANTS = {
     VERY_LOW: 0.1,
   } as const,
 
- 
+  /**
+   * JOB_APPLICATION_INTERVIEW_CONSTANTS
+   *
+   * Centralized constants for job application interview scheduler module.
+   */
+  JOB_APPLICATION_INTERVIEW_CONSTANTS: {
+    COLLECTION_NAME: "jobApplicationInterviews",
+    GOOGLE_CALENDAR_SUBJECT: "pankaj@worko.ai",
+    GOOGLE_CALENDAR_SCOPES: "https://www.googleapis.com/auth/calendar",
+    GOOGLE_MEET_CONFERENCE_TYPE: "hangoutsMeet",
+    MAX_COMPLETED_ROUNDS: 5,
+    TIMEZONE: "UTC",
+  } as const,
+  
 };
 
 export default APP_CONSTANTS;

@@ -210,6 +210,21 @@ class DbUserJobApplicationDto extends BaseDbDto {
    * @example "Candidate excels with over 5 years in Selenium automation, strong technical skills in Selenium, Protractor, Jenkins, and GitLab, and recognized agility in Agile environments."
    */
   emailFeedback?: string;
+
+  /**
+   * Latest interview round doc id for this application.
+   */
+  latestInterviewRoundId?: string;
+
+  /**
+   * Total interview rounds created for this application.
+   */
+  interviewRoundCount?: number;
+
+  /**
+   * Current active interview round doc id (if any).
+   */
+  activeInterviewRoundId?: string;
 }
 
 // Define the schema for the User Job Application
@@ -674,6 +689,18 @@ const UserJobApplicationSchema: Schema = new dynamoose.Schema(
       required: false,
     },
     emailFeedback: {
+      type: String,
+      required: false,
+    },
+    latestInterviewRoundId: {
+      type: String,
+      required: false,
+    },
+    interviewRoundCount: {
+      type: Number,
+      required: false,
+    },
+    activeInterviewRoundId: {
       type: String,
       required: false,
     },
