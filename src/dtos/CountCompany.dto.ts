@@ -1,4 +1,3 @@
-
 // Import enums
 import { CountCompanyDbEntityTypeEnum } from "../enums/CountCompany.enum";
 
@@ -11,16 +10,29 @@ export interface CountCompanyDbAllJobApplicationCountsDto {
   rejected?: number;
 }
 
+export interface CountCompanyDbAllCompanyJobStatusCountsDto {
+  published?: number;
+  closed?: number;
+  archived?: number;
+  draft?: number;
+}
+
 export interface CountCompanyCreateDto {
   entityType: CountCompanyDbEntityTypeEnum;
   companyId: string;
   allJobApplicationCounts?: CountCompanyDbAllJobApplicationCountsDto;
+  allCompanyJobStatusCounts?: CountCompanyDbAllCompanyJobStatusCountsDto;
 }
 
 export interface CountCompanyCommonUpdateDto {
-  allJobApplicationCounts: CountCompanyDbAllJobApplicationCountsDto;
+  allJobApplicationCounts?: CountCompanyDbAllJobApplicationCountsDto;
+  allCompanyJobStatusCounts?: CountCompanyDbAllCompanyJobStatusCountsDto;
 }
 
 export interface CountCompanyJobApplicationEntityUpdateDto {
   allJobApplicationCounts: CountCompanyDbAllJobApplicationCountsDto;
+}
+
+export interface CountCompanyJobEntityUpdateDto {
+  allCompanyJobStatusCounts: CountCompanyDbAllCompanyJobStatusCountsDto;
 }

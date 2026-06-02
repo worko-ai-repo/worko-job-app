@@ -23,6 +23,42 @@ import { base64EncodeStrToLastKey } from "./dynamoose.helper";
  */
 class RequestHelper {
   /**
+   * parseDateFilterToMillis
+   *
+   * Accepts either ISO date strings or epoch timestamps (number/string) and
+   * converts them to millisecond timestamps for downstream filtering.
+   */
+  private static parseDateFilterToMillis(
+    rawDate: string | number | undefined
+  ): number | undefined {
+    if (rawDate === undefined || rawDate === null || rawDate === "") {
+      return undefined;
+    }
+
+    if (typeof rawDate === "number" && Number.isFinite(rawDate)) {
+      return rawDate;
+    }
+
+    if (typeof rawDate === "string") {
+      const trimmedDate: string = rawDate.trim();
+      if (!trimmedDate) {
+        return undefined;
+      }
+
+      // Handle epoch timestamps sent as query strings, e.g. "1761212940769"
+      if (/^\d+$/.test(trimmedDate)) {
+        const parsedEpoch: number = Number(trimmedDate);
+        return Number.isFinite(parsedEpoch) ? parsedEpoch : undefined;
+      }
+
+      const isoDateMillis: number = DateTime.fromISO(trimmedDate).toMillis();
+      return Number.isFinite(isoDateMillis) ? isoDateMillis : undefined;
+    }
+
+    return undefined;
+  }
+
+  /**
    * parseFilterOptions
    *
    * Parses the filter options for a given entity(Company,Subscription,User,Referral.. etc) listing request.
@@ -42,12 +78,14 @@ class RequestHelper {
 
     // check if fromDate and toDate are provided and if yes convert them to timestamps using luxon library
     if (filterOptions.fromDate) {
-      // convert fromDate to timestamp
-      fromTimeStamp = DateTime.fromISO(filterOptions.fromDate).toMillis();
+      fromTimeStamp = this.parseDateFilterToMillis(
+        filterOptions.fromDate as unknown as string | number
+      );
     }
     if (filterOptions.toDate) {
-      // convert toDate to timestamp
-      toTimeStamp = DateTime.fromISO(filterOptions.toDate).toMillis();
+      toTimeStamp = this.parseDateFilterToMillis(
+        filterOptions.toDate as unknown as string | number
+      );
     }
 
     // pageSize

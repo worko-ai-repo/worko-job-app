@@ -1,4 +1,3 @@
-
 // Import opensearch constants
 import {
   Search_RequestBody,
@@ -23,13 +22,21 @@ import { awsOpenSearchJobDaoObj } from "../daos/AwsOpenSearchJob.dao";
 import { gcpFirestoreJobDaoObj } from "../daos/GcpFirestoreJob.dao";
 
 // Import dtos
-import {
-  ScriptCompanyJobBulkUploadDto,
-} from "../dtos/CompanyJob.dto";
+import { 
+   ScriptCompanyJobBulkUploadDto,
+   CompanyJobListingFilterOptions 
+  } from "../dtos/CompanyJob.dto";
 import { UserJobApplicationBulkUploadDto } from "../dtos/UserJobApplication.dto";
 import { InvokeLambdaNewInternalJobCandMatchDto, InvokeLambdaScriptOldJobsCandAlertRecommendDto } from "../dtos/InvokeLambda.dto";
-import { JobLocationDto, PaginatedResultsWithMatchingConditionsResponse, RecordListingFilterOptions } from "../dtos/Common.dto";
-import { AwsOpensearchRecordListingPaginationResponseDTO, AwsOpensearchRecordListingResponseDTO } from "../dtos/Common.aws-opensearch.dto";
+import {
+  JobLocationDto,
+  PaginatedResultsWithMatchingConditionsResponse,
+  RecordListingFilterOptions,
+} from "../dtos/Common.dto";
+import {
+  AwsOpensearchRecordListingPaginationResponseDTO,
+  AwsOpensearchRecordListingResponseDTO,
+} from "../dtos/Common.aws-opensearch.dto";
 
 // Import daos
 import { companyJobDaoObj } from "../daos/CompanyJob.dao";
@@ -37,13 +44,17 @@ import { userJobApplicationDao } from "../daos/UserJobApplication.dao";
 import { candidateJobRecommendationDaoObj } from "../daos/CandidateJobRecommendation.dao";
 
 // Import enums
-import { JobSourcedFromEnum } from "../enums/Common.enum";
-import { GcpFirestoreSortOrderTypeEnum } from "../enums/Common.gcp-firestore.enum";
+import { JobSourcedFromEnum, SortOrderTypeEnum } from "../enums/Common.enum";
 import { JobDashboardEnum, JobStatusEnum } from "../enums/Job.enum";
+import { CountCompanyDbEntityTypeEnum } from "../enums/CountCompany.enum";
+import { GcpFirestoreSortOrderTypeEnum } from "../enums/Common.gcp-firestore.enum";
 
 // Import models
 import { DbCompanyDetailDto } from "../db/models/CompanyDetail.model";
-import { DbUserJobApplicationDto, UserJobApplicationModel } from "../db/models/UserJobApplication.model";
+import {
+  DbUserJobApplicationDto,
+  UserJobApplicationModel,
+} from "../db/models/UserJobApplication.model";
 
 // Import helpers
 import { getPaginatedResultsWithMatchingConditions } from "../helpers/dynamoose.helper";
@@ -62,6 +73,7 @@ import { fantasticJobServiceObj } from "./FantasticJob.service";
 import UlidService from "./Ulid.service";
 import { jobServiceObj } from "./Job.service";
 import { brightDataJobServiceObj } from "./BrightDataJob.service";
+import { countCompanyServiceObj } from "./CountCompany.service";
 
 // Import utils
 import HttpStatusCode from "../utils/http-codes.util";
@@ -1022,6 +1034,214 @@ class ScriptService {
     
     return false;
   }
+
+  /**
+   * scriptSeedCompanyJobStatusCounts
+   * 
+   * Seeds the CountCompany table with existing job status counts for all companies.
+   * This script fetches ALL jobs from AWS DynamoDB using pagination,
+   * groups them by companyId, and aggregates the counts by job status.
+   * 
+   * @returns {Promise<{ totalCompaniesProcessed: number; companiesWithErrors: string[] }>}
+   */
+  async scriptSeedCompanyJobStatusCounts(): Promise<{
+    totalCompaniesProcessed: number;
+    companiesWithErrors: string[];
+    statusCountsByCompany: Record<string, any>;
+    totalJobsProcessed: number;
+  }> {
+    global.logger.info(
+      `Script to seed company job status counts [Script Service]`,
+      {
+        methodName: this.scriptSeedCompanyJobStatusCounts.name,
+      }
+    );
+
+    try {
+      const allJobs: DbCompanyJobDto[] = [];
+      let lastKey: ObjectType | undefined;
+      let pageNumber = 0;
+
+      // Fetch ALL jobs using pagination
+      do {
+        pageNumber++;
+        
+        const requestBody: CompanyJobListingFilterOptions = {
+          pageSize: 500,
+          sortOrder: SortOrderTypeEnum.DESCENDING,
+          lastKey: lastKey,
+        };
+
+        global.logger.info(`Fetching page ${pageNumber} of jobs`, {
+          methodName: this.scriptSeedCompanyJobStatusCounts.name,
+          pageSize: 500,
+          hasLastKey: !!lastKey,
+        });
+
+        const totalCompanyJobs: PaginatedResultsWithMatchingConditionsResponse<DbCompanyJobDto> =
+          await companyJobDaoObj.getCompanyJobsByFilterOptions(requestBody);
+
+        // Extract jobs data and pagination info
+        const { lastKey: nextLastKey, count, timesQueried, queriedCount, ...companyJobsData } =
+          totalCompanyJobs;
+
+        // Convert to array and add to allJobs
+        const pageJobs: DbCompanyJobDto[] = Object.values(companyJobsData);
+        allJobs.push(...pageJobs);
+
+        global.logger.info(`Fetched page ${pageNumber}: ${pageJobs.length} jobs`, {
+          methodName: this.scriptSeedCompanyJobStatusCounts.name,
+          totalJobsSoFar: allJobs.length,
+          count,
+          queriedCount,
+        });
+
+        // Update lastKey for next iteration
+        lastKey = nextLastKey;
+
+        // Continue if there are more pages
+      } while (lastKey);
+
+      global.logger.info(`Retrieved total ${allJobs.length} jobs from AWS DynamoDB`, {
+        methodName: this.scriptSeedCompanyJobStatusCounts.name,
+        totalPages: pageNumber,
+      });
+
+      // Filter only internal jobs (jobs with companyId and not deleted)
+      const internalJobs: DbCompanyJobDto[] = allJobs.filter(
+        (job: DbCompanyJobDto) => job.companyId && !job.isDeleted
+      );
+
+      global.logger.info(`Filtered ${internalJobs.length} internal jobs`, {
+        methodName: this.scriptSeedCompanyJobStatusCounts.name,
+        totalJobs: allJobs.length,
+        internalJobs: internalJobs.length,
+      });
+
+      // Group jobs by companyId and aggregate counts
+      const companyJobStatusMap: Map<
+        string,
+        {
+          published: number;
+          closed: number;
+          archived: number;
+          draft: number;
+        }
+      > = new Map();
+
+      internalJobs.forEach((job: DbCompanyJobDto) => {
+        if (!job.companyId) return;
+
+        const existingCounts = companyJobStatusMap.get(job.companyId) || {
+          published: 0,
+          closed: 0,
+          archived: 0,
+          draft: 0,
+        };
+
+        // Increment the appropriate counter based on job status
+        switch (job.status) {
+          case JobStatusEnum.PUBLISHED:
+            existingCounts.published++;
+            break;
+          case JobStatusEnum.CLOSED:
+            existingCounts.closed++;
+            break;
+          case JobStatusEnum.ARCHIVED:
+            existingCounts.archived++;
+            break;
+          case JobStatusEnum.DRAFT:
+            existingCounts.draft++;
+            break;
+          default:
+            global.logger.warn(`Unknown job status: ${job.status}`, {
+              jobId: job.id,
+              companyId: job.companyId,
+            });
+        }
+
+        companyJobStatusMap.set(job.companyId, existingCounts);
+      });
+
+      global.logger.info(
+        `Aggregated job status counts for ${companyJobStatusMap.size} companies`,
+        {
+          methodName: this.scriptSeedCompanyJobStatusCounts.name,
+        }
+      );
+
+      // Now update CountCompany for each company
+      let totalCompaniesProcessed: number = 0;
+      const companiesWithErrors: string[] = [];
+      const statusCountsByCompany: Record<string, any> = {};
+
+      for (const [companyId, counts] of companyJobStatusMap.entries()) {
+        try {
+          global.logger.debug(`Processing company: ${companyId}`, {
+            counts,
+          });
+
+          // Check if CountCompany record already exists
+          const existingCountCompany =
+            await countCompanyServiceObj.getCountCompanyByCompanyIdAndEntityType(
+              companyId,
+              CountCompanyDbEntityTypeEnum.COMPANY_JOB
+            );
+
+          const isCountCompanyExist = existingCountCompany.count > 0;
+
+          // Create or update the CountCompany record
+          await countCompanyServiceObj.createOrUpdateCountCompanyForJobEntityType(
+            companyId,
+            { allCompanyJobStatusCounts: counts },
+            isCountCompanyExist
+          );
+
+          statusCountsByCompany[companyId] = counts;
+          totalCompaniesProcessed++;
+
+          global.logger.info(`Successfully seeded counts for company: ${companyId}`, {
+            counts,
+          });
+        } catch (error) {
+          global.logger.error(`Error seeding counts for company: ${companyId}`, {
+            error,
+            counts,
+          });
+          companiesWithErrors.push(companyId);
+        }
+      }
+
+      global.logger.info(
+        `Completed seeding company job status counts`,
+        {
+          totalJobsProcessed: allJobs.length,
+          internalJobsProcessed: internalJobs.length,
+          totalCompaniesProcessed,
+          companiesWithErrors: companiesWithErrors.length,
+          methodName: this.scriptSeedCompanyJobStatusCounts.name,
+        }
+      );
+
+      return {
+        totalCompaniesProcessed,
+        companiesWithErrors,
+        statusCountsByCompany,
+        totalJobsProcessed: allJobs.length,
+      };
+    } catch (error) {
+      global.logger.error(
+        `Error in scriptSeedCompanyJobStatusCounts`,
+        {
+          error,
+          methodName: this.scriptSeedCompanyJobStatusCounts.name,
+        }
+      );
+      throw error;
+    }
+  }
+
+  // ...existing code...
 
   async scriptOldJobsCandAlertRecommendAsync() {
     const invokeDataPayload: InvokeLambdaScriptOldJobsCandAlertRecommendDto = {

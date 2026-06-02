@@ -1,4 +1,3 @@
-
 // Import lambdas
 import { APIGatewayProxyResult } from "aws-lambda";
 
@@ -37,6 +36,7 @@ import InvokeLambdaService from "./InvokeLambda.service";
 import companyServiceObj  from "./Company.service";
 import { awsS3VectorJobServiceObj } from "./AwsS3VectorJob.service";
 import { gcpFirestoreJobServiceObj } from "./GcpFirestoreJob.service";
+import { countCompanyServiceObj } from "./CountCompany.service";
 import { candidateJobRecommendationServiceObj } from "./CandidateJobRecommendation.service";
 import sitemapServiceObj from "./Sitemap.service";
 
@@ -180,6 +180,10 @@ class JobService {
           eventType: InvokeLambdaHandlerEventTypeEnum.NEW_INTERNAL_JOB_CAND_MATCH,
           data: invokeDataPayload,
         }
+      ),
+      countCompanyServiceObj.incrementCompanyJobStatusCount(
+        jobCreateDto.companyId,
+        jobCreateDto.status
       )
     ]);
 
@@ -674,6 +678,35 @@ class JobService {
       )
     ]);
 
+    // Update company job status count if status changed
+    if (
+      updatedJobDetailsOnGcpFirestore.companyId &&
+      jobDetailsOnGcpFirestoreBeforeUpdate.status &&
+      updatedJobDetailsOnGcpFirestore.status &&
+      jobDetailsOnGcpFirestoreBeforeUpdate.status !== updatedJobDetailsOnGcpFirestore.status
+    ) {
+      try {
+        await countCompanyServiceObj.updateCompanyJobStatusCountOnStatusChange(
+          updatedJobDetailsOnGcpFirestore.companyId,
+          jobDetailsOnGcpFirestoreBeforeUpdate.status,
+          updatedJobDetailsOnGcpFirestore.status
+        );
+      } catch (countError) {
+        global.logger.error(
+          "Failed to update company job status count after job update [Service]",
+          {
+            filePath: __filename,
+            methodName: this.updateInternalOrExternalJobById.name,
+            jobId: updatedJobDetailsOnGcpFirestore.id,
+            companyId: updatedJobDetailsOnGcpFirestore.companyId,
+            oldStatus: jobDetailsOnGcpFirestoreBeforeUpdate.status,
+            newStatus: updatedJobDetailsOnGcpFirestore.status,
+            error: countError,
+          }
+        );
+      }
+    }
+
     // Return the external job details
     return updatedJobDetailsOnGcpFirestore;
   }
@@ -745,7 +778,14 @@ class JobService {
       jobClosedByUserId = actionByCorporateUserId;
     }
 
-    const softDeleteJobOnGcpFirestore: DbGcpFirestoreJobDto | undefined  =
+    // Get job details before soft delete to track status change
+    const jobDetailsBeforeSoftDelete: DbGcpFirestoreJobDto | undefined =
+      await gcpFirestoreJobServiceObj.getJobById(jobId);
+    if (!jobDetailsBeforeSoftDelete) {
+      throw new BaseError("The Job Details not found.", HttpStatusCode.NOT_FOUND_404);
+    }
+
+    const softDeleteJobOnGcpFirestore: DbGcpFirestoreJobDto | undefined =
       await gcpFirestoreJobServiceObj.updateJobById(jobId, {
         status: JobStatusEnum.CLOSED,
         shortSoftDeleteReason: requestBody.shortSoftDeleteReason,
@@ -810,6 +850,33 @@ class JobService {
       this.removeJobFromSitemapAfterSoftDelete(jobId),
       this.processCandidateJobRecommendationAfterJobStatusUpdate(jobId, jobDetailsOnGcpFirestoreBeforeUpdate.status, JobStatusEnum.CLOSED)
     ])
+
+    // Update company job status count from old status to CLOSED
+    if (
+      jobDetailsBeforeSoftDelete.status &&
+      jobDetailsBeforeSoftDelete.status !== JobStatusEnum.CLOSED
+    ) {
+      try {
+        await countCompanyServiceObj.updateCompanyJobStatusCountOnStatusChange(
+          companyId,
+          jobDetailsBeforeSoftDelete.status,
+          JobStatusEnum.CLOSED
+        );
+      } catch (countError) {
+        global.logger.error(
+          "Failed to update company job status count after soft delete [Service]",
+          {
+            filePath: __filename,
+            methodName: this.softDeleteJobById.name,
+            jobId: jobId,
+            companyId: companyId,
+            oldStatus: jobDetailsBeforeSoftDelete.status,
+            newStatus: JobStatusEnum.CLOSED,
+            error: countError,
+          }
+        );
+      }
+    }
 
     return updatedJobDetails;
   }

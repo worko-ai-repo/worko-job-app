@@ -82,7 +82,24 @@ ScriptRouter.post("/script-to-restore-internal-jobs-to-opensearch", scriptContro
  */
 ScriptRouter.post("/script-to-add-gsi3-to-job-applications", scriptController.scriptToAddGsi3ToJobApplications);
 
-ScriptRouter.post("/script-migrate-jobs-aws-opensearch-to-gcp-firestore", scriptController.scriptMigrateJobsAwsOpensearchToGcpFirestore);
+ScriptRouter.post(
+  "/script-migrate-jobs-aws-opensearch-to-gcp-firestore",
+  scriptController.scriptMigrateJobsAwsOpensearchToGcpFirestore
+);
+
+/**
+ * scriptSeedCompanyJobStatusCounts
+ *
+ * Endpoint to seed the CountCompany table with existing job status counts for all companies.
+ * This script fetches all jobs from GCP Firestore, groups them by companyId,
+ * and aggregates the counts by job status (published, closed, archived, draft).
+ *
+ * @authorisedRoles ["admin"]
+ */
+ScriptRouter.post(
+  "/script-seed-company-job-status-counts",
+  scriptController.scriptSeedCompanyJobStatusCounts
+);
 
 ScriptRouter.post("/script-old-jobs-cand-alert-recommend", scriptController.scriptOldJobsCandAlertRecommend);
 

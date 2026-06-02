@@ -312,6 +312,90 @@ class RequestEvaluationDao implements BaseDao {
     >(query, filterOptions);
   }
 
+  async getRequestEvaluationsByFilterOptionsForCompany(
+    filterOptions: RequestEvaluationListingFilterOptions,
+  ): Promise<
+    PaginatedResultsWithMatchingConditionsResponse<DbRequestEvaluationDto>
+  > {
+    global.logger.info("Get Request Evaluations By Filter Options [DAO]", {
+      methodName: this.getRequestEvaluationsByFilterOptions.name,
+      filterOptions,
+    });
+
+    const { evaluatorEmail, jobApplicationId, companyId } = filterOptions;
+
+    let query: Query<DbRequestEvaluationDto>;
+
+    if (evaluatorEmail && jobApplicationId) {
+      const { PK, SK } = this.preparePKAndSKForQuery(
+        evaluatorEmail,
+        jobApplicationId,
+        ""
+      );
+
+      // Retrieves a specific job application requested to the evaluator
+      query = RequestEvaluationModel.query("PK")
+        .eq(PK)
+        .where("SK")
+        .beginsWith(SK);
+    } else if (evaluatorEmail) {
+      // Retrieves all the job applications requested to the evaluator
+      query = RequestEvaluationModel.query("PK")
+        .eq(this.partitianKey.strtr({ "{evaluatorEmail}": evaluatorEmail }))
+        .where("SK")
+        .beginsWith("REQ#JOB#APP#");
+    } else if (jobApplicationId) {
+      const { GSI1PK, GSI1SK } = this.prepareGSI1PKAndGSI1SKForQuery(
+        jobApplicationId,
+        ""
+      );
+
+      // Retrieves all the requested evaluators for a specific job application
+      query = RequestEvaluationModel.query("GSI1PK")
+        .eq(GSI1PK)
+        .where("GSI1SK")
+        .beginsWith(GSI1SK);
+    } else {
+      // Retrieves all the requested evaluations for all job applications
+      query = RequestEvaluationModel.query("GSI1PK")
+        .eq(this.GSI1PK)
+        .where("GSI1SK")
+        .beginsWith("JOB#APP#");
+    }
+
+    // Sort the results based on the provided sort order
+    query = query.sort(filterOptions.sortOrder as SortOrderTypeEnum)
+
+    if(filterOptions.evaluationRequesterAdminUserId) {
+      query = query.where("createdByUserId").eq(filterOptions.evaluationRequesterAdminUserId)
+    }
+
+    if(filterOptions.evaluationRequesterCorporateUserId) {
+      query = query.where("createdByCorporateUserId").eq(filterOptions.evaluationRequesterCorporateUserId)
+    }
+
+    if (filterOptions.dashboardType === RequestEvaluationDashboardTypeEnum.EVALUATOR) {
+        query = query.and().parenthesis((condition: Condition) => {
+          return condition
+            .where("evaluationResponseStatus").eq(ResponseEvaluationStatusEnum.INTERVIEW_SCHEDULED)
+            .or()
+            .where("evaluationResponseStatus").eq(ResponseEvaluationStatusEnum.ON_HOLD)
+            .or()
+            .where("evaluationResponseStatus").eq(ResponseEvaluationStatusEnum.REJECTED)
+            .or()
+            .where("evaluationResponseStatus").not().exists();
+        });
+    }
+
+    if (companyId) {
+      query = query.where("companyId").eq(companyId);
+    }
+    // Execute the query with pagination
+    return getPaginatedResultsWithMatchingConditions<
+      DbRequestEvaluationDto,
+      RequestEvaluationListingFilterOptions
+    >(query, filterOptions);
+  }
   /**
    * getRequestEvaluationByJobApplIdAndEvaluationReqId
    *

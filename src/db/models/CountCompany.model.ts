@@ -1,4 +1,3 @@
-
 // Load the npm packages
 import * as dynamoose from "dynamoose";
 import { ModelType } from "dynamoose/dist/General";
@@ -9,7 +8,10 @@ import { DB_CONSTANTS } from "../DB.constants";
 import { BaseDbDto } from "./Base.model";
 
 // Import dtos
-import { CountCompanyDbAllJobApplicationCountsDto } from "../../dtos/CountCompany.dto";
+import {
+  CountCompanyDbAllJobApplicationCountsDto,
+  CountCompanyDbAllCompanyJobStatusCountsDto,
+} from "../../dtos/CountCompany.dto";
 
 // Import Enums
 import { CountCompanyDbEntityTypeEnum } from "../../enums/CountCompany.enum";
@@ -24,6 +26,10 @@ class DbCountCompanyDto extends BaseDbDto {
   // When entityType is "JOB_APPLICATION"
   // For all applications against single job
   allJobApplicationCounts?: CountCompanyDbAllJobApplicationCountsDto;
+
+  // When entityType is "COMPANY_JOB"
+  // For all company job status counts
+  allCompanyJobStatusCounts?: CountCompanyDbAllCompanyJobStatusCountsDto;
 }
 
 const CountCompanySchema: Schema = new dynamoose.Schema(
@@ -74,6 +80,28 @@ const CountCompanySchema: Schema = new dynamoose.Schema(
           required: false,
         },
         processingInterview: {
+          type: Number,
+          required: false,
+        },
+      },
+    },
+    allCompanyJobStatusCounts: {
+      type: Object,
+      required: false,
+      schema: {
+        published: {
+          type: Number,
+          required: false,
+        },
+        closed: {
+          type: Number,
+          required: false,
+        },
+        archived: {
+          type: Number,
+          required: false,
+        },
+        draft: {
           type: Number,
           required: false,
         },
