@@ -49,6 +49,8 @@ Parameters:
     Type: String
   AppAwsS3VectorJobSearchLambdaName:
     Type: String
+  AppGcpGoogleCalendarId:
+    Type: String
   
 Conditions:
   IsProd: !Equals [!Ref Stage, prod]
@@ -158,10 +160,13 @@ Globals:
         # GCP Project details
         APP_GCP_PROJECT_ID: !Sub "worko-${Stage}"
 
+        # GCP Calendar Configuration
+        APP_GCP_GOOGLE_CALENDAR_ID: !Ref AppGcpGoogleCalendarId
+
         # Local authorizer mock user (used when APP_STAGE=local)
         APP_AWS_AUTH_MOCK_USER_ID: "REDACTED"
         APP_AWS_AUTH_MOCK_USER_EMAIL: "rohithappala777+candidate3@gmail.com"
-
+        APP_GCP_GOOGLE_CALENDAR_ID: "78ef32abd5bc7789e2efcec9b572f8a4184f9124f329d69a0a6fe5afa67f5112@group.calendar.google.com"
 Resources:
   ##########################################################################
   #  IAM Role               
@@ -223,6 +228,7 @@ Resources:
                   - "ses:GetTemplate"
                   - "ses:DeleteTemplate"
                   - "ses:SendTemplatedEmail"
+                  - "ses:SendRawEmail"
                 Resource: "*"
 
         - PolicyName: S3Access

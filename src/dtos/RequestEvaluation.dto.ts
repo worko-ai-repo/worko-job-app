@@ -75,6 +75,7 @@ export interface RequestEvaluationListingFilterOptions extends RecordListingFilt
   evaluationRequesterAdminUserId?: string;
   evaluationRequesterCorporateUserId?: string;
   dashboardType?: RequestEvaluationDashboardTypeEnum;
+  companyId?: string;
 }
 
 /**
@@ -86,6 +87,7 @@ export interface RequestEvaluationListingFilterRequestDTO extends RecordListingF
   evaluationRequesterAdminUserId?: string;
   evaluationRequesterCorporateUserId?: string;
   dashboardType?: RequestEvaluationDashboardTypeEnum;
+  companyId?: string;
 }
 
 /**

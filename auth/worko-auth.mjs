@@ -426,6 +426,7 @@ var checkWhitelistedUrl = function (url, httpMethod) {
     { path: "/candidate-parsed-cv/parse/submit-form", method: HttpMethodsConstants.POST },
     { path: "/candidate-parsed-cv/create/submit-form", method: HttpMethodsConstants.POST },
     { path: "/candidate-parsed-cv/move-to-applicant/submit-form", method: HttpMethodsConstants.POST },
+    { path: "/candidate-parsed-cv/reset-temporary-credentials", method: HttpMethodsConstants.POST }
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -445,6 +446,9 @@ var checkWhitelistedUrl = function (url, httpMethod) {
  */
 var isEvaluatorUrl = function (url, httpMethod) {
   const urlList = [
+    //job application interview schedular
+    { path: "/user-job-interview/*", method: HttpMethodsConstants.ANY },
+    
     // Request evaluation routers
     { path: "/request-evaluation*", method: HttpMethodsConstants.GET },
 
@@ -467,6 +471,22 @@ var isEvaluatorUrl = function (url, httpMethod) {
     // File routers
     {
       path: "/file/gsu2v/AGENCY_SUBMIT_USER_CV",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/file/gsu2v/CORP_CAND_REFERRAL_CV",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/file/gsu2v/CORP_CAND_BULK_CV_UPLOAD",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/file/gsu2v/CAND_SUBMIT_CV_JOB",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/file/gsu2v/ADMIN_CAND_BULK_CV_UPLOAD",
       method: HttpMethodsConstants.POST,
     },
     {
@@ -493,6 +513,9 @@ var isEvaluatorUrl = function (url, httpMethod) {
  */
 var isCorporateRecruiterUrl = function (url, httpMethod) {
   const urlList = [
+    //job application interview schedular
+    { path: "/user-job-interview/*", method: HttpMethodsConstants.ANY },
+
     // internal job application routes
     {
       path: "/job-application/:id/corp-action",
@@ -592,6 +615,10 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
       method: HttpMethodsConstants.POST,
     },
     {
+      path: "/file/gsu2u/AGENCY_SUBMIT_USER_CV",
+      method: HttpMethodsConstants.POST,
+    },
+    {
       path: "/file/gsu2v/CAND_SUBMIT_CV_JOB",
       method: HttpMethodsConstants.POST,
     },
@@ -661,6 +688,9 @@ var isCorporateRecruiterUrl = function (url, httpMethod) {
  */
 var isCorporateAdminUrl = function (url, httpMethod) {
   const urlList = [
+    //job application interview schedular
+    { path: "/user-job-interview/*", method: HttpMethodsConstants.ANY },
+
     // job application routes
     {
       path: "/job-application/:id/corp-action",
@@ -765,6 +795,10 @@ var isCorporateAdminUrl = function (url, httpMethod) {
       method: HttpMethodsConstants.POST,
     },
     {
+      path: "/file/gsu2u/AGENCY_SUBMIT_USER_CV",
+      method: HttpMethodsConstants.POST,
+    },
+    {
       path: "/file/gsu2v/CAND_SUBMIT_CV_JOB",
       method: HttpMethodsConstants.POST,
     },
@@ -821,6 +855,9 @@ var isCorporateAdminUrl = function (url, httpMethod) {
     // Referral Source Type Activation Routers
     { path: "/referral-sourcetype-activation/", method: HttpMethodsConstants.POST },
     { path: "/referral-sourcetype-activation/company/:companyId", method: HttpMethodsConstants.GET },
+
+    // Corporate subscription Pricing config routers
+    { path: "/corporate-subscription-pricing-config/*", method: HttpMethodsConstants.GET },
   ];
 
   const result = checkMatchingPattern(url, urlList, httpMethod);
@@ -915,6 +952,9 @@ var isAgencyUrl = function (url, httpMethod) {
  */
 var isAdminUrl = function (url, httpMethod) {
   const adminUrlList = [
+    //job application interview schedular
+    { path: "/user-job-interview/*", method: HttpMethodsConstants.ANY },
+
     // admin routes
     { path: "/admin", method: HttpMethodsConstants.ANY },
     { path: "/admin/*", method: HttpMethodsConstants.ANY },
@@ -992,6 +1032,10 @@ var isAdminUrl = function (url, httpMethod) {
     { path: "/file/gsu2u/BLOG_COVER_IMAGE", method: HttpMethodsConstants.POST },
     {
       path: "/file/gsu2v/AGENCY_SUBMIT_USER_CV",
+      method: HttpMethodsConstants.POST,
+    },
+    {
+      path: "/file/gsu2u/AGENCY_SUBMIT_USER_CV",
       method: HttpMethodsConstants.POST,
     },
     {
@@ -1111,6 +1155,9 @@ var isAdminUrl = function (url, httpMethod) {
 
     // Bulk source type resume routers
     { path: "/bulk-source-type-resume/", method: HttpMethodsConstants.POST },
+
+    // Corporate subscription Pricing config routers
+    { path: "/corporate-subscription-pricing-config/*", method: HttpMethodsConstants.ANY },
   ];
 
   const result = checkMatchingPattern(url, adminUrlList, httpMethod);

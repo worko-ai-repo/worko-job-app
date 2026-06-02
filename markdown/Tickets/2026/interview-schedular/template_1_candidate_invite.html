@@ -1,0 +1,193 @@
+
+<style>
+  .email-wrap { font-family: Arial, Helvetica, sans-serif; background: #f4f4f4; padding: 32px 16px; }
+  .email-card { max-width: 600px; margin: 0 auto; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+  .email-header { background: #71f8f8; padding: 20px; text-align: center; }
+  .email-header img { height: 36px; }
+  .logo-placeholder { display: inline-block; background: #182b45; color: #71f8f8; font-weight: bold; font-size: 18px; padding: 6px 18px; border-radius: 4px; letter-spacing: 1px; }
+  .email-body { padding: 36px 28px; font-size: 15px; line-height: 1.7; color: #333; }
+  .greeting { font-size: 18px; font-weight: bold; color: #182b45; margin: 0 0 12px; }
+  .intro { margin: 0 0 20px; }
+  .details-box { background: #f9f9f9; border-left: 4px solid #71f8f8; border-radius: 0 4px 4px 0; padding: 16px 20px; margin: 20px 0; font-size: 14px; line-height: 1.8; }
+  .details-box p { margin: 0 0 6px; }
+  .details-box p:last-child { margin: 0; }
+  .label { font-weight: bold; }
+  .btn-wrap { text-align: center; margin: 24px 0; }
+  .btn { display: inline-block; padding: 12px 28px; background: #007bff; color: #fff; text-decoration: none; font-weight: bold; border-radius: 4px; font-size: 15px; }
+  .ics-hint { font-size: 13px; color: #666; text-align: center; margin: -12px 0 20px; }
+  .ics-hint span { background: #e8f5e9; color: #2e7d32; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+  .rules-box { background: #fffbe6; border-left: 4px solid #ffc107; border-radius: 0 4px 4px 0; padding: 14px 16px; font-size: 14px; margin: 0 0 24px; line-height: 1.7; }
+  .rules-label { font-weight: bold; margin: 0 0 8px; font-size: 14px; }
+  .sign-off { color: #182b45; font-weight: bold; }
+  .email-footer { background: #182b45; color: #fff; padding: 20px; text-align: center; font-size: 13px; line-height: 1.8; }
+  .footer-icons { margin-bottom: 10px; }
+  .footer-icon { display: inline-block; width: 28px; height: 28px; border-radius: 50%; background: #71f8f8; margin: 0 6px; vertical-align: middle; line-height: 28px; font-size: 12px; font-weight: bold; color: #182b45; text-align: center; }
+  .tab-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #555; }
+  .tab.active { background: #182b45; color: #fff; border-color: #182b45; }
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px; }
+</style>
+
+<div style="padding: 16px 0;">
+  <div class="tab-bar">
+    <div class="tab active" onclick="show('t1')">1 · Candidate invite</div>
+    <div class="tab" onclick="show('t2')">2 · Attendee invite</div>
+    <div class="tab" onclick="show('t3')">3 · Candidate status update</div>
+    <div class="tab" onclick="show('t4')">4 · Attendee status update</div>
+  </div>
+
+  <div id="t1">
+    <div class="section-label">Subject: Acme Corp is inviting you to Round 1 interview for Senior Engineer</div>
+    <div class="email-wrap">
+      <div class="email-card">
+        <div class="email-header"><div class="logo-placeholder">WORKO</div></div>
+        <div class="email-body">
+          <p class="greeting">Dear Rahul Sharma,</p>
+          <p class="intro">We're pleased to let you know that <strong>Acme Corp</strong> has scheduled your <strong>Round 1 Technical Interview</strong> for the role of <strong>Senior Software Engineer</strong>. Please review the details below and make sure you're available at the scheduled time.</p>
+          <div class="details-box">
+            <p><span class="label">Position:</span> Senior Software Engineer</p>
+            <p><span class="label">Company:</span> Acme Corp</p>
+            <p><span class="label">Round:</span> Round 1 — Technical Interview</p>
+            <p><span class="label">Format:</span> Video Call (Google Meet)</p>
+            <p><span class="label">Date &amp; Time:</span> Thursday, 10 Apr 2025 at 3:00 PM IST</p>
+            <p><span class="label">Status:</span> Scheduled</p>
+          </div>
+          <div class="btn-wrap">
+            <a href="#" class="btn">Join Interview</a>
+          </div>
+          <p class="ics-hint"><span>📎 Calendar invite (.ics) attached — add to your calendar</span></p>
+          <p class="rules-label">Important guidelines for your interview:</p>
+          <div class="rules-box">
+            Please ensure you have a stable internet connection and a quiet environment. Keep your camera on throughout the session. Be ready 5 minutes before the scheduled time. Any materials you'd like to reference must be shared in advance with the interviewer.
+          </div>
+          <p>If you have any questions or need to reschedule, please reach out to the recruiting team as soon as possible.</p>
+          <p class="sign-off">Best of luck,<br>Team Worko</p>
+        </div>
+        <div class="email-footer">
+          <div class="footer-icons">
+            <span class="footer-icon">in</span>
+            <span class="footer-icon">ig</span>
+          </div>
+          <p style="margin:0 0 4px;">Worko</p>
+          <p style="margin:0; font-size:12px; color:#aaa;">HSR Layout, Bengaluru, Karnataka, 560102</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="t2" style="display:none">
+    <div class="section-label">Subject: Interview invitation: Acme Corp — Senior Engineer (Round 1)</div>
+    <div class="email-wrap">
+      <div class="email-card">
+        <div class="email-header"><div class="logo-placeholder">WORKO</div></div>
+        <div class="email-body">
+          <p class="greeting">Dear Priya Menon,</p>
+          <p class="intro">You have been added as an attendee for an upcoming interview conducted via the <strong>Worko</strong> platform. Please review the details below and join at the scheduled time.</p>
+          <div class="details-box">
+            <p><span class="label">Position:</span> Senior Software Engineer</p>
+            <p><span class="label">Company:</span> Acme Corp</p>
+            <p><span class="label">Round:</span> Round 1 — Technical Interview</p>
+            <p><span class="label">Format:</span> Video Call (Google Meet)</p>
+            <p><span class="label">Date &amp; Time:</span> Thursday, 10 Apr 2025 at 3:00 PM IST</p>
+            <p><span class="label">Status:</span> Scheduled</p>
+          </div>
+          <div class="btn-wrap">
+            <a href="#" class="btn">Join Interview</a>
+          </div>
+          <p class="ics-hint"><span>📎 Calendar invite (.ics) attached — add to your calendar</span></p>
+          <p style="margin: 0 0 20px;">Please ensure you are available and prepared at the time mentioned above. If you're unable to attend, inform the organiser promptly.</p>
+          <p class="sign-off">Regards,<br>Team Worko</p>
+        </div>
+        <div class="email-footer">
+          <div class="footer-icons">
+            <span class="footer-icon">in</span>
+            <span class="footer-icon">ig</span>
+          </div>
+          <p style="margin:0 0 4px;">Worko</p>
+          <p style="margin:0; font-size:12px; color:#aaa;">HSR Layout, Bengaluru, Karnataka, 560102</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="t3" style="display:none">
+    <div class="section-label">Subject: Update: Acme Corp interview (Round 1) is now Rescheduled</div>
+    <div class="email-wrap">
+      <div class="email-card">
+        <div class="email-header"><div class="logo-placeholder">WORKO</div></div>
+        <div class="email-body">
+          <p class="greeting">Dear Rahul Sharma,</p>
+          <p class="intro">There has been an update to your scheduled interview for the role of <strong>Senior Software Engineer</strong> at <strong>Acme Corp</strong> on the Worko platform. Please take note of the revised details below.</p>
+          <div class="details-box">
+            <p><span class="label">Position:</span> Senior Software Engineer</p>
+            <p><span class="label">Company:</span> Acme Corp</p>
+            <p><span class="label">Round:</span> Round 1 — Technical Interview</p>
+            <p><span class="label">Updated Status:</span> <span style="color:#d97706; font-weight:bold;">Rescheduled</span></p>
+            <p><span class="label">New Date &amp; Time:</span> Friday, 11 Apr 2025 at 11:00 AM IST</p>
+          </div>
+          <div class="btn-wrap">
+            <a href="#" class="btn">Join Interview</a>
+          </div>
+          <p class="rules-label">Important guidelines for your interview:</p>
+          <div class="rules-box">
+            Please ensure you have a stable internet connection and a quiet environment. Keep your camera on throughout the session. Be ready 5 minutes before the scheduled time.
+          </div>
+          <p>If you have concerns about the new timing, please contact the recruiting team at your earliest convenience.</p>
+          <p class="sign-off">Best of luck,<br>Team Worko</p>
+        </div>
+        <div class="email-footer">
+          <div class="footer-icons">
+            <span class="footer-icon">in</span>
+            <span class="footer-icon">ig</span>
+          </div>
+          <p style="margin:0 0 4px;">Worko</p>
+          <p style="margin:0; font-size:12px; color:#aaa;">HSR Layout, Bengaluru, Karnataka, 560102</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="t4" style="display:none">
+    <div class="section-label">Subject: Update: interview (Acme Corp — Senior Engineer) is now Rescheduled</div>
+    <div class="email-wrap">
+      <div class="email-card">
+        <div class="email-header"><div class="logo-placeholder">WORKO</div></div>
+        <div class="email-body">
+          <p class="greeting">Dear Priya Menon,</p>
+          <p class="intro">This is to inform you that an interview you are associated with on the <strong>Worko</strong> platform has been updated. Please review the changes below and adjust your schedule accordingly.</p>
+          <div class="details-box">
+            <p><span class="label">Position:</span> Senior Software Engineer</p>
+            <p><span class="label">Company:</span> Acme Corp</p>
+            <p><span class="label">Round:</span> Round 1 — Technical Interview</p>
+            <p><span class="label">Updated Status:</span> <span style="color:#d97706; font-weight:bold;">Rescheduled</span></p>
+            <p><span class="label">New Date &amp; Time:</span> Friday, 11 Apr 2025 at 11:00 AM IST</p>
+          </div>
+          <div class="btn-wrap">
+            <a href="#" class="btn">Join Interview</a>
+          </div>
+          <p>If you have any concerns or conflicts with the updated time, please reach out to the interview organiser as soon as possible.</p>
+          <p class="sign-off">Regards,<br>Team Worko</p>
+        </div>
+        <div class="email-footer">
+          <div class="footer-icons">
+            <span class="footer-icon">in</span>
+            <span class="footer-icon">ig</span>
+          </div>
+          <p style="margin:0 0 4px;">Worko</p>
+          <p style="margin:0; font-size:12px; color:#aaa;">HSR Layout, Bengaluru, Karnataka, 560102</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  ['t1','t2','t3','t4'].forEach(t => {
+    document.getElementById(t).style.display = t === id ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((tab, i) => {
+    tab.classList.toggle('active', 't'+(i+1) === id);
+  });
+}
+</script>
