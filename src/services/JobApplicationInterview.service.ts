@@ -43,6 +43,41 @@ import HttpStatusCode from "../utils/http-codes.util";
 class JobApplicationInterviewService {
 
   /**
+   * normalizeEditableInterviewAttendees
+   *
+   * Filters out organizer and candidate from the editable attendee set and
+   * de-duplicates remaining attendees by email.
+   */
+  private normalizeEditableInterviewAttendees(
+    attendees: JobApplicationInterviewScheduleApiDto["attendees"] | undefined,
+    organizerEmail: string,
+    applicantEmail: string,
+  ): NonNullable<JobApplicationInterviewScheduleApiDto["attendees"]> {
+    const attendeeRecipients = new Map<
+      string,
+      NonNullable<JobApplicationInterviewScheduleApiDto["attendees"]>[number]
+    >();
+
+    (attendees ?? []).forEach((attendee) => {
+      const attendeeEmail = attendee.email?.toLowerCase();
+      if (
+        !attendeeEmail ||
+        attendeeEmail === organizerEmail.toLowerCase() ||
+        attendeeEmail === applicantEmail.toLowerCase()
+      ) {
+        return;
+      }
+
+      attendeeRecipients.set(attendeeEmail, {
+        ...attendee,
+        email: attendeeEmail,
+      });
+    });
+
+    return Array.from(attendeeRecipients.values());
+  }
+
+  /**
    * Synchronizes interview metadata on the job application.
    * @param applicationId - The ID of the job application.
    * @param interviewMeta - The interview metadata to sync.
@@ -356,6 +391,20 @@ class JobApplicationInterviewService {
       );
     } 
 
+    const editableAttendees = requestBody.attendees
+      ? this.normalizeEditableInterviewAttendees(
+          requestBody.attendees,
+          interview.organizerEmail,
+          interview.applicantEmail,
+        )
+      : interview.attendees;
+
+    const attendeesForCalendar: { email: string }[] = [
+      { email: interview.applicantEmail },
+      { email: interview.organizerEmail },
+      ...editableAttendees.map((attendee) => ({ email: attendee.email })),
+    ];
+
     const calendarClient = await gcpGoogleCalendarLibrary.getCalendarClient();
     await calendarClient.events.patch({
       calendarId: jobApplicationInterviewHelperObj.getJobApplicationInterviewDefaultCalendarId(),
@@ -366,6 +415,7 @@ class JobApplicationInterviewService {
         description: `Interview for ${interview.jobTitle} at ${interview.companyName}.`,
         start: { dateTime: requestBody.startTime, timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE },
         end: { dateTime: requestBody.endTime, timeZone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE },
+        attendees: attendeesForCalendar,
       },
     });
 
@@ -377,6 +427,7 @@ class JobApplicationInterviewService {
         scheduledAt: requestBody.startTime,
         endAt: requestBody.endTime,
         timezone: APP_CONSTANTS.APP_DEFAULT_TIMEZONE,
+        attendees: editableAttendees,
         updatedAt: nowIso,
       }
     );

@@ -85,6 +85,7 @@ export interface JobApplicationInterviewRescheduleApiDto {
    */
   startTime: string;
   endTime: string;
+  attendees?: JobApplicationInterviewAttendeeApiDto[];
 }
 
 /**

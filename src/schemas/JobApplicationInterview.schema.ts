@@ -93,6 +93,7 @@ export const jobApplicationInterviewRescheduleValidation = Joi.object({
     "string.isoDate": "End time must be a valid ISO date",
     "string.empty": "End time should not be empty",
   }),
+  attendees: Joi.array().items(attendeeValidation).optional(),
 });
 
 /**
